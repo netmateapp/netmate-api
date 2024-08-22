@@ -4,13 +4,11 @@ use idna::domain_to_ascii;
 use regex::Regex;
 
 #[derive(Debug)]
-pub struct Email {
-    address: String,
-}
+pub struct Email(String);
 
 impl Email {
     pub fn value(&self) -> &String {
-        return &self.address;
+        return &self.0;
     }
 }
 
@@ -22,7 +20,7 @@ impl FromStr for Email {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if validate_email(s) {
-            Ok(Email { address: s.to_owned() })
+            Ok(Email(s.to_owned()))
         } else {
             Err(ParseEmailError)
         }
