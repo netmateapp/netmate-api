@@ -28,10 +28,11 @@ impl FromStr for Email {
 }
 
 // メールアドレスの検証は、validatorの処理を流用する
+// ただし、ドメイン部でのIPアドレスの使用は、セキュリティの観点から禁止する。
 // https://github.com/Keats/validator/blob/99b2191af3baa15fae0274aa65bf94bba621c40a/validator/src/validation/email.rs#L43C1-L79C6
 static EMAIL_USER_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+\z").unwrap());
 static EMAIL_DOMAIN_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$").unwrap());
-static EMAIL_LITERAL_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\[([a-fA-F0-9:\.]+)\]\z").unwrap());
+//static EMAIL_LITERAL_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\[([a-fA-F0-9:\.]+)\]\z").unwrap());
 
 fn validate_email(s: &str) -> bool {
     if s.is_empty() || !s.contains('@') {
@@ -70,14 +71,16 @@ fn validate_domain_part(domain_part: &str) -> bool {
         return true;
     }
 
-    match EMAIL_LITERAL_RE.captures(domain_part) {
+    false
+
+    /*match EMAIL_LITERAL_RE.captures(domain_part) {
         Some(caps) => match caps.get(1) {
             // 元のコード: Some(c) => c.as_str().validate_ip(),
             Some(c) => IpAddr::from_str(c.as_str()).is_ok(),
             None => false,
         },
         None => false,
-    }
+    }*/
 }
 
 #[cfg(test)]
@@ -85,27 +88,27 @@ mod tests {
     use crate::common::email::validate_email;
 
     #[test]
-    fn normal() {
+    fn valid_normal() {
         assert!(validate_email("email@example.com"));
     }
 
     #[test]
-    fn idn() {
+    fn valid_idn() {
         assert!(validate_email("email@日本語.jp"));
     }
 
     #[test]
-    fn ipv4() {
-        assert!(validate_email("email@[192.0.2.0]"));
+    fn invalid_ipv4() {
+        assert!(!validate_email("email@[192.0.2.0]"));
     }
 
     #[test]
-    fn ipv6() {
-        assert!(validate_email("email@[3fff:fff:ffff:ffff:ffff:ffff:ffff:ffff]"));
+    fn invalid_ipv6() {
+        assert!(!validate_email("email@[3fff:fff:ffff:ffff:ffff:ffff:ffff:ffff]"));
     }
 
     #[test]
-    fn invalid() {
+    fn invalid_non_ascii_local_part() {
         assert!(!validate_email("メール@example.com"));
     }
 }
