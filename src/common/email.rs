@@ -74,27 +74,27 @@ mod tests {
     use crate::common::email::validate_email;
 
     #[test]
-    fn valid_normal() {
+    fn normal() {
         assert!(validate_email("email@example.com"));
     }
 
     #[test]
-    fn valid_idn() {
+    fn idn() {
         assert!(validate_email("email@日本語.jp"));
     }
 
     #[test]
-    fn invalid_ipv4() {
+    fn ipv4() {
         assert!(!validate_email("email@[192.0.2.0]"));
     }
 
     #[test]
-    fn invalid_ipv6() {
+    fn ipv6() {
         assert!(!validate_email("email@[3fff:fff:ffff:ffff:ffff:ffff:ffff:ffff]"));
     }
 
     #[test]
-    fn invalid_non_ascii_local_part() {
+    fn non_ascii_local_part() {
         assert!(!validate_email("メール@example.com"));
     }
 }
