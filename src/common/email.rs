@@ -1,4 +1,4 @@
-use std::{net::IpAddr, str::FromStr, sync::LazyLock};
+use std::{str::FromStr, sync::LazyLock};
 
 use idna::domain_to_ascii;
 use regex::Regex;
@@ -32,7 +32,6 @@ impl FromStr for Email {
 // https://github.com/Keats/validator/blob/99b2191af3baa15fae0274aa65bf94bba621c40a/validator/src/validation/email.rs#L43C1-L79C6
 static EMAIL_USER_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+\z").unwrap());
 static EMAIL_DOMAIN_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$").unwrap());
-//static EMAIL_LITERAL_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\[([a-fA-F0-9:\.]+)\]\z").unwrap());
 
 fn validate_email(s: &str) -> bool {
     if s.is_empty() || !s.contains('@') {
@@ -67,20 +66,7 @@ fn validate_email(s: &str) -> bool {
 }
 
 fn validate_domain_part(domain_part: &str) -> bool {
-    if EMAIL_DOMAIN_RE.is_match(domain_part) {
-        return true;
-    }
-
-    false
-
-    /*match EMAIL_LITERAL_RE.captures(domain_part) {
-        Some(caps) => match caps.get(1) {
-            // 元のコード: Some(c) => c.as_str().validate_ip(),
-            Some(c) => IpAddr::from_str(c.as_str()).is_ok(),
-            None => false,
-        },
-        None => false,
-    }*/
+    EMAIL_DOMAIN_RE.is_match(domain_part)
 }
 
 #[cfg(test)]
