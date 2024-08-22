@@ -7,6 +7,10 @@ use regex::Regex;
 pub struct Email(String);
 
 impl Email {
+    pub fn new_unchecked(s: &str) -> Email {
+        Email(String::from(s))
+    }
+
     pub fn value(&self) -> &String {
         return &self.0;
     }
@@ -20,7 +24,7 @@ impl FromStr for Email {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if validate_email(s) {
-            Ok(Email(s.to_owned()))
+            Ok(Email(String::from(s)))
         } else {
             Err(ParseEmailError)
         }
