@@ -881,6 +881,7 @@ dependencies = [
  "dotenvy",
  "idna 1.0.2",
  "rand",
+ "rand_chacha",
  "redis",
  "regex",
  "scylla",
