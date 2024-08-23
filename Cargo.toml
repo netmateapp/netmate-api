@@ -5,8 +5,10 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.86"
+argon2 = "0.5.3"
 axum = { version = "0.7.5", features = ["json"] }
 idna = "1.0.2"
+rand = "0.8.5"
 redis = { version = "0.25.4", features = ["tokio-comp"]}
 regex = "1.10.6"
 scylla = "0.13.1"
