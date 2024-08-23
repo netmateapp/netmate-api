@@ -58,6 +58,7 @@ static PEPPER: LazyLock<[u8; 32]> = LazyLock::new(load_pepper);
 fn load_pepper() -> [u8; 32] {
     let base64 = dotenvy::var("PEPPER").unwrap();
     let decoded = general_purpose::STANDARD.decode(base64).unwrap();
+    println!("ペッパーを読み込みました。");
     decoded.as_slice().try_into().unwrap()
 }
 
@@ -122,7 +123,19 @@ mod tests {
 
     #[test]
     fn unsafe_password() {
-        let pass = Password::from_str("0000000000");
-        assert_eq!(pass, Err(ParsePasswordError::Unsafe));
+        assert_eq!(Password::from_str("0000000000"), Err(ParsePasswordError::Unsafe));
+    }
+
+    #[test]
+    fn safe_password() {
+        let password: &str = "SCBGpks6FfnCb6R";
+        assert_eq!(Password::from_str(password), Ok(Password(String::from(password))));
+    }
+
+    #[test]
+    fn hash_password() {
+        let password = Password::from_str("SCBGpks6FfnCb6R").unwrap();
+        let hash = password.hashed();
+        assert_ne!(password.value(), hash.value());
     }
 }
