@@ -4,23 +4,21 @@ use argon2::{password_hash::{PasswordHasher, SaltString}, Algorithm, Argon2, Par
 use base64::{engine::general_purpose, Engine};
 use rand::rngs::OsRng;
 
-const MIN_PASSWORD_LENGTH: usize = 10;
-const MAX_PASSWORD_LENGTH: usize = 1024;
-
+#[derive(Debug, PartialEq)]
 pub struct Password(String);
 
 impl Password {
-    fn value(&self) -> &String {
+    pub fn value(&self) -> &String {
         &self.0
+    }
+
+    pub fn hashed(&self) -> PasswordHash {
+        hash_password(&self)
     }
 }
 
-#[derive(Debug)]
-pub enum ParsePasswordError {
-    TooShort,
-    TooLong,
-    Unsafe,
-}
+const MIN_PASSWORD_LENGTH: usize = 10;
+const MAX_PASSWORD_LENGTH: usize = 1024;
 
 impl FromStr for Password {
     type Err = ParsePasswordError;
@@ -40,6 +38,13 @@ impl FromStr for Password {
     }
 }
 
+#[derive(Debug, PartialEq)]
+pub enum ParsePasswordError {
+    TooShort,
+    TooLong,
+    Unsafe,
+}
+
 pub struct PasswordHash(String);
 
 impl PasswordHash {
@@ -56,8 +61,6 @@ fn load_pepper() -> [u8; 32] {
     decoded.as_slice().try_into().unwrap()
 }
 
-// ハッシュ化は`argon2`のドキュメントの処理を流用
-// https://docs.rs/argon2/latest/argon2/
 pub fn hash_password(password: &Password) -> PasswordHash {
     let salt = SaltString::generate(&mut OsRng);
 
@@ -65,7 +68,6 @@ pub fn hash_password(password: &Password) -> PasswordHash {
     const ITERATIONS: u32 = 2;
     const DEGREE_OF_PARALLELISM: u32 = 1;
 
-    // `default()`は使用せず、明示的に指定する
     let params = ParamsBuilder::new()
         .m_cost(MEMORY)
         .t_cost(ITERATIONS)
@@ -79,7 +81,7 @@ pub fn hash_password(password: &Password) -> PasswordHash {
     PasswordHash(phc_format_hash)
 }
 
-const UNSAFE_PASSWORDS_FILE_PATH: &str = "xato-net-10-million-passwords-filtered-10-min-chars.txt";
+const UNSAFE_PASSWORDS_FILE_PATH: &str = "xato-net-10-million-passwords-filtered-min-10-chars.txt";
 static UNSAFE_PASSWORDS: LazyLock<HashSet<String>> = LazyLock::new(|| load_unsafe_passwords(UNSAFE_PASSWORDS_FILE_PATH).unwrap());
 
 fn load_unsafe_passwords(file_path: &str) -> std::io::Result<HashSet<String>> {
@@ -93,9 +95,34 @@ fn load_unsafe_passwords(file_path: &str) -> std::io::Result<HashSet<String>> {
         unsafe_passwords.insert(password);
     }
 
+    println!("{}件の安全でないパスワードを読み込みました。", unsafe_passwords.len());
+
     Ok(unsafe_passwords)
 }
 
 fn is_unsafe_password(password: &str) -> bool {
     UNSAFE_PASSWORDS.contains(password)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use crate::common::password::{ParsePasswordError, Password, MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH};
+
+    #[test]
+    fn password_too_short() {
+        assert_eq!(Password::from_str(&"a".repeat(MIN_PASSWORD_LENGTH - 1)), Err(ParsePasswordError::TooShort));
+    }
+
+    #[test]
+    fn password_too_long() {
+        assert_eq!(Password::from_str(&"a".repeat(MAX_PASSWORD_LENGTH + 1)), Err(ParsePasswordError::TooLong));
+    }
+
+    #[test]
+    fn unsafe_password() {
+        let pass = Password::from_str("0000000000");
+        assert_eq!(pass, Err(ParsePasswordError::Unsafe));
+    }
 }
