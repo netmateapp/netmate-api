@@ -1,4 +1,4 @@
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Region {
   Afghanistan = 0,
   Albania = 1,
@@ -198,4 +198,273 @@ pub enum Region {
   Yemen = 195,
   Zambia = 196,
   Zimbabwe = 197,
+}
+
+impl From<Region> for u8 {
+  fn from(value: Region) -> Self {
+      value as u8
+  }
+}
+
+impl From<Region> for i8 {
+  fn from(value: Region) -> Self {
+      value as i8
+  }
+}
+
+#[derive(Debug, PartialEq)]
+pub struct ParseRegionError;
+
+impl TryFrom<u8> for Region {
+  type Error = ParseRegionError;
+
+  fn try_from(value: u8) -> Result<Self, Self::Error> {
+    let region = match value {
+      0 => Region::Afghanistan,
+      1 => Region::Albania,
+      2 => Region::Algeria,
+      3 => Region::Andorra,
+      4 => Region::Angola,
+      5 => Region::AntiguaAndBarbuda,
+      6 => Region::Argentina,
+      7 => Region::Armenia,
+      8 => Region::Australia,
+      9 => Region::Austria,
+      10 => Region::Azerbaijan,
+      11 => Region::Bahamas,
+      12 => Region::Bahrain,
+      13 => Region::Bangladesh,
+      14 => Region::Barbados,
+      15 => Region::Belarus,
+      16 => Region::Belgium,
+      17 => Region::Belize,
+      18 => Region::Benin,
+      19 => Region::Bhutan,
+      20 => Region::Bolivia,
+      21 => Region::BosniaAndHerzegovina,
+      22 => Region::Botswana,
+      23 => Region::Brazil,
+      24 => Region::BruneiDarussalam,
+      25 => Region::Bulgaria,
+      26 => Region::BurkinaFaso,
+      27 => Region::Burundi,
+      28 => Region::CaboVerde,
+      29 => Region::Cambodia,
+      30 => Region::Cameroon,
+      31 => Region::Canada,
+      32 => Region::CentralAfricanRepublic,
+      33 => Region::Chad,
+      34 => Region::Chile,
+      35 => Region::China,
+      36 => Region::Colombia,
+      37 => Region::Comoros,
+      38 => Region::CookIslands,
+      39 => Region::RepublicOfTheCongo,
+      40 => Region::CostaRica,
+      41 => Region::CoteDIvoire,
+      42 => Region::Croatia,
+      43 => Region::Cuba,
+      44 => Region::Cyprus,
+      45 => Region::CzechRepublic,
+      46 => Region::DemocraticRepublicOfTheCongo,
+      47 => Region::Denmark,
+      48 => Region::Djibouti,
+      49 => Region::Dominica,
+      50 => Region::DominicanRepublic,
+      51 => Region::Ecuador,
+      52 => Region::Egypt,
+      53 => Region::ElSalvador,
+      54 => Region::EquatorialGuinea,
+      55 => Region::Eritrea,
+      56 => Region::Estonia,
+      57 => Region::Eswatini,
+      58 => Region::Ethiopia,
+      59 => Region::Fiji,
+      60 => Region::Finland,
+      61 => Region::France,
+      62 => Region::Gabon,
+      63 => Region::Gambia,
+      64 => Region::Georgia,
+      65 => Region::Germany,
+      66 => Region::Ghana,
+      67 => Region::Greece,
+      68 => Region::Grenada,
+      69 => Region::Guatemala,
+      70 => Region::Guinea,
+      71 => Region::GuineaBissau,
+      72 => Region::Guyana,
+      73 => Region::Haiti,
+      74 => Region::Honduras,
+      75 => Region::HongKong,
+      76 => Region::Hungary,
+      77 => Region::Iceland,
+      78 => Region::India,
+      79 => Region::Indonesia,
+      80 => Region::Iran,
+      81 => Region::Iraq,
+      82 => Region::Ireland,
+      83 => Region::Israel,
+      84 => Region::Italy,
+      85 => Region::Jamaica,
+      86 => Region::Japan,
+      87 => Region::Jordan,
+      88 => Region::Kazakhstan,
+      89 => Region::Kenya,
+      90 => Region::Kiribati,
+      91 => Region::Kuwait,
+      92 => Region::Kyrgyzstan,
+      93 => Region::LaoPeoplesDemocraticRepublic,
+      94 => Region::Latvia,
+      95 => Region::Lebanon,
+      96 => Region::Lesotho,
+      97 => Region::Liberia,
+      98 => Region::Libya,
+      99 => Region::Liechtenstein,
+      100 => Region::Lithuania,
+      101 => Region::Luxembourg,
+      102 => Region::Madagascar,
+      103 => Region::Malawi,
+      104 => Region::Malaysia,
+      105 => Region::Maldives,
+      106 => Region::Mali,
+      107 => Region::Malta,
+      108 => Region::MarshallIslands,
+      109 => Region::Mauritania,
+      110 => Region::Mauritius,
+      111 => Region::Mexico,
+      112 => Region::MicronesiaFederatedStatesOf,
+      113 => Region::Monaco,
+      114 => Region::Mongolia,
+      115 => Region::Montenegro,
+      116 => Region::Morocco,
+      117 => Region::Mozambique,
+      118 => Region::Myanmar,
+      119 => Region::Namibia,
+      120 => Region::Nauru,
+      121 => Region::Nepal,
+      122 => Region::Netherlands,
+      123 => Region::NewZealand,
+      124 => Region::Nicaragua,
+      125 => Region::Niger,
+      126 => Region::Nigeria,
+      127 => Region::Niue,
+      128 => Region::NorthMacedonia,
+      129 => Region::Norway,
+      130 => Region::Oman,
+      131 => Region::Pakistan,
+      132 => Region::Palau,
+      133 => Region::Panama,
+      134 => Region::PapuaNewGuinea,
+      135 => Region::Paraguay,
+      136 => Region::Peru,
+      137 => Region::Philippines,
+      138 => Region::Poland,
+      139 => Region::Portugal,
+      140 => Region::Qatar,
+      141 => Region::RepublicOfKorea,
+      142 => Region::RepublicOfKosovo,
+      143 => Region::RepublicOfMoldova,
+      144 => Region::Romania,
+      145 => Region::RussianFederation,
+      146 => Region::Rwanda,
+      147 => Region::SaintKittsAndNevis,
+      148 => Region::SaintLucia,
+      149 => Region::SaintVincentAndTheGrenadines,
+      150 => Region::Samoa,
+      151 => Region::SanMarino,
+      152 => Region::SaoTomeAndPrincipe,
+      153 => Region::SaudiArabia,
+      154 => Region::Senegal,
+      155 => Region::Serbia,
+      156 => Region::Seychelles,
+      157 => Region::SierraLeone,
+      158 => Region::Singapore,
+      159 => Region::Slovakia,
+      160 => Region::Slovenia,
+      161 => Region::SolomonIslands,
+      162 => Region::Somalia,
+      163 => Region::SouthAfrica,
+      164 => Region::SouthSudan,
+      165 => Region::Spain,
+      166 => Region::SriLanka,
+      167 => Region::Sudan,
+      168 => Region::Suriname,
+      169 => Region::Sweden,
+      170 => Region::Switzerland,
+      171 => Region::Syria,
+      172 => Region::Taiwan,
+      173 => Region::Tajikistan,
+      174 => Region::Thailand,
+      175 => Region::TimorLeste,
+      176 => Region::Togo,
+      177 => Region::Tonga,
+      178 => Region::TrinidadAndTobago,
+      179 => Region::Tunisia,
+      180 => Region::Turkey,
+      181 => Region::Turkmenistan,
+      182 => Region::Tuvalu,
+      183 => Region::Uganda,
+      184 => Region::Ukraine,
+      185 => Region::UnitedArabEmirates,
+      186 => Region::UnitedKingdom,
+      187 => Region::UnitedRepublicOfTanzania,
+      188 => Region::UnitedStatesOfAmerica,
+      189 => Region::Uruguay,
+      190 => Region::Uzbekistan,
+      191 => Region::Vanuatu,
+      192 => Region::Vatican,
+      193 => Region::Venezuela,
+      194 => Region::VietNam,
+      195 => Region::Yemen,
+      196 => Region::Zambia,
+      197 => Region::Zimbabwe,
+      _ => return Err(ParseRegionError),
+    };
+    Ok(region)
+  }
+}
+
+impl TryFrom<i8> for Region {
+  type Error = ParseRegionError;
+
+  fn try_from(value: i8) -> Result<Self, Self::Error> {
+      Region::try_from(value as u8)
+  }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn valid_values() {
+        for i in 0u8..=197 {
+            let region = Region::try_from(i);
+            assert_eq!(region.map(u8::from), Ok(i));
+        }
+    }
+
+    #[test]
+    fn invalid_values() {
+        for i in 198u8..=u8::MAX {
+          let region = Region::try_from(i);
+          assert_eq!(region.map(u8::from), Err(ParseRegionError));
+        }
+    }
+
+    #[test]
+    fn valid_i8_values() {
+      for i in 0u8..=197 {
+        let region = Region::try_from(i as i8);
+        assert_eq!(region.map(i8::from), Ok(i as i8));
+      }
+    }
+
+    #[test]
+    fn invalid_i8_values() {
+        for i in 198u8..=u8::MAX {
+          let region = Region::try_from(i);
+          assert_eq!(region.map(i8::from), Err(ParseRegionError));
+        }
+    }
 }
