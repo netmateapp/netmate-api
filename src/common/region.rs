@@ -437,7 +437,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn valid_values() {
+    fn try_from_valid_u8() {
         for i in 0u8..=197 {
             let region = Region::try_from(i);
             assert_eq!(region.map(u8::from), Ok(i));
@@ -445,7 +445,7 @@ mod tests {
     }
 
     #[test]
-    fn invalid_values() {
+    fn try_from_invalid_u8() {
         for i in 198u8..=u8::MAX {
           let region = Region::try_from(i);
           assert_eq!(region.map(u8::from), Err(ParseRegionError));
@@ -453,7 +453,7 @@ mod tests {
     }
 
     #[test]
-    fn valid_i8_values() {
+    fn try_from_valid_i8() {
       for i in 0u8..=197 {
         let region = Region::try_from(i as i8);
         assert_eq!(region.map(i8::from), Ok(i as i8));
@@ -461,9 +461,9 @@ mod tests {
     }
 
     #[test]
-    fn invalid_i8_values() {
+    fn try_from_invalid_i8() {
         for i in 198u8..=u8::MAX {
-          let region = Region::try_from(i);
+          let region = Region::try_from(i as i8);
           assert_eq!(region.map(i8::from), Err(ParseRegionError));
         }
     }
