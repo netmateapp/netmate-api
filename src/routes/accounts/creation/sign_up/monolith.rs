@@ -4,7 +4,7 @@ use rand::{RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 use scylla::{prepared_statement::PreparedStatement, Session};
 
-use crate::common::{birth_year::BirthYear, email::Email, language::Language, password::{Password, PasswordHash}, region::Region, send_email::{Body, NetmateEmail, ResendEmailService, SenderNameLocale, Subject, TransactionalEmailService}};
+use crate::{common::{birth_year::BirthYear, email::Email, language::Language, password::{Password, PasswordHash}, region::Region, send_email::{Body, NetmateEmail, ResendEmailService, SenderNameLocale, Subject, TransactionalEmailService}}, translation::{ja, us_en}};
 
 // axumのrouterを返す関数
 // quick exit 対策はここで行い、アプリケーションには波及させない
@@ -134,6 +134,8 @@ struct SignUpImpl {
     insert_creation_application: Arc<PreparedStatement>,
 }
 
+const SENDER_EMAIL: &str = "verify-email@account.netmate.app";
+
 impl SignUp for SignUpImpl {
     async fn is_available_email(&self, email: &Email) -> Fallible<bool, SignUpError> {
         let res = self.session
@@ -166,34 +168,50 @@ impl SignUp for SignUpImpl {
     async fn send_verification_email(&self, email: &Email, language: &Language, token: &OneTimeToken) -> Result<(), SignUpError> {
         let sender_name = &SenderNameLocale::expressed_in(language);
 
-        let from = match Email::from_str("verify-email@account.netmate.app") {
-            Ok(email) => match NetmateEmail::try_from(email) {
-                Ok(ne) => ne,
-                Err(e) => return Err(SignUpError::AuthenticationEmailSendFailed(e.into())),
-            },
-            Err(e) => return Err(SignUpError::AuthenticationEmailSendFailed(e.into()))
+        // ユーザーの設定言語に応じたテキストを取得する
+        let (subject, html_content, plain_text) = match language {
+            Language::Japanese => (ja::sign_up::AUTHENTICATION_EMAIL_SUBJECT, ja::sign_up::ATUHENTICATION_EMAIL_BODY_HTML, ja::sign_up::AUTHENTICATION_EMAIL_BODY_PLAIN),
+            _ => (us_en::sign_up::AUTHENTICATION_EMAIL_SUBJECT, us_en::sign_up::ATUHENTICATION_EMAIL_BODY_HTML, us_en::sign_up::AUTHENTICATION_EMAIL_BODY_PLAIN),
         };
 
-        // バックエンドの多言語対応もロケールファイルを作成し、そこから取得すべきでは
-        let subject = match language {
-            Language::Japanese => "",
-            _ => ""
-        };
-        let subject = match Subject::from_str(&subject) {
-            Ok(s) => s,
-            Err(e) => return Err(SignUpError::AuthenticationEmailSendFailed(e.into()))
-        };
-
-        let body = Body::new("", "");
-        
-        ResendEmailService::send(sender_name, &from, &email, &subject, &body)
+        ResendEmailService::send(
+            sender_name,
+            &NetmateEmail::new_unchecked(SENDER_EMAIL),
+            email,
+            &Subject::new_unchecked(subject),
+            &Body::new(
+                &html_content.replace("{token}", token.value()),
+                &plain_text.replace("{token}", token.value())
+            )
+        )
             .await
             .map_err(|e| SignUpError::AuthenticationEmailSendFailed(e.into()))
     }
 }
 
-// mockを使用した自動テスト
-
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr;
+
+    use crate::{common::{email::Email, send_email::{NetmateEmail, Subject}}, translation::{ja, us_en}};
+
+    use super::{SignUpError, SENDER_EMAIL};
+
+    #[test]
+    fn sender_email() {
+        let from = match Email::from_str(SENDER_EMAIL) {
+            Ok(email) => match NetmateEmail::try_from(email) {
+                Ok(ne) => Ok(ne),
+                Err(e) => Err(SignUpError::AuthenticationEmailSendFailed(e.into())),
+            },
+            Err(e) => Err(SignUpError::AuthenticationEmailSendFailed(e.into()))
+        };
+        assert!(from.is_ok());
+    }
+
+    #[test]
+    fn all_language_subjects() {
+        let _ = Subject::from_str(ja::sign_up::AUTHENTICATION_EMAIL_SUBJECT);
+        let _ = Subject::from_str(us_en::sign_up::AUTHENTICATION_EMAIL_SUBJECT);
+    }
 }
