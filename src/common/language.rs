@@ -1,3 +1,6 @@
+use serde::{de, Deserialize};
+use thiserror::Error;
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Language {
   AmericanEnglish = 0,
@@ -18,7 +21,8 @@ impl From<Language> for i8 {
   }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Error)]
+#[error("有効な言語ではありません")]
 pub struct ParseLanguageError;
 
 impl TryFrom<u8> for Language {
@@ -41,6 +45,16 @@ impl TryFrom<i8> for Language {
 
   fn try_from(value: i8) -> Result<Self, Self::Error> {
       Language::try_from(value as u8)
+  }
+}
+
+impl<'de> Deserialize<'de> for Language {
+  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+  where
+      D: serde::Deserializer<'de>
+  {
+      let n: u8 = Deserialize::deserialize(deserializer)?;
+      Language::try_from(n).map_err(de::Error::custom)
   }
 }
 
@@ -80,5 +94,19 @@ mod tests {
       let language = Language::try_from(i as i8);
       assert_eq!(language.map(i8::from), Err(ParseLanguageError))
     }
+  }
+
+  #[test]
+  fn deserialize_valid_json() {
+    let json = r#"0"#;
+    let language: Language = serde_json::from_str(json).unwrap();
+    assert_eq!(language, Language::AmericanEnglish);
+  }
+
+  #[test]
+  fn deserialize_invalid_json() {
+    let json = r#"-1"#;
+    let language = serde_json::from_str::<Language>(json);
+    assert!(language.is_err());
   }
 }
