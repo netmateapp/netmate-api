@@ -3,6 +3,9 @@ use std::{collections::HashSet, fs::File, io::{BufRead, BufReader}, str::FromStr
 use argon2::{password_hash::{PasswordHasher, SaltString}, Algorithm, Argon2, ParamsBuilder, Version};
 use base64::{engine::general_purpose, Engine};
 use rand::rngs::OsRng;
+use serde::{de::{self, Unexpected}, Deserialize};
+use thiserror::Error;
+use tokio::sync::oneshot::error;
 
 #[derive(Debug, PartialEq)]
 pub struct Password(String);
@@ -13,7 +16,23 @@ impl Password {
     }
 
     pub fn hashed(&self) -> PasswordHash {
-        hash_password(&self)
+        let salt = SaltString::generate(&mut OsRng);
+
+        const MEMORY: u32 = 19 * 1024;
+        const ITERATIONS: u32 = 2;
+        const DEGREE_OF_PARALLELISM: u32 = 1;
+    
+        let params = ParamsBuilder::new()
+            .m_cost(MEMORY)
+            .t_cost(ITERATIONS)
+            .p_cost(DEGREE_OF_PARALLELISM)
+            .build()
+            .unwrap();
+        let argon2 = Argon2::new_with_secret(&*PEPPER, Algorithm::Argon2id, Version::V0x13, params).unwrap();
+    
+        let phc_format_hash = argon2.hash_password(&self.value().as_bytes(), &salt).unwrap().to_string();
+    
+        PasswordHash(phc_format_hash)
     }
 }
 
@@ -38,10 +57,13 @@ impl FromStr for Password {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Error)]
 pub enum ParsePasswordError {
+    #[error("パスワードが短すぎます")]
     TooShort,
+    #[error("パスワードが長すぎます")]
     TooLong,
+    #[error("パスワードが安全ではありません")]
     Unsafe,
 }
 
@@ -60,26 +82,6 @@ fn load_pepper() -> [u8; 32] {
     let decoded = general_purpose::STANDARD.decode(base64).unwrap();
     println!("ペッパーを読み込みました。");
     decoded.as_slice().try_into().unwrap()
-}
-
-pub fn hash_password(password: &Password) -> PasswordHash {
-    let salt = SaltString::generate(&mut OsRng);
-
-    const MEMORY: u32 = 19 * 1024;
-    const ITERATIONS: u32 = 2;
-    const DEGREE_OF_PARALLELISM: u32 = 1;
-
-    let params = ParamsBuilder::new()
-        .m_cost(MEMORY)
-        .t_cost(ITERATIONS)
-        .p_cost(DEGREE_OF_PARALLELISM)
-        .build()
-        .unwrap();
-    let argon2 = Argon2::new_with_secret(&*PEPPER, Algorithm::Argon2id, Version::V0x13, params).unwrap();
-
-    let phc_format_hash = argon2.hash_password(password.value().as_bytes(), &salt).unwrap().to_string();
-
-    PasswordHash(phc_format_hash)
 }
 
 const UNSAFE_PASSWORDS_FILE_PATH: &str = "xato-net-10-million-passwords-filtered-min-10-chars.txt";
@@ -103,6 +105,16 @@ fn load_unsafe_passwords(file_path: &str) -> std::io::Result<HashSet<String>> {
 
 fn is_unsafe_password(password: &str) -> bool {
     UNSAFE_PASSWORDS.contains(password)
+}
+
+impl<'de> Deserialize<'de> for Password {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>
+    {
+        let s: &str = Deserialize::deserialize(deserializer)?;
+        Password::from_str(s).map_err(de::Error::custom)
+    }
 }
 
 #[cfg(test)]
@@ -137,5 +149,19 @@ mod tests {
         let password = Password::from_str("SCBGpks6FfnCb6R").unwrap();
         let hash = password.hashed();
         assert_ne!(password.value(), hash.value());
+    }
+
+    #[test]
+    fn deserialize_valid_json() {
+        let json = r#""SCBGpks6FfnCb6R""#;
+        let password: Password = serde_json::from_str(json).unwrap();
+        assert_eq!(password, Password(String::from("SCBGpks6FfnCb6R")));
+    }
+
+    #[test]
+    fn deserialize_invalid_json() {
+        let json = r#""0000000000""#;
+        let password = serde_json::from_str::<Password>(json);
+        assert!(password.is_err());
     }
 }
