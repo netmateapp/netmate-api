@@ -18,8 +18,10 @@ impl SenderNameLocale {
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub struct NetmateEmail(Email);
 
+#[derive(Debug, PartialEq)]
 pub struct ParseNetmateEmailError;
 
 impl TryFrom<Email> for NetmateEmail {
@@ -34,8 +36,10 @@ impl TryFrom<Email> for NetmateEmail {
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub struct Subject(String);
 
+#[derive(Debug, PartialEq)]
 pub struct ParseSubjectError;
 
 // RFC 5322 で推奨される一行当たりの最大文字数(1-127までのUS-ASCII範囲が前提)
@@ -46,7 +50,7 @@ impl FromStr for Subject {
     type Err = ParseSubjectError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s.as_bytes().len() < MAX_LINE_LENGTH {
+        if !s.is_empty() && s.as_bytes().len() <= MAX_LINE_LENGTH {
             Ok(Subject(String::from(s)))
         } else {
             Err(ParseSubjectError)
@@ -91,5 +95,38 @@ impl TransactionalEmailService for ResendEmailService {
             .await
             .map(|_| ())
             .map_err(|e| EmailSendFailed(e.into()))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use crate::common::{email::Email, send_email::{NetmateEmail, ParseNetmateEmailError, ParseSubjectError, Subject, MAX_LINE_LENGTH}};
+
+    #[test]
+    fn netmate_email() {
+        assert!(NetmateEmail::try_from(Email::from_str("verify-email@account.netmate.app").unwrap()).is_ok());
+    }
+
+    #[test]
+
+    fn non_netmate_email() {
+        assert_eq!(NetmateEmail::try_from(Email::from_str("verify-email@account.netmate.com").unwrap()), Err(ParseNetmateEmailError));
+    }
+
+    #[test]
+    fn normal_subject() {
+        assert!(Subject::from_str("メールアドレスを確認してください").is_ok());
+    }
+
+    #[test]
+    fn empty_subject() {
+        assert_eq!(Subject::from_str(""), Err(ParseSubjectError));
+    }
+
+    #[test]
+    fn subject_too_long() {
+        assert_eq!(Subject::from_str(&"あ".repeat(MAX_LINE_LENGTH + 1)), Err(ParseSubjectError));
     }
 }

@@ -3,7 +3,7 @@ use std::{str::FromStr, sync::LazyLock};
 use idna::domain_to_ascii;
 use regex::Regex;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Email(String);
 
 impl Email {
