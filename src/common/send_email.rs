@@ -3,6 +3,8 @@ use std::str::FromStr;
 use resend_rs::{types::CreateEmailBaseOptions, Resend};
 use thiserror::Error;
 
+use crate::translation::{ja, us_en};
+
 use super::{email::Email, language::Language};
 
 pub enum SenderNameLocale {
@@ -20,18 +22,26 @@ impl SenderNameLocale {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct NetmateEmail(Email);
+pub struct NetmateEmail(String);
+
+impl NetmateEmail {
+    pub fn new_unchecked(s: &str) -> Self {
+        NetmateEmail(String::from(s))
+    }
+}
 
 #[derive(Debug, PartialEq, Error)]
 #[error("ドメインのメールアドレスの形式を満たしませんでした")]
 pub struct ParseNetmateEmailError;
 
+// ローカル部だけ独立して定義する形では`Email`と同じ検証処理を記述することになるため、
+// 原則として`Email`を基にした生成のみ許可する
 impl TryFrom<Email> for NetmateEmail {
     type Error = ParseNetmateEmailError;
 
     fn try_from(value: Email) -> Result<Self, Self::Error> {
         if value.value().ends_with(".netmate.app") {
-            Ok(NetmateEmail(value))
+            Ok(NetmateEmail(value.value().clone()))
         } else {
             Err(ParseNetmateEmailError)
         }
@@ -40,6 +50,12 @@ impl TryFrom<Email> for NetmateEmail {
 
 #[derive(Debug, PartialEq)]
 pub struct Subject(String);
+
+impl Subject {
+    pub fn new_unchecked(s: &str) -> Self {
+        Self(String::from(s))
+    }
+}
 
 #[derive(Debug, PartialEq, Error)]
 #[error("件名の形式を満たしませんでした")]
@@ -88,11 +104,11 @@ impl TransactionalEmailService for ResendEmailService {
         let resend = Resend::new("");
 
         let sender_name = match sender_name {
-            SenderNameLocale::Japanese => "ネットメイト",
-            SenderNameLocale::English => "Netmate"
+            SenderNameLocale::Japanese => ja::email::SENDER_NAME,
+            SenderNameLocale::English => us_en::email::SENDER_NAME,
         };
 
-        let from = format!("{} <{}>", sender_name, from.0.value());
+        let from = format!("{} <{}>", sender_name, from.0);
         let to = [to.value()];
 
         let email = CreateEmailBaseOptions::new(from, to, &subject.0)
