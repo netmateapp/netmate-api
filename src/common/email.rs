@@ -2,6 +2,7 @@ use std::{str::FromStr, sync::LazyLock};
 
 use idna::domain_to_ascii;
 use regex::Regex;
+use thiserror::Error;
 
 #[derive(Debug, PartialEq)]
 pub struct Email(String);
@@ -16,7 +17,8 @@ impl Email {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
+#[error("メールアドレスの形式を満たしませんでした")]
 pub struct ParseEmailError;
 
 impl FromStr for Email {

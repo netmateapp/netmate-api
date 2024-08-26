@@ -1,11 +1,10 @@
-use std::sync::Arc;
+use std::{str::FromStr, sync::Arc};
 
-use axum::{routing::post, Router};
-use rand::{Rng, RngCore, SeedableRng};
+use rand::{RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 use scylla::{prepared_statement::PreparedStatement, Session};
 
-use crate::common::{birth_year::BirthYear, email::Email, language::Language, password::{hash_password, Password, PasswordHash}, region::Region};
+use crate::common::{birth_year::BirthYear, email::Email, language::Language, password::{Password, PasswordHash}, region::Region, send_email::{Body, NetmateEmail, ResendEmailService, SenderNameLocale, Subject, TransactionalEmailService}};
 
 // axumのrouterを返す関数
 // quick exit 対策はここで行い、アプリケーションには波及させない
@@ -94,15 +93,17 @@ enum SignUpError {
     #[error("指定のメールアドレスは利用不能です")]
     UnavaialbleEmail,
     #[error("アカウント作成の申請に失敗しました")]
-    FailedApplication(#[source] anyhow::Error),
+    ApplicationFailed(#[source] anyhow::Error),
+    #[error("認証メールの送信に失敗しました")]
+    AuthenticationEmailSendFailed(#[source] anyhow::Error)
 }
-
 
 // ネットワーク環境を前提とした設計
 // 純粋な論理ではなく、現実的な構造をモデル化する必要がある
 // 全ての関数呼び出し=ネットワーク越し処理は失敗する可能性がある (=ローカル性が無い)
 // ローカル性のある環境では？ → 失敗可能性を否定できないものにResultがつく
 // => 確実に成功する保証がなければResult
+// 失敗可能性があるのなら、実際の失敗の種類も型にできる(詳細はsourceで保持)
 
 type Fallible<T, E> = Result<T, E>;
 
@@ -112,9 +113,9 @@ trait SignUp {
             // この位置でパスワードのハッシュ化を行う必要があり高い負荷が発生するため、
             // `sign_up`は自動化されたリクエストから特に保護されなければならない
             let hash: PasswordHash = password.hashed();
-            let token: OneTimeToken = Self::generate_one_time_token();
+            let token = OneTimeToken::generate();
             self.apply_to_create_account(email, &hash, birth_year, region, language, &token).await?;
-            self.send_verification_email(email, &token).await
+            self.send_verification_email(email, language, &token).await
         } else {
             Err(SignUpError::UnavaialbleEmail)
         }
@@ -122,13 +123,9 @@ trait SignUp {
 
     async fn is_available_email(&self, email: &Email) -> Fallible<bool, SignUpError>;
 
-    fn generate_one_time_token() -> OneTimeToken {
-        OneTimeToken(String::from(""))
-    }
+    async fn apply_to_create_account(&self, email: &Email, pw_hash: &PasswordHash, birth_year: &BirthYear, region: &Region, language: &Language, token: &OneTimeToken) -> Fallible<(), SignUpError>;
 
-    async fn apply_to_create_account(&self, email: &Email, hash: &PasswordHash, birth_year: &BirthYear, region: &Region, language: &Language, token: &OneTimeToken) -> Fallible<(), SignUpError>;
-
-    async fn send_verification_email(&self, email: &Email, token: &OneTimeToken) -> Result<(), SignUpError>;
+    async fn send_verification_email(&self, email: &Email, language: &Language, token: &OneTimeToken) -> Result<(), SignUpError>;
 }
 
 struct SignUpImpl {
@@ -140,6 +137,7 @@ struct SignUpImpl {
 impl SignUp for SignUpImpl {
     async fn is_available_email(&self, email: &Email) -> Fallible<bool, SignUpError> {
         let res = self.session
+            // ここに clone() が必要で、clone()を強制する設計が必要
             .execute(&self.exists_by_email, (email.value(), ))
             .await;
 
@@ -152,12 +150,45 @@ impl SignUp for SignUpImpl {
         }
     }
 
-    async fn apply_to_create_account(&self, email: &Email, hash: &PasswordHash, birth_year: &BirthYear, region: &Region, language: &Language, token: &OneTimeToken) -> Result<(), SignUpError> {
-        Ok(())
+    async fn apply_to_create_account(&self, email: &Email, pw_hash: &PasswordHash, birth_year: &BirthYear, region: &Region, language: &Language, token: &OneTimeToken) -> Result<(), SignUpError> {
+        let encoded_birth_year: i16 = (*birth_year).into();
+        let encoded_region: i8 = (*region).into();
+        let encoded_language: i8 = (*language).into();
+
+        let res = self.session
+            .execute(&self.insert_creation_application, (token.value(), email.value(), pw_hash.value(), encoded_birth_year, encoded_region, encoded_language,))
+            .await;
+
+        res.map(|_| ())
+            .map_err(|e| SignUpError::ApplicationFailed(e.into()))
     }
 
-    async fn send_verification_email(&self, email: &Email, token: &OneTimeToken) -> Result<(), SignUpError> {
-        Ok(())
+    async fn send_verification_email(&self, email: &Email, language: &Language, token: &OneTimeToken) -> Result<(), SignUpError> {
+        let sender_name = &SenderNameLocale::expressed_in(language);
+
+        let from = match Email::from_str("verify-email@account.netmate.app") {
+            Ok(email) => match NetmateEmail::try_from(email) {
+                Ok(ne) => ne,
+                Err(e) => return Err(SignUpError::AuthenticationEmailSendFailed(e.into())),
+            },
+            Err(e) => return Err(SignUpError::AuthenticationEmailSendFailed(e.into()))
+        };
+
+        // バックエンドの多言語対応もロケールファイルを作成し、そこから取得すべきでは
+        let subject = match language {
+            Language::Japanese => "",
+            _ => ""
+        };
+        let subject = match Subject::from_str(&subject) {
+            Ok(s) => s,
+            Err(e) => return Err(SignUpError::AuthenticationEmailSendFailed(e.into()))
+        };
+
+        let body = Body::new("", "");
+        
+        ResendEmailService::send(sender_name, &from, &email, &subject, &body)
+            .await
+            .map_err(|e| SignUpError::AuthenticationEmailSendFailed(e.into()))
     }
 }
 
@@ -165,19 +196,4 @@ impl SignUp for SignUpImpl {
 
 #[cfg(test)]
 mod tests {
-    use crate::common::{birth_year::BirthYear, email::Email, language::Language, region::Region};
-
-    use super::SignUp;
-
-    struct MockSignUp;
-
-    /*impl SignUp for MockSignUp {
-        fn is_available_email(email: &Email) -> bool {
-            
-        }
-
-        fn apply_to_create_account(email: &Email, password: &super::Password, birth_year: &BirthYear, region: &Region, language: &Language) -> Result<(), super::SignUpError> {
-            
-        }
-    }*/
 }

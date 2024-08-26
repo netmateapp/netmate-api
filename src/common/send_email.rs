@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 use resend_rs::{types::CreateEmailBaseOptions, Resend};
+use thiserror::Error;
 
 use super::{email::Email, language::Language};
 
@@ -21,7 +22,8 @@ impl SenderNameLocale {
 #[derive(Debug, PartialEq)]
 pub struct NetmateEmail(Email);
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Error)]
+#[error("ドメインのメールアドレスの形式を満たしませんでした")]
 pub struct ParseNetmateEmailError;
 
 impl TryFrom<Email> for NetmateEmail {
@@ -39,7 +41,8 @@ impl TryFrom<Email> for NetmateEmail {
 #[derive(Debug, PartialEq)]
 pub struct Subject(String);
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Error)]
+#[error("件名の形式を満たしませんでした")]
 pub struct ParseSubjectError;
 
 // RFC 5322 で推奨される一行当たりの最大文字数(1-127までのUS-ASCII範囲が前提)
@@ -62,6 +65,12 @@ impl FromStr for Subject {
 pub struct Body {
     html_content: String,
     plain_text: String,
+}
+
+impl Body {
+    pub fn new(html_content: &str, plain_text: &str) -> Self {
+        Self { html_content: String::from(html_content), plain_text: String::from(plain_text) }
+    }
 }
 
 #[derive(Debug, thiserror::Error)]
