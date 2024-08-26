@@ -135,7 +135,6 @@ mod tests {
     }
 
     #[test]
-
     fn non_netmate_email() {
         assert_eq!(NetmateEmail::try_from(Email::from_str("verify-email@account.netmate.com").unwrap()), Err(ParseNetmateEmailError));
     }
