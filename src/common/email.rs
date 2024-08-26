@@ -2,6 +2,7 @@ use std::{str::FromStr, sync::LazyLock};
 
 use idna::domain_to_ascii;
 use regex::Regex;
+use serde::{de::{self, Unexpected}, Deserialize};
 use thiserror::Error;
 
 #[derive(Debug, PartialEq)]
@@ -75,9 +76,19 @@ fn validate_domain_part(domain_part: &str) -> bool {
     EMAIL_DOMAIN_RE.is_match(domain_part)
 }
 
+impl<'de> Deserialize<'de> for Email {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>
+    {
+        let s: &str = Deserialize::deserialize(deserializer)?;
+        Email::from_str(s).map_err(de::Error::custom)
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::common::email::validate_email;
+    use crate::common::email::{validate_email, Email};
 
     #[test]
     fn normal() {
@@ -102,5 +113,19 @@ mod tests {
     #[test]
     fn non_ascii_local_part() {
         assert!(!validate_email("メール@example.com"));
+    }
+
+    #[test]
+    fn deserialize_valid_json() {
+        let json = r#""email@example.com""#;
+        let email: Email = serde_json::from_str(json).unwrap();
+        assert_eq!(email, Email::new_unchecked("email@example.com"));
+    }
+
+    #[test]
+    fn deserialize_invalid_json() {
+        let json = r#""メール@example.com""#;
+        let email = serde_json::from_str::<Email>(json);
+        assert!(email.is_err());
     }
 }
