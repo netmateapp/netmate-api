@@ -7,11 +7,10 @@ use tokio::task;
 
 use crate::common::{birth_year::BirthYear, email::Email, language::Language, password::Password, region::Region};
 
-use super::r#impl::SignUpImpl;
+use super::dsl::SignUp;
+use super::interpreter::SignUpImpl;
 
-use crate::routes::accounts::creation::sign_up::dsl::SignUp;
-
-pub async fn sign_up_route(db: Arc<Session>) -> Router {
+pub async fn endpoint(db: Arc<Session>) -> Router {
     // ここは`unwrap()`にすべきではない？
     let exists_by_email = db.prepare("SELECT id FROM accounts_by_email WHERE email = ?").await.unwrap();
     let insert_creation_application = db.prepare("INSERT INTO account_creation_applications (email, password_hash, region, language, birth_year, code) VALUES (?, ?, ?, ?, ?, ?) USING TTL 86400").await.unwrap();
