@@ -1,50 +1,10 @@
 use std::sync::Arc;
 
-use axum::{extract::State, http::StatusCode, response::IntoResponse, routing::post, Json, Router};
 use scylla::{prepared_statement::PreparedStatement, Session};
-use serde::Deserialize;
-use tokio::task;
 
-use crate::{common::{birth_year::BirthYear, email::Email, language::Language, password::{Password, PasswordHash}, region::Region, send_email::{Body, NetmateEmail, ResendEmailService, SenderNameLocale, Subject, TransactionalEmailService}}, translation::{ja, us_en}};
+use crate::{common::{birth_year::BirthYear, email::Email, language::Language, password::PasswordHash, region::Region, send_email::{Body, NetmateEmail, ResendEmailService, SenderNameLocale, Subject, TransactionalEmailService}}, translation::{ja, us_en}};
 
 use super::{dsl::{Fallible, SignUp, SignUpError}, value::OneTimeToken};
-
-pub async fn sign_up_route(db: Arc<Session>) -> Router {
-    let exists_by_email = db.prepare("SELECT id FROM accounts_by_email WHERE email = ?").await.unwrap();
-    let insert_creation_application = db.prepare("INSERT INTO account_creation_applications (email, password_hash, region, language, birth_year, code) VALUES (?, ?, ?, ?, ?, ?) USING TTL 86400").await.unwrap();
-
-    let routine = SignUpImpl {
-        session: db,
-        exists_by_email: Arc::new(exists_by_email),
-        insert_creation_application: Arc::new(insert_creation_application)
-    };
-
-    Router::new()
-        .route("/sign_up", post(handler))
-        .with_state(Arc::new(routine))
-}
-
-// quick exit 対策はここで行い、アプリケーションには波及させない
-// 返された成否情報をもとにロギング
-pub async fn handler(
-    State(routine): State<Arc<SignUpImpl>>,
-    Json(payload): Json<Payload>,
-) -> impl IntoResponse {
-    task::spawn(async move {
-        // 結果をログに記録
-        routine.sign_up(&payload.email, &payload.password, &payload.birth_year, &payload.region, &payload.language).await;
-    });
-    StatusCode::OK
-}
-
-#[derive(Deserialize)]
-pub struct Payload {
-    pub email: Email,
-    pub password: Password,
-    pub region: Region,
-    pub language: Language,
-    pub birth_year: BirthYear,
-}
 
 pub struct SignUpImpl {
     session: Arc<Session>,
@@ -52,17 +12,27 @@ pub struct SignUpImpl {
     insert_creation_application: Arc<PreparedStatement>,
 }
 
+impl SignUpImpl {
+    pub fn new(
+        session: Arc<Session>,
+        exists_by_email: Arc<PreparedStatement>,
+        insert_creation_application: Arc<PreparedStatement>,
+    ) -> Self {
+        Self { session, exists_by_email, insert_creation_application }
+    }
+}
+
 const AUTHENTICATION_EMAIL_ADDRESS: &str = "verify-email@account.netmate.app";
 
 impl SignUp for SignUpImpl {
     async fn is_available_email(&self, email: &Email) -> Fallible<bool, SignUpError> {
         let res = self.session
-            // ここに clone() が必要で、clone()を強制する設計が必要
             .execute(&self.exists_by_email, (email.value(), ))
             .await;
 
         match res {
             Ok(qr) => match qr.rows() {
+                // ここの正当性が自動テストで保証されていない
                 Ok(v) => Ok(!v.is_empty()),
                 Err(e) => Err(SignUpError::PotentiallyUnavailableEmail(e.into()))
             },
