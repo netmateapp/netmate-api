@@ -1,3 +1,6 @@
+use serde::{de, Deserialize};
+use thiserror::Error;
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Region {
   Afghanistan = 0,
@@ -212,7 +215,8 @@ impl From<Region> for i8 {
   }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Error)]
+#[error("有効な地域ではありません")]
 pub struct ParseRegionError;
 
 impl TryFrom<u8> for Region {
@@ -432,39 +436,63 @@ impl TryFrom<i8> for Region {
   }
 }
 
+impl<'de> Deserialize<'de> for Region {
+  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+  where
+      D: serde::Deserializer<'de>
+  {
+      let n: u8 = Deserialize::deserialize(deserializer)?;
+      Region::try_from(n).map_err(de::Error::custom)
+  }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::*;
+  use super::*;
 
-    #[test]
-    fn try_from_valid_u8() {
-        for i in 0u8..=197 {
-            let region = Region::try_from(i);
-            assert_eq!(region.map(u8::from), Ok(i));
-        }
+  #[test]
+  fn try_from_valid_u8() {
+    for i in 0u8..=197 {
+      let region = Region::try_from(i);
+      assert_eq!(region.map(u8::from), Ok(i));
     }
+  }
 
-    #[test]
-    fn try_from_invalid_u8() {
-        for i in 198u8..=u8::MAX {
-          let region = Region::try_from(i);
-          assert_eq!(region.map(u8::from), Err(ParseRegionError));
-        }
+  #[test]
+  fn try_from_invalid_u8() {
+    for i in 198u8..=u8::MAX {
+      let region = Region::try_from(i);
+      assert_eq!(region.map(u8::from), Err(ParseRegionError));
     }
+  }
 
-    #[test]
-    fn try_from_valid_i8() {
-      for i in 0u8..=197 {
-        let region = Region::try_from(i as i8);
-        assert_eq!(region.map(i8::from), Ok(i as i8));
-      }
+  #[test]
+  fn try_from_valid_i8() {
+    for i in 0u8..=197 {
+      let region = Region::try_from(i as i8);
+      assert_eq!(region.map(i8::from), Ok(i as i8));
     }
+  }
 
-    #[test]
-    fn try_from_invalid_i8() {
-        for i in 198u8..=u8::MAX {
-          let region = Region::try_from(i as i8);
-          assert_eq!(region.map(i8::from), Err(ParseRegionError));
-        }
+  #[test]
+  fn try_from_invalid_i8() {
+    for i in 198u8..=u8::MAX {
+      let region = Region::try_from(i as i8);
+      assert_eq!(region.map(i8::from), Err(ParseRegionError));
     }
+  }
+
+  #[test]
+  fn deserialize_valid_json() {
+    let json = r#"86"#;
+    let region: Region = serde_json::from_str(json).unwrap();
+    assert_eq!(region, Region::Japan);
+  }
+  
+  #[test]
+  fn deserialize_invalid_json() {
+    let json = r#"-1"#;
+    let region = serde_json::from_str::<Region>(json);
+    assert!(region.is_err());
+  }
 }
