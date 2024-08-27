@@ -93,7 +93,7 @@ impl Body {
 #[error("メールの送信に失敗しました")]
 pub struct EmailSendFailed(#[source] anyhow::Error);
 
-pub trait TransactionalEmailService {
+pub(crate) trait TransactionalEmailService {
     async fn send(sender_name: &SenderNameLocale, from: &NetmateEmail, to: &Email, subject: &Subject, body: &Body) -> Result<(), EmailSendFailed>;
 }
 
