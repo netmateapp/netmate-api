@@ -9,7 +9,7 @@ pub type Fallible<T, E> = Result<T, E>;
 pub(crate) trait SignUp: Send {
     async fn sign_up(&self, email: &Email, password: &Password, birth_year: &BirthYear, region: &Region, language: &Language) -> Fallible<(), SignUpError> {
         if self.is_available_email(email).await? {
-            // この位置でパスワードのハッシュ化を行う必要があり高い負荷が発生するため、
+            // この位置でパスワードのハッシュ化が行われ高い負荷が発生するため、
             // `sign_up`は自動化されたリクエストから特に保護されなければならない
             let hash: PasswordHash = password.hashed();
             let token = OneTimeToken::generate();
