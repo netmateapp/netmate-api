@@ -1,10 +1,8 @@
 use thiserror::Error;
 
-use crate::common::{birth_year::BirthYear, email::Email, language::Language, password::{Password, PasswordHash}, region::Region};
+use crate::common::{birth_year::BirthYear, email::Email, fallible::Fallible, language::Language, password::{Password, PasswordHash}, region::Region};
 
 use super::value::OneTimeToken;
-
-pub type Fallible<T, E> = Result<T, E>;
 
 pub(crate) trait SignUp: Send {
     async fn sign_up(&self, email: &Email, password: &Password, birth_year: &BirthYear, region: &Region, language: &Language) -> Fallible<(), SignUpError> {

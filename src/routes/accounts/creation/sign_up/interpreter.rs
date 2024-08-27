@@ -2,9 +2,9 @@ use std::sync::Arc;
 
 use scylla::{prepared_statement::PreparedStatement, Session};
 
-use crate::{common::{birth_year::BirthYear, email::Email, language::Language, password::PasswordHash, region::Region, send_email::{Body, NetmateEmail, ResendEmailService, SenderNameLocale, Subject, TransactionalEmailService}}, translation::{ja, us_en}};
+use crate::{common::{birth_year::BirthYear, email::Email, fallible::Fallible, language::Language, password::PasswordHash, region::Region, send_email::{Body, NetmateEmail, ResendEmailService, SenderNameLocale, Subject, TransactionalEmailService}}, translation::{ja, us_en}};
 
-use super::{dsl::{Fallible, SignUp, SignUpError}, value::OneTimeToken};
+use super::{dsl::{SignUp, SignUpError}, value::OneTimeToken};
 
 pub struct SignUpImpl {
     session: Arc<Session>,

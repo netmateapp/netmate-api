@@ -1,0 +1,1 @@
+pub type Fallible<T, E> = Result<T, E>;
