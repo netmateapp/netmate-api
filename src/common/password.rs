@@ -3,9 +3,8 @@ use std::{collections::HashSet, fs::File, io::{BufRead, BufReader}, str::FromStr
 use argon2::{password_hash::{PasswordHasher, SaltString}, Algorithm, Argon2, ParamsBuilder, Version};
 use base64::{engine::general_purpose, Engine};
 use rand::rngs::OsRng;
-use serde::{de::{self, Unexpected}, Deserialize};
+use serde::{de::{self}, Deserialize};
 use thiserror::Error;
-use tokio::sync::oneshot::error;
 
 #[derive(Debug, PartialEq)]
 pub struct Password(String);
