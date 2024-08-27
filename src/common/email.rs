@@ -2,7 +2,7 @@ use std::{str::FromStr, sync::LazyLock};
 
 use idna::domain_to_ascii;
 use regex::Regex;
-use serde::{de::{self, Unexpected}, Deserialize};
+use serde::{de::{self}, Deserialize};
 use thiserror::Error;
 
 #[derive(Debug, PartialEq)]
