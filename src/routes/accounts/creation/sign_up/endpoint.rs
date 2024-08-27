@@ -4,6 +4,7 @@ use axum::{extract::State, http::StatusCode, response::IntoResponse, routing::po
 use scylla::Session;
 use serde::Deserialize;
 use tokio::task;
+use tracing::info;
 
 use crate::common::{birth_year::BirthYear, email::Email, language::Language, password::Password, region::Region};
 
@@ -30,11 +31,25 @@ pub async fn handler(
     State(routine): State<Arc<SignUpImpl>>,
     Json(payload): Json<Payload>,
 ) -> impl IntoResponse {
-    // quick exit 対策
+    // 非 quick exit パターンを採用し、攻撃者に処理時間の差を計測させない
     task::spawn(async move {
-        // 結果をログに記録
-        routine.sign_up(&payload.email, &payload.password, &payload.birth_year, &payload.region, &payload.language).await;
+        match routine.sign_up(&payload.email, &payload.password, &payload.birth_year, &payload.region, &payload.language).await {
+            Ok(_) => info!(
+                email = %payload.email.value(),
+                "アカウント作成の申請が正常に処理されました。"
+            ),
+            Err(e) => info!(
+                email = %payload.email.value(),
+                // 生年は重要な個人情報であるため、メールアドレスと紐付けて記録してはならない
+                region = %u8::from(payload.region),
+                language = %u8::from(payload.language),
+                error = %e,
+                "アカウント作成の申請に失敗しました。"
+            ),
+        }
     });
+
+    // `sign_up`の終了を待たずに返す
     StatusCode::OK
 }
 
