@@ -1,3 +1,4 @@
-pub mod extension;
-pub mod domain;
+pub mod common;
 pub mod routes;
+pub mod startup;
+pub mod translation;
