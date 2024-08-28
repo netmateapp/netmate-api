@@ -54,16 +54,16 @@ mod tests {
     #[error("疑似エラー")]
     struct MockError;
 
-    const AVAILABLE: &str = "available@example.com";
-    const UNAVAILABLE: &str = "unavailable@example.com";
-    const POTENTIALLY_UNAVAILABLE: &str = "potentially_unavailable@example.com";
-    const APPLY: &str = "apply@example.com";
-    const SEND: &str = "send@example.com";
+    const POTENTIALLY_UNAVAILABLE: &str = "case1@example.com";
+    const UNAVAILABLE: &str = "case2@example.com";
+    const AVAILABLE_BUT_APPLICATION_FAILED: &str = "case3@example.com";
+    const APPLIED_BUT_SEND_FAILED: &str = "case4@example.com";
+    const SIGN_UP: &str = "case5@example.com";
 
     impl SignUp for MockSignUp {
         async fn is_available_email(&self, email: &Email) -> Fallible<bool, SignUpError> {
             match email.value().as_str() {
-                AVAILABLE | APPLY | SEND  => Ok(true),
+                AVAILABLE_BUT_APPLICATION_FAILED | APPLIED_BUT_SEND_FAILED | SIGN_UP  => Ok(true),
                 UNAVAILABLE => Ok(false),
                 _ => Err(SignUpError::PotentiallyUnavailableEmail(MockError.into()))
             }
@@ -71,14 +71,14 @@ mod tests {
 
         async fn apply_to_create_account(&self, email: &Email, _: &PasswordHash, _: &BirthYear, _: &Region, _: &Language, _: &OneTimeToken) -> Fallible<(), SignUpError> {
             match email.value().as_str() {
-                APPLY | SEND => Ok(()),
+                APPLIED_BUT_SEND_FAILED | SIGN_UP => Ok(()),
                 _ => Err(SignUpError::ApplicationFailed(MockError.into()))
             }
         }
     
         async fn send_verification_email(&self, email: &Email, _: &Language, _: &OneTimeToken) -> Result<(), SignUpError> {
             match email.value().as_str() {
-                SEND => Ok(()),
+                SIGN_UP => Ok(()),
                 _ => Err(SignUpError::AuthenticationEmailSendFailed(MockError.into()))
             }
         }
@@ -112,7 +112,7 @@ mod tests {
 
     #[tokio::test]
     async fn available() {
-        match test_sign_up(AVAILABLE).await.err().unwrap() {
+        match test_sign_up(AVAILABLE_BUT_APPLICATION_FAILED).await.err().unwrap() {
             SignUpError::ApplicationFailed(_) => (),
             _ => panic!("正しくないエラーが返されました")
         }
@@ -120,7 +120,7 @@ mod tests {
 
     #[tokio::test]
     async fn apply() {
-        match test_sign_up(APPLY).await.err().unwrap() {
+        match test_sign_up(APPLIED_BUT_SEND_FAILED).await.err().unwrap() {
             SignUpError::AuthenticationEmailSendFailed(_) => (),
             _ => panic!("正しくないエラーが返されました")
         }
@@ -128,6 +128,6 @@ mod tests {
 
     #[tokio::test]
     async fn send() {
-        assert!(test_sign_up(SEND).await.is_ok());
+        assert!(test_sign_up(SIGN_UP).await.is_ok());
     }
 }
