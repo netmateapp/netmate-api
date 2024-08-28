@@ -69,6 +69,10 @@ pub enum ParsePasswordError {
 pub struct PasswordHash(String);
 
 impl PasswordHash {
+    pub fn new_unchecked(hash: &str) -> Self {
+        Self(String::from(hash))
+    }
+
     pub fn value(&self) -> &String {
         &self.0
     }
