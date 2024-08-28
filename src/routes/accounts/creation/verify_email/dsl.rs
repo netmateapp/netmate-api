@@ -1,7 +1,7 @@
 use thiserror::Error;
 use uuid::Uuid;
 
-use crate::{common::{birth_year::BirthYear, email::Email, fallible::Fallible, language::Language, password::PasswordHash, region::Region}, routes::accounts::creation::sign_up::value::OneTimeToken};
+use crate::{common::{birth_year::BirthYear, email::Email, fallible::Fallible, id::{AccountId, Uuid7}, language::Language, password::PasswordHash, region::Region}, routes::accounts::creation::sign_up::value::OneTimeToken};
 
 pub(crate) trait VerifyEmail {
     async fn verify_email(&self, token: &OneTimeToken) -> Fallible<(), VerifyEmailError> {
@@ -42,32 +42,7 @@ pub enum VerifyEmailError {
     DeleteAccountCreationApplicationFailed(#[source] anyhow::Error),
 }
 
-pub type AccountId = Uuid7;
+#[cfg(test)]
+mod tests {
 
-pub struct Uuid7(Uuid);
-
-impl Uuid7 {
-    pub fn new_unchecked(uuid: Uuid) -> Self {
-        Self(uuid)
-    }
-
-    pub fn value(&self) -> &Uuid {
-        &self.0
-    }
-}
-
-#[derive(Debug, Error)]
-#[error("UUIDのバージョンが7ではありません")]
-pub struct ParseUuid7Error;
-
-impl TryFrom<Uuid> for Uuid7 {
-    type Error = ParseUuid7Error;
-
-    fn try_from(value: Uuid) -> Result<Self, Self::Error> {
-        if value.get_version_num() == 7 {
-            Ok(Uuid7(value))
-        } else {
-            Err(ParseUuid7Error)
-        }
-    }
 }
