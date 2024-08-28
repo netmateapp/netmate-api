@@ -111,7 +111,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn available() {
+    async fn available_but_application_failed() {
         match test_sign_up(AVAILABLE_BUT_APPLICATION_FAILED).await.err().unwrap() {
             SignUpError::ApplicationFailed(_) => (),
             _ => panic!("正しくないエラーが返されました")
@@ -119,7 +119,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn apply() {
+    async fn applied_but_send_failed() {
         match test_sign_up(APPLIED_BUT_SEND_FAILED).await.err().unwrap() {
             SignUpError::AuthenticationEmailSendFailed(_) => (),
             _ => panic!("正しくないエラーが返されました")
@@ -127,7 +127,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn send() {
+    async fn sign_up() {
         assert!(test_sign_up(SIGN_UP).await.is_ok());
     }
 }
