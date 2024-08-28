@@ -1,11 +1,13 @@
 use rand::{RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 
-// この値オブジェクトは、`sign_up`以外も使用する
-
 pub struct OneTimeToken(String);
 
 impl OneTimeToken {
+    pub fn new_unchecked(token: &str) -> Self {
+        Self(String::from(token))
+    }
+
     pub fn value(&self) -> &String {
         &self.0
     }
