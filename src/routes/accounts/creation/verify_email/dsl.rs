@@ -44,5 +44,94 @@ pub enum VerifyEmailError {
 
 #[cfg(test)]
 mod tests {
+    use thiserror::Error;
 
+    use crate::{common::{birth_year::BirthYear, email::Email, fallible::Fallible, id::AccountId, language::Language, password::PasswordHash, region::Region}, routes::accounts::creation::sign_up::value::OneTimeToken};
+
+    use super::{VerifyEmail, VerifyEmailError};
+
+    struct MockVerifyEmail;
+
+    #[derive(Debug, Error)]
+    #[error("疑似エラー")]
+    struct MockError;
+
+    const RETRIEVE_FAILED: &str = "case1";
+    const TOKEN_AUTH_FAILED: &str = "case2";
+    const RETRIEVE_BUT_CREATE_FAILED: &str = "case3";
+    const RETRIEVE_BUT_ACCOUNT_ALREADY_EXISTS: &str = "case4";
+    const VERIFY_EMAIL: &str = "case5";
+
+    impl VerifyEmail for MockVerifyEmail {
+        async fn retrieve_account_creation_application_by(&self, case: &OneTimeToken) -> Fallible<(Email, PasswordHash, BirthYear, Region, Language), VerifyEmailError> {
+            match case.value().as_str() {
+                RETRIEVE_BUT_CREATE_FAILED | RETRIEVE_BUT_ACCOUNT_ALREADY_EXISTS | VERIFY_EMAIL => {
+                    Ok((
+                        Email::new_unchecked("test@example.com"),
+                        PasswordHash::new_unchecked(case.value()),
+                        BirthYear::new_unchecked(None),
+                        Region::Japan,
+                        Language::Japanese
+                    ))
+                },
+                TOKEN_AUTH_FAILED => Err(VerifyEmailError::OneTimeTokenAuthenticationFailed),
+                RETRIEVE_FAILED => Err(VerifyEmailError::RetrieveAccountCreationApplicationFailed(MockError.into())),
+                _ => panic!("予期しないエラーが発生しました")
+            }
+        }
+
+        async fn create_account(&self, _: &AccountId, _: &Email, case: &PasswordHash, _: &BirthYear, _: &Region, _: &Language) -> Fallible<(), VerifyEmailError> {
+            match case.value().as_str() {
+                VERIFY_EMAIL => Ok(()),
+                RETRIEVE_BUT_ACCOUNT_ALREADY_EXISTS => Err(VerifyEmailError::AccountAlreadyExists),
+                RETRIEVE_BUT_CREATE_FAILED => Err(VerifyEmailError::CreateAccountFailed(MockError.into())),
+                _ => panic!("予期しないエラーが発生しました")
+            }
+        }
+    
+        async fn delete_account_creation_application_by(&self, _: &OneTimeToken) -> Fallible<(), VerifyEmailError> {
+            Ok(())
+        }
+    }
+
+    async fn test_verify_email(case: &str) -> Fallible<(), VerifyEmailError> {
+        MockVerifyEmail.verify_email(&OneTimeToken::new_unchecked(case)).await
+    }
+
+    #[tokio::test]
+    async fn retrieve_failed() {
+        match test_verify_email(RETRIEVE_FAILED).await.err().unwrap() {
+            VerifyEmailError::RetrieveAccountCreationApplicationFailed(_) => (),
+            _ => panic!("予期しないエラーが発生しました")
+        }
+    }
+
+    #[tokio::test]
+    async fn token_auth_failed() {
+        match test_verify_email(TOKEN_AUTH_FAILED).await.err().unwrap() {
+            VerifyEmailError::OneTimeTokenAuthenticationFailed => (),
+            _ => panic!("予期しないエラーが発生しました")
+        }
+    }
+
+    #[tokio::test]
+    async fn retrieve_but_create_failed() {
+        match test_verify_email(RETRIEVE_BUT_CREATE_FAILED).await.err().unwrap() {
+            VerifyEmailError::CreateAccountFailed(_) => (),
+            _ => panic!("予期しないエラーが発生しました")
+        }
+    }
+
+    #[tokio::test]
+    async fn retrieve_but_account_already_exists() {
+        match test_verify_email(RETRIEVE_BUT_ACCOUNT_ALREADY_EXISTS).await.err().unwrap() {
+            VerifyEmailError::AccountAlreadyExists => (),
+            _ => panic!("予期しないエラーが発生しました")
+        }
+    }
+
+    #[tokio::test]
+    async fn verify_email() {
+        assert!(test_verify_email(VERIFY_EMAIL).await.is_ok());
+    }
 }
