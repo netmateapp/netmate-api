@@ -76,7 +76,7 @@ mod tests {
             }
         }
     
-        async fn send_verification_email(&self, case: &Email, _: &Language, _: &OneTimeToken) -> Result<(), SignUpError> {
+        async fn send_verification_email(&self, case: &Email, _: &Language, _: &OneTimeToken) -> Fallible<(), SignUpError> {
             match case.value().as_str() {
                 SIGN_UP => Ok(()),
                 _ => Err(SignUpError::AuthenticationEmailSendFailed(MockError.into()))
@@ -84,7 +84,7 @@ mod tests {
         }
     }
 
-    async fn test_sign_up(case: &str) -> Result<(), SignUpError> {
+    async fn test_sign_up(case: &str) -> Fallible<(), SignUpError> {
         MockSignUp.sign_up(
             &Email::new_unchecked(case),
             &Password::from_str("vK,tOiHyLsehvnv").unwrap(),
