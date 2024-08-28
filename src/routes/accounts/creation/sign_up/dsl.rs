@@ -61,32 +61,32 @@ mod tests {
     const SIGN_UP: &str = "case5@example.com";
 
     impl SignUp for MockSignUp {
-        async fn is_available_email(&self, email: &Email) -> Fallible<bool, SignUpError> {
-            match email.value().as_str() {
+        async fn is_available_email(&self, case: &Email) -> Fallible<bool, SignUpError> {
+            match case.value().as_str() {
                 AVAILABLE_BUT_APPLICATION_FAILED | APPLIED_BUT_SEND_FAILED | SIGN_UP  => Ok(true),
                 UNAVAILABLE => Ok(false),
                 _ => Err(SignUpError::PotentiallyUnavailableEmail(MockError.into()))
             }
         }
 
-        async fn apply_to_create_account(&self, email: &Email, _: &PasswordHash, _: &BirthYear, _: &Region, _: &Language, _: &OneTimeToken) -> Fallible<(), SignUpError> {
-            match email.value().as_str() {
+        async fn apply_to_create_account(&self, case: &Email, _: &PasswordHash, _: &BirthYear, _: &Region, _: &Language, _: &OneTimeToken) -> Fallible<(), SignUpError> {
+            match case.value().as_str() {
                 APPLIED_BUT_SEND_FAILED | SIGN_UP => Ok(()),
                 _ => Err(SignUpError::ApplicationFailed(MockError.into()))
             }
         }
     
-        async fn send_verification_email(&self, email: &Email, _: &Language, _: &OneTimeToken) -> Result<(), SignUpError> {
-            match email.value().as_str() {
+        async fn send_verification_email(&self, case: &Email, _: &Language, _: &OneTimeToken) -> Result<(), SignUpError> {
+            match case.value().as_str() {
                 SIGN_UP => Ok(()),
                 _ => Err(SignUpError::AuthenticationEmailSendFailed(MockError.into()))
             }
         }
     }
 
-    async fn test_sign_up(email: &str) -> Result<(), SignUpError> {
+    async fn test_sign_up(case: &str) -> Result<(), SignUpError> {
         MockSignUp.sign_up(
-            &Email::new_unchecked(email),
+            &Email::new_unchecked(case),
             &Password::from_str("vK,tOiHyLsehvnv").unwrap(),
             &BirthYear::new_unchecked(NonZeroU16::new(2000)),
             &Region::Japan,
@@ -98,7 +98,7 @@ mod tests {
     async fn potentially_unavailable() {
         match test_sign_up(POTENTIALLY_UNAVAILABLE).await.err().unwrap() {
             SignUpError::PotentiallyUnavailableEmail(_) => (),
-            _ => panic!("正しくないエラーが返されました")
+            _ => panic!("予期しないエラーが発生しました")
         }
     }
 
@@ -106,7 +106,7 @@ mod tests {
     async fn unavailable() {
         match test_sign_up(UNAVAILABLE).await.err().unwrap() {
             SignUpError::UnavaialbleEmail => (),
-            _ => panic!("正しくないエラーが返されました")
+            _ => panic!("予期しないエラーが発生しました")
         }
     }
 
@@ -114,7 +114,7 @@ mod tests {
     async fn available_but_application_failed() {
         match test_sign_up(AVAILABLE_BUT_APPLICATION_FAILED).await.err().unwrap() {
             SignUpError::ApplicationFailed(_) => (),
-            _ => panic!("正しくないエラーが返されました")
+            _ => panic!("予期しないエラーが発生しました")
         }
     }
 
@@ -122,7 +122,7 @@ mod tests {
     async fn applied_but_send_failed() {
         match test_sign_up(APPLIED_BUT_SEND_FAILED).await.err().unwrap() {
             SignUpError::AuthenticationEmailSendFailed(_) => (),
-            _ => panic!("正しくないエラーが返されました")
+            _ => panic!("予期しないエラーが発生しました")
         }
     }
 
