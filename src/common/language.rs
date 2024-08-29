@@ -15,12 +15,6 @@ impl From<Language> for u8 {
   }
 }
 
-impl From<Language> for i8 {
-  fn from(value: Language) -> Self {
-      value as i8
-  }
-}
-
 #[derive(Debug, PartialEq, Error)]
 #[error("有効な言語ではありません")]
 pub struct ParseLanguageError;
@@ -37,14 +31,6 @@ impl TryFrom<u8> for Language {
         _ => return Err(ParseLanguageError)
       };
       Ok(language)
-  }
-}
-
-impl TryFrom<i8> for Language {
-  type Error = ParseLanguageError;
-
-  fn try_from(value: i8) -> Result<Self, Self::Error> {
-      Language::try_from(value as u8)
   }
 }
 
@@ -77,22 +63,6 @@ mod tests {
     for i in 4u8..=u8::MAX {
       let language = Language::try_from(i);
       assert_eq!(language.map(u8::from), Err(ParseLanguageError))
-    }
-  }
-
-  #[test]
-  fn try_from_valid_i8() {
-    for i in 0u8..4 {
-      let language = Language::try_from(i as i8);
-      assert_eq!(language.map(i8::from), Ok(i as i8))
-    }
-  }
-
-  #[test]
-  fn try_from_invalid_i8() {
-    for i in 4u8..=u8::MAX {
-      let language = Language::try_from(i as i8);
-      assert_eq!(language.map(i8::from), Err(ParseLanguageError))
     }
   }
 
