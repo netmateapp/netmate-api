@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use scylla::{prepared_statement::PreparedStatement, Session};
 
-use crate::{common::{birth_year::{self, BirthYear}, email::Email, fallible::Fallible, language::Language, password::PasswordHash, region::Region, send_email::{Body, NetmateEmail, ResendEmailService, SenderNameLocale, Subject, TransactionalEmailService}}, helper::{error::InitError, scylla::prepare}, translation::{ja, us_en}};
+use crate::{common::{birth_year::BirthYear, email::Email, fallible::Fallible, language::Language, password::PasswordHash, region::Region, send_email::{Body, NetmateEmail, ResendEmailService, SenderNameLocale, Subject, TransactionalEmailService}}, helper::{error::InitError, scylla::prepare}, translation::{ja, us_en}};
 
 use super::{dsl::{SignUp, SignUpError}, value::OneTimeToken};
 
@@ -101,7 +101,7 @@ fn language_to_i8(language: &Language) -> i8 {
 mod tests {
     use std::str::FromStr;
 
-    use crate::{common::{birth_year::{BirthYear, MAX_BIRTH_YEAR, MIN_BIRTH_YEAR}, email::Email, send_email::{NetmateEmail, Subject}}, routes::accounts::creation::sign_up::interpreter::birth_year_to_i16, translation::{ja, us_en}};
+    use crate::{common::{birth_year::{BirthYear, MAX_BIRTH_YEAR, MIN_BIRTH_YEAR}, email::Email, language::Language, region::Region, send_email::{NetmateEmail, Subject}}, routes::accounts::creation::sign_up::interpreter::{birth_year_to_i16, language_to_i8, region_to_i8}, translation::{ja, us_en}};
 
     use super::{SignUpError, AUTHENTICATION_EMAIL_ADDRESS};
 
@@ -112,10 +112,22 @@ mod tests {
         assert_eq!(birth_year_to_i16(&unspecified) as u16, 0);
 
         let min_birth_year = BirthYear::try_from(MIN_BIRTH_YEAR).unwrap();
-        assert_eq!(birth_year_to_i16(&min_birth_year) as u16, 0);
+        assert_eq!(birth_year_to_i16(&min_birth_year) as u16, MIN_BIRTH_YEAR);
 
         let max_birth_year = BirthYear::try_from(*MAX_BIRTH_YEAR).unwrap();
-        assert_eq!(birth_year_to_i16(&max_birth_year) as u16, 0);
+        assert_eq!(birth_year_to_i16(&max_birth_year) as u16, *MAX_BIRTH_YEAR);
+    }
+
+    #[test]
+    fn region() {
+        assert_eq!(region_to_i8(&Region::Afghanistan) as u8, 0);
+        assert_eq!(region_to_i8(&Region::Zimbabwe) as u8, 197);
+    }
+
+    #[test]
+    fn language() {
+        assert_eq!(language_to_i8(&Language::AmericanEnglish) as u8, 0);
+        assert_eq!(language_to_i8(&Language::TaiwaneseMandarin) as u8, 3);
     }
 
     // `send_verification_email`関連のテスト
