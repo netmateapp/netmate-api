@@ -39,7 +39,7 @@ pub enum SignUpError {
 
 #[cfg(test)]
 mod tests {
-    use std::{num::NonZeroU16, str::FromStr};
+    use std::str::FromStr;
 
     use thiserror::Error;
 
@@ -86,9 +86,9 @@ mod tests {
 
     async fn test_sign_up(case: &str) -> Fallible<(), SignUpError> {
         MockSignUp.sign_up(
-            &Email::new_unchecked(case),
+            &Email::from_str(case).unwrap(),
             &Password::from_str("vK,tOiHyLsehvnv").unwrap(),
-            &BirthYear::new_unchecked(NonZeroU16::new(2000)),
+            &BirthYear::try_from(2000).unwrap(),
             &Region::Japan,
             &Language::Japanese,
         ).await
