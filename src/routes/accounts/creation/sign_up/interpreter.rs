@@ -23,7 +23,7 @@ impl SignUpImpl {
 
         let insert_account_creation_application = prepare::<InitError<SignUpImpl>>(
             &session,
-            "INSERT INTO account_creation_applications (token, email, password_hash, birth_year, region, language) VALUES (?, ?, ?, ?, ?, ?) USING TTL 86400"
+            "INSERT INTO account_creation_applications (ottoken, email, password_hash, birth_year, region, language) VALUES (?, ?, ?, ?, ?, ?) USING TTL 86400"
         ).await?;
 
         Ok(Self { session, exists_by_email, insert_account_creation_application })
