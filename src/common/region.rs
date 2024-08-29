@@ -209,12 +209,6 @@ impl From<Region> for u8 {
   }
 }
 
-impl From<Region> for i8 {
-  fn from(value: Region) -> Self {
-      value as i8
-  }
-}
-
 #[derive(Debug, PartialEq, Error)]
 #[error("有効な地域ではありません")]
 pub struct ParseRegionError;
@@ -428,14 +422,6 @@ impl TryFrom<u8> for Region {
   }
 }
 
-impl TryFrom<i8> for Region {
-  type Error = ParseRegionError;
-
-  fn try_from(value: i8) -> Result<Self, Self::Error> {
-      Region::try_from(value as u8)
-  }
-}
-
 impl<'de> Deserialize<'de> for Region {
   fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
   where
@@ -463,22 +449,6 @@ mod tests {
     for i in 198u8..=u8::MAX {
       let region = Region::try_from(i);
       assert_eq!(region.map(u8::from), Err(ParseRegionError));
-    }
-  }
-
-  #[test]
-  fn try_from_valid_i8() {
-    for i in 0u8..=197 {
-      let region = Region::try_from(i as i8);
-      assert_eq!(region.map(i8::from), Ok(i as i8));
-    }
-  }
-
-  #[test]
-  fn try_from_invalid_i8() {
-    for i in 198u8..=u8::MAX {
-      let region = Region::try_from(i as i8);
-      assert_eq!(region.map(i8::from), Err(ParseRegionError));
     }
   }
 
