@@ -13,16 +13,6 @@ pub struct SignUpImpl {
     insert_account_creation_application: Arc<PreparedStatement>,
 }
 
-#[derive(Debug, Error)]
-#[error("`SignUpImpl`の初期化に失敗しました")]
-pub struct SignUpImplInitError(#[source] anyhow::Error);
-
-impl From<QueryError> for SignUpImplInitError {
-    fn from(value: QueryError) -> Self {
-        Self(value.into())
-    }
-}
-
 impl SignUpImpl {
     pub async fn try_new(
         session: Arc<Session>,
@@ -38,6 +28,16 @@ impl SignUpImpl {
         ).await?;
 
         Ok(Self { session, exists_by_email, insert_account_creation_application })
+    }
+}
+
+#[derive(Debug, Error)]
+#[error("`SignUpImpl`の初期化に失敗しました")]
+pub struct SignUpImplInitError(#[source] anyhow::Error);
+
+impl From<QueryError> for SignUpImplInitError {
+    fn from(value: QueryError) -> Self {
+        Self(value.into())
     }
 }
 
