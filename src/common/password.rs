@@ -3,6 +3,7 @@ use std::{collections::HashSet, fs::File, io::{BufRead, BufReader}, str::FromStr
 use argon2::{password_hash::{PasswordHasher, SaltString}, Algorithm, Argon2, ParamsBuilder, Version};
 use base64::{engine::general_purpose, Engine};
 use rand::rngs::OsRng;
+use regex::Regex;
 use serde::{de::{self}, Deserialize};
 use thiserror::Error;
 
@@ -66,15 +67,34 @@ pub enum ParsePasswordError {
     Unsafe,
 }
 
+static PHC_FORMAT: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^\$[a-z0-9-]{1,32}(?:\$v=1[69])?(?:\$m=[1-9][0-9]{0,9},t=[1-9][0-9]{0,9},p=[1-9][0-9]{0,2}(?:,keyid=[a-zA-Z0-9\/+.-]{0,11})?(?:,data=[a-zA-Z0-9\/+.-]{0,43})?)?(?:\$[a-zA-Z0-9\/+.-]{11,64})?(?:\$[a-zA-Z0-9\/+.-]{16,86})?$").unwrap());
+
 pub struct PasswordHash(String);
 
 impl PasswordHash {
-    pub fn new_unchecked(hash: &str) -> Self {
-        Self(String::from(hash))
+    #[cfg(debug_assertions)]
+    pub fn new_unchecked(s: &str) -> Self {
+        Self(String::from(s))
     }
 
     pub fn value(&self) -> &String {
         &self.0
+    }
+}
+
+#[derive(Debug, Error)]
+#[error("PHCフォーマットを満たしていません")]
+pub struct ParsePasswordHashError;
+
+impl FromStr for PasswordHash {
+    type Err = ParsePasswordHashError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if PHC_FORMAT.is_match(s) {
+            Ok(PasswordHash(String::from(s)))
+        } else {
+            Err(ParsePasswordHashError)
+        }
     }
 }
 

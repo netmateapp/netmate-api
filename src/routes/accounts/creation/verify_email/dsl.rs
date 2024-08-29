@@ -44,6 +44,8 @@ pub enum VerifyEmailError {
 
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr;
+
     use thiserror::Error;
 
     use crate::{common::{birth_year::BirthYear, email::Email, fallible::Fallible, id::AccountId, language::Language, password::PasswordHash, region::Region}, routes::accounts::creation::sign_up::value::OneTimeToken};
@@ -67,9 +69,9 @@ mod tests {
             match case.value().as_str() {
                 RETRIEVE_BUT_CREATE_FAILED | RETRIEVE_BUT_ACCOUNT_ALREADY_EXISTS | VERIFY_EMAIL => {
                     Ok((
-                        Email::new_unchecked("test@example.com"),
+                        Email::from_str("test@example.com").unwrap(),
                         PasswordHash::new_unchecked(case.value()),
-                        BirthYear::new_unchecked(None),
+                        BirthYear::try_from(0).unwrap(),
                         Region::Japan,
                         Language::Japanese
                     ))
