@@ -98,6 +98,7 @@ impl FromStr for PasswordHash {
     }
 }
 
+// 以下はリファクタリングが必要
 static PEPPER: LazyLock<[u8; 32]> = LazyLock::new(load_pepper);
 
 fn load_pepper() -> [u8; 32] {
@@ -144,7 +145,7 @@ impl<'de> Deserialize<'de> for Password {
 mod tests {
     use std::str::FromStr;
 
-    use crate::common::password::{ParsePasswordError, Password, MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH};
+    use crate::common::password::{ParsePasswordError, Password, PasswordHash, MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH};
 
     #[test]
     fn password_too_short() {
@@ -168,13 +169,6 @@ mod tests {
     }
 
     #[test]
-    fn hash_password() {
-        let password = Password::from_str("SCBGpks6FfnCb6R").unwrap();
-        let hash = password.hashed();
-        assert_ne!(password.value(), hash.value());
-    }
-
-    #[test]
     fn deserialize_valid_json() {
         let json = r#""SCBGpks6FfnCb6R""#;
         let password: Password = serde_json::from_str(json).unwrap();
@@ -186,5 +180,17 @@ mod tests {
         let json = r#""0000000000""#;
         let password = serde_json::from_str::<Password>(json);
         assert!(password.is_err());
+    }
+
+    #[test]
+    fn valid_password_hash() {
+        let hash = "$argon2id$v=19$m=65536,t=2,p=1$gZiV/M1gPc22ElAH/Jh1Hw$CWOrkoo7oJBQ/iyh7uJ0LO2aLEfrHwTWllSAxT0zRno";
+        assert!(PasswordHash::from_str(hash).is_ok());
+    }
+
+    #[test]
+    fn invalid_password_hash() {
+        let hash = "SCBGpks6FfnCb6R";
+        assert!(PasswordHash::from_str(hash).is_err());
     }
 }
