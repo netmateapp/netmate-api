@@ -9,22 +9,19 @@ use tracing::info;
 use crate::common::{birth_year::BirthYear, email::Email, language::Language, password::Password, region::Region};
 
 use super::dsl::SignUp;
-use super::interpreter::SignUpImpl;
+use super::interpreter::{SignUpImpl, SignUpImplInitError};
 
-pub async fn endpoint(db: Arc<Session>) -> Router {
-    // ここは`unwrap()`にすべきではない？
-    let exists_by_email = db.prepare("SELECT id FROM accounts_by_email WHERE email = ?").await.unwrap();
-    let insert_creation_application = db.prepare("INSERT INTO account_creation_applications (email, password_hash, region, language, birth_year, code) VALUES (?, ?, ?, ?, ?, ?) USING TTL 86400").await.unwrap();
+// 依存関係は一方向
+// endpoint.rs -> interpreter.rs -> dsl.rs
 
-    let routine = SignUpImpl::new(
-        db,
-        Arc::new(exists_by_email),
-        Arc::new(insert_creation_application)
-    );
+pub async fn endpoint(db: Arc<Session>) -> Result<Router, SignUpImplInitError> {
+    let sign_up = SignUpImpl::try_new(db).await?;
 
-    Router::new()
+    let router = Router::new()
         .route("/sign_up", post(handler))
-        .with_state(Arc::new(routine))
+        .with_state(Arc::new(sign_up));
+
+    Ok(router)
 }
 
 pub async fn handler(
@@ -34,6 +31,7 @@ pub async fn handler(
     // 非 quick exit パターンを採用し、攻撃者に処理時間の差を計測させない
     task::spawn(async move {
         match routine.sign_up(&payload.email, &payload.password, &payload.birth_year, &payload.region, &payload.language).await {
+            // IPアドレスを含めたいが、ここではできないので上位でtrace!()？
             Ok(_) => info!(
                 email = %payload.email.value(),
                 "アカウント作成の申請が正常に処理されました。"

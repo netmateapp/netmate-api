@@ -1,24 +1,43 @@
 use std::sync::Arc;
 
-use scylla::{prepared_statement::PreparedStatement, Session};
+use scylla::{prepared_statement::PreparedStatement, transport::errors::QueryError, Session};
+use thiserror::Error;
 
-use crate::{common::{birth_year::BirthYear, email::Email, fallible::Fallible, language::Language, password::PasswordHash, region::Region, send_email::{Body, NetmateEmail, ResendEmailService, SenderNameLocale, Subject, TransactionalEmailService}}, translation::{ja, us_en}};
+use crate::{common::{birth_year::BirthYear, email::Email, fallible::Fallible, language::Language, password::PasswordHash, region::Region, send_email::{Body, NetmateEmail, ResendEmailService, SenderNameLocale, Subject, TransactionalEmailService}}, helper::scylla::prepare, translation::{ja, us_en}};
 
 use super::{dsl::{SignUp, SignUpError}, value::OneTimeToken};
 
 pub struct SignUpImpl {
     session: Arc<Session>,
     exists_by_email: Arc<PreparedStatement>,
-    insert_creation_application: Arc<PreparedStatement>,
+    insert_account_creation_application: Arc<PreparedStatement>,
+}
+
+#[derive(Debug, Error)]
+#[error("`SignUpImpl`の初期化に失敗しました")]
+pub struct SignUpImplInitError(#[source] anyhow::Error);
+
+impl From<QueryError> for SignUpImplInitError {
+    fn from(value: QueryError) -> Self {
+        Self(value.into())
+    }
 }
 
 impl SignUpImpl {
-    pub fn new(
+    pub async fn try_new(
         session: Arc<Session>,
-        exists_by_email: Arc<PreparedStatement>,
-        insert_creation_application: Arc<PreparedStatement>,
-    ) -> Self {
-        Self { session, exists_by_email, insert_creation_application }
+    ) -> Result<Self, SignUpImplInitError> {
+        let exists_by_email = prepare::<SignUpImplInitError>(
+            &session,
+            "SELECT id FROM accounts_by_email WHERE email = ?"
+        ).await?;
+
+        let insert_account_creation_application = prepare::<SignUpImplInitError>(
+            &session,
+            "INSERT INTO account_creation_applications (token, email, password_hash, birth_year, region, language) VALUES (?, ?, ?, ?, ?, ?) USING TTL 86400"
+        ).await?;
+
+        Ok(Self { session, exists_by_email, insert_account_creation_application })
     }
 }
 
@@ -46,11 +65,10 @@ impl SignUp for SignUpImpl {
         let encoded_region: i8 = (*region).into();
         let encoded_language: i8 = (*language).into();
 
-        let res = self.session
-            .execute(&self.insert_creation_application, (token.value(), email.value(), pw_hash.value(), encoded_birth_year, encoded_region, encoded_language,))
-            .await;
-
-        res.map(|_| ())
+        self.session
+            .execute(&self.insert_account_creation_application, (token.value(), email.value(), pw_hash.value(), encoded_birth_year, encoded_region, encoded_language,))
+            .await
+            .map(|_| ())
             .map_err(|e| SignUpError::ApplicationFailed(e.into()))
     }
 
