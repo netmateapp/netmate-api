@@ -7,14 +7,15 @@ use tokio::task;
 use tracing::info;
 
 use crate::common::{birth_year::BirthYear, email::Email, language::Language, password::Password, region::Region};
+use crate::helper::error::InitError;
 
 use super::dsl::SignUp;
-use super::interpreter::{SignUpImpl, SignUpImplInitError};
+use super::interpreter::SignUpImpl;
 
 // 依存関係は一方向
 // endpoint.rs -> interpreter.rs -> dsl.rs
 
-pub async fn endpoint(db: Arc<Session>) -> Result<Router, SignUpImplInitError> {
+pub async fn endpoint(db: Arc<Session>) -> Result<Router, InitError<SignUpImpl>> {
     let sign_up = SignUpImpl::try_new(db).await?;
 
     let router = Router::new()

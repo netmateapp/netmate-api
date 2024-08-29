@@ -1,9 +1,8 @@
 use std::sync::Arc;
 
-use scylla::{prepared_statement::PreparedStatement, transport::errors::QueryError, Session};
-use thiserror::Error;
+use scylla::{prepared_statement::PreparedStatement, Session};
 
-use crate::{common::{birth_year::BirthYear, email::Email, fallible::Fallible, language::Language, password::PasswordHash, region::Region, send_email::{Body, NetmateEmail, ResendEmailService, SenderNameLocale, Subject, TransactionalEmailService}}, helper::scylla::prepare, translation::{ja, us_en}};
+use crate::{common::{birth_year::BirthYear, email::Email, fallible::Fallible, language::Language, password::PasswordHash, region::Region, send_email::{Body, NetmateEmail, ResendEmailService, SenderNameLocale, Subject, TransactionalEmailService}}, helper::{error::InitError, scylla::prepare}, translation::{ja, us_en}};
 
 use super::{dsl::{SignUp, SignUpError}, value::OneTimeToken};
 
@@ -16,28 +15,18 @@ pub struct SignUpImpl {
 impl SignUpImpl {
     pub async fn try_new(
         session: Arc<Session>,
-    ) -> Result<Self, SignUpImplInitError> {
-        let exists_by_email = prepare::<SignUpImplInitError>(
+    ) -> Result<Self, InitError<SignUpImpl>> {
+        let exists_by_email = prepare::<InitError<SignUpImpl>>(
             &session,
             "SELECT id FROM accounts_by_email WHERE email = ?"
         ).await?;
 
-        let insert_account_creation_application = prepare::<SignUpImplInitError>(
+        let insert_account_creation_application = prepare::<InitError<SignUpImpl>>(
             &session,
             "INSERT INTO account_creation_applications (token, email, password_hash, birth_year, region, language) VALUES (?, ?, ?, ?, ?, ?) USING TTL 86400"
         ).await?;
 
         Ok(Self { session, exists_by_email, insert_account_creation_application })
-    }
-}
-
-#[derive(Debug, Error)]
-#[error("`SignUpImpl`の初期化に失敗しました")]
-pub struct SignUpImplInitError(#[source] anyhow::Error);
-
-impl From<QueryError> for SignUpImplInitError {
-    fn from(value: QueryError) -> Self {
-        Self(value.into())
     }
 }
 
