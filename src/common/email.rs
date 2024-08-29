@@ -9,10 +9,6 @@ use thiserror::Error;
 pub struct Email(String);
 
 impl Email {
-    pub fn new_unchecked(s: &str) -> Email {
-        Email(String::from(s))
-    }
-
     pub fn value(&self) -> &String {
         return &self.0;
     }
@@ -88,6 +84,8 @@ impl<'de> Deserialize<'de> for Email {
 
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr;
+
     use crate::common::email::{validate_email, Email};
 
     #[test]
@@ -119,7 +117,7 @@ mod tests {
     fn deserialize_valid_json() {
         let json = r#""email@example.com""#;
         let email: Email = serde_json::from_str(json).unwrap();
-        assert_eq!(email, Email::new_unchecked("email@example.com"));
+        assert_eq!(email, Email::from_str("email@example.com").unwrap());
     }
 
     #[test]
