@@ -4,14 +4,17 @@ use serde::{de, Deserialize};
 use thiserror::Error;
 
 /// `BirthYear`は、未指定又は1900年～現在の年を表す。
+
+pub const MIN_BIRTH_YEAR: u16 = 1900;
+
+// 年越し時や長期稼働時に最新の年に対応できないが、
+// 生年は統計目的の情報であり、数才の人間はユーザーとして想定されない
+pub const MAX_BIRTH_YEAR: LazyLock<u16> = LazyLock::new(current_year);
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct BirthYear(Option<NonZeroU16>);
 
 impl BirthYear {
-    pub fn new_unchecked(v: Option<NonZeroU16>) -> Self {
-        Self(v)
-    }
-
     pub fn value(&self) -> Option<u16> {
         self.0.map(|v| v.get())
     }
@@ -22,18 +25,6 @@ impl From<BirthYear> for u16 {
         value.0.map_or_else(|| 0, |v| v.get())
     }
 }
-
-impl From<BirthYear> for i16 {
-    fn from(value: BirthYear) -> Self {
-        u16::from(value) as i16
-    }
-}
-
-const MIN_BIRTH_YEAR: u16 = 1900;
-
-// 年越し時や長期稼働時に最新の年に対応できないが、
-// 生年は統計目的の情報であり、数才の人間はユーザーとして想定されない
-const MAX_BIRTH_YEAR: LazyLock<u16> = LazyLock::new(current_year);
 
 #[derive(Debug, PartialEq, Error)]
 #[error("有効な生年ではありません")]
@@ -50,14 +41,6 @@ impl TryFrom<u16> for BirthYear {
         } else {
             Err(ParseBirthYearError)
         }
-    }
-}
-
-impl TryFrom<i16> for BirthYear {
-    type Error = ParseBirthYearError;
-
-    fn try_from(value: i16) -> Result<Self, Self::Error> {
-        BirthYear::try_from(value as u16)
     }
 }
 
@@ -129,7 +112,7 @@ mod tests {
 
     #[test]
     fn unspecified_birth_year() {
-        assert_eq!(BirthYear::try_from(0 as u16), Ok(BirthYear(None)));
+        assert_eq!(BirthYear::try_from(0u16), Ok(BirthYear(None)));
     }
 
     #[test]
@@ -148,7 +131,7 @@ mod tests {
     fn deserialize_valid_json() {
         let json = r#"2000"#;
         let birth_year: BirthYear = serde_json::from_str(json).unwrap();
-        assert_eq!(birth_year, BirthYear::new_unchecked(NonZeroU16::new(2000)));
+        assert_eq!(birth_year, BirthYear::try_from(2000).unwrap());
     }
 
     #[test]
