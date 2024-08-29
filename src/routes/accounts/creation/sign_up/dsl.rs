@@ -14,7 +14,7 @@ pub(crate) trait SignUp: Send {
             self.apply_to_create_account(email, &hash, birth_year, region, language, &token).await?;
             self.send_verification_email(email, language, &token).await
         } else {
-            Err(SignUpError::UnavaialbleEmail)
+            Err(SignUpError::UnavailableEmail)
         }
     }
 
@@ -30,7 +30,7 @@ pub enum SignUpError {
     #[error("指定のメールアドレスが利用可能である保証が得られませんでした")]
     PotentiallyUnavailableEmail(#[source] anyhow::Error),
     #[error("指定のメールアドレスは利用不能です")]
-    UnavaialbleEmail,
+    UnavailableEmail,
     #[error("アカウント作成の申請に失敗しました")]
     ApplicationFailed(#[source] anyhow::Error),
     #[error("認証メールの送信に失敗しました")]
@@ -105,7 +105,7 @@ mod tests {
     #[tokio::test]
     async fn unavailable() {
         match test_sign_up(UNAVAILABLE).await.err().unwrap() {
-            SignUpError::UnavaialbleEmail => (),
+            SignUpError::UnavailableEmail => (),
             _ => panic!("予期しないエラーが発生しました")
         }
     }
