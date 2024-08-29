@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use scylla::{prepared_statement::PreparedStatement, Session};
 
-use crate::{common::{birth_year::BirthYear, email::Email, fallible::Fallible, language::Language, password::PasswordHash, region::Region, send_email::{Body, NetmateEmail, ResendEmailService, SenderNameLocale, Subject, TransactionalEmailService}}, helper::{error::InitError, scylla::prepare}, translation::{ja, us_en}};
+use crate::{common::{birth_year::{self, BirthYear}, email::Email, fallible::Fallible, language::Language, password::PasswordHash, region::Region, send_email::{Body, NetmateEmail, ResendEmailService, SenderNameLocale, Subject, TransactionalEmailService}}, helper::{error::InitError, scylla::prepare}, translation::{ja, us_en}};
 
 use super::{dsl::{SignUp, SignUpError}, value::OneTimeToken};
 
@@ -49,13 +49,12 @@ impl SignUp for SignUpImpl {
     }
 
     async fn apply_to_create_account(&self, email: &Email, pw_hash: &PasswordHash, birth_year: &BirthYear, region: &Region, language: &Language, token: &OneTimeToken) -> Result<(), SignUpError> {
-        // ここを検証しないとテストの意味がない
-        let encoded_birth_year: i16 = (*birth_year).into();
-        let encoded_region: i8 = (*region).into();
-        let encoded_language: i8 = (*language).into();
+        let birth_year = birth_year_to_i16(birth_year);
+        let region = region_to_i8(region);
+        let language = language_to_i8(language);
 
         self.session
-            .execute(&self.insert_account_creation_application, (token.value(), email.value(), pw_hash.value(), encoded_birth_year, encoded_region, encoded_language,))
+            .execute(&self.insert_account_creation_application, (token.value(), email.value(), pw_hash.value(), birth_year, region, language))
             .await
             .map(|_| ())
             .map_err(|e| SignUpError::ApplicationFailed(e.into()))
@@ -86,14 +85,40 @@ impl SignUp for SignUpImpl {
     }
 }
 
+fn birth_year_to_i16(birth_year: &BirthYear) -> i16 {
+    u16::from(*birth_year) as i16
+}
+
+fn region_to_i8(region: &Region) -> i8 {
+    u8::from(*region) as i8
+}
+
+fn language_to_i8(language: &Language) -> i8 {
+    u8::from(*language) as i8
+}
+
 #[cfg(test)]
 mod tests {
     use std::str::FromStr;
 
-    use crate::{common::{email::Email, send_email::{NetmateEmail, Subject}}, translation::{ja, us_en}};
+    use crate::{common::{birth_year::{BirthYear, MAX_BIRTH_YEAR, MIN_BIRTH_YEAR}, email::Email, send_email::{NetmateEmail, Subject}}, routes::accounts::creation::sign_up::interpreter::birth_year_to_i16, translation::{ja, us_en}};
 
     use super::{SignUpError, AUTHENTICATION_EMAIL_ADDRESS};
 
+    // `apply_to_create_account`関連のテスト
+    #[test]
+    fn birth_year() {
+        let unspecified = BirthYear::try_from(0).unwrap();
+        assert_eq!(birth_year_to_i16(&unspecified) as u16, 0);
+
+        let min_birth_year = BirthYear::try_from(MIN_BIRTH_YEAR).unwrap();
+        assert_eq!(birth_year_to_i16(&min_birth_year) as u16, 0);
+
+        let max_birth_year = BirthYear::try_from(*MAX_BIRTH_YEAR).unwrap();
+        assert_eq!(birth_year_to_i16(&max_birth_year) as u16, 0);
+    }
+
+    // `send_verification_email`関連のテスト
     #[test]
     fn sender_email() {
         let from = match Email::from_str(AUTHENTICATION_EMAIL_ADDRESS) {
