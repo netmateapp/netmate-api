@@ -1,5 +1,7 @@
+use std::net::SocketAddr;
 use std::sync::Arc;
 
+use axum::extract::ConnectInfo;
 use axum::{extract::State, http::StatusCode, response::IntoResponse, routing::post, Json, Router};
 use scylla::Session;
 use serde::Deserialize;
@@ -26,22 +28,26 @@ pub async fn endpoint(db: Arc<Session>) -> Result<Router, InitError<SignUpImpl>>
 }
 
 pub async fn handler(
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
     State(routine): State<Arc<SignUpImpl>>,
     Json(payload): Json<Payload>,
 ) -> impl IntoResponse {
     // 非 quick exit パターンを採用し、攻撃者に処理時間の差を計測させない
     task::spawn(async move {
         match routine.sign_up(&payload.email, &payload.password, &payload.birth_year, &payload.region, &payload.language).await {
-            // IPアドレスを含めたいが、ここではできないので上位でtrace!()？
+            // パスワードハッシュと生年は出力しない
             Ok(_) => info!(
+                ip_address = %addr.ip(),
                 email = %payload.email.value(),
+                region = ?payload.region,
+                language = ?payload.language,
                 "アカウント作成の申請が正常に処理されました。"
             ),
             Err(e) => info!(
+                ip_address = %addr.ip(),
                 email = %payload.email.value(),
-                // 生年は重要な個人情報であるため、メールアドレスと紐付けて記録してはならない
-                region = %u8::from(payload.region),
-                language = %u8::from(payload.language),
+                region = ?payload.region,
+                language = ?payload.language,
                 error = %e,
                 "アカウント作成の申請に失敗しました。"
             ),
