@@ -1080,6 +1080,7 @@ dependencies = [
  "cookie",
  "deadpool-redis",
  "dotenvy",
+ "http",
  "idna 1.0.2",
  "rand",
  "rand_chacha",
