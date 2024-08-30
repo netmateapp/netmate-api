@@ -128,7 +128,7 @@ dependencies = [
  "serde_urlencoded",
  "sync_wrapper 1.0.1",
  "tokio",
- "tower",
+ "tower 0.4.13",
  "tower-layer",
  "tower-service",
  "tracing",
@@ -260,6 +260,16 @@ dependencies = [
  "pin-project-lite",
  "tokio",
  "tokio-util",
+]
+
+[[package]]
+name = "cookie"
+version = "0.18.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4ddef33a339a91ea89fb53151bd0a4689cfce27055c291dfa69945475d22c747"
+dependencies = [
+ "time",
+ "version_check",
 ]
 
 [[package]]
@@ -710,7 +720,7 @@ dependencies = [
  "pin-project-lite",
  "socket2",
  "tokio",
- "tower",
+ "tower 0.4.13",
  "tower-service",
  "tracing",
 ]
@@ -1037,6 +1047,7 @@ dependencies = [
  "argon2",
  "axum",
  "base64",
+ "cookie",
  "dotenvy",
  "idna 1.0.2",
  "rand",
@@ -1050,6 +1061,7 @@ dependencies = [
  "thiserror",
  "time",
  "tokio",
+ "tower 0.5.0",
  "tracing",
  "tracing-subscriber",
  "uuid",
@@ -1936,6 +1948,16 @@ dependencies = [
  "tower-layer",
  "tower-service",
  "tracing",
+]
+
+[[package]]
+name = "tower"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "36b837f86b25d7c0d7988f00a54e74739be6477f2aac6201b8f429a7569991b7"
+dependencies = [
+ "tower-layer",
+ "tower-service",
 ]
 
 [[package]]
