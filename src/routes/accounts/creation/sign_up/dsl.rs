@@ -10,7 +10,7 @@ pub(crate) trait SignUp: Send {
             // この位置でパスワードのハッシュ化が行われ高い負荷が発生するため、
             // `sign_up`は自動化されたリクエストから特に保護されなければならない
             let hash: PasswordHash = password.hashed();
-            let token = OneTimeToken::generate();
+            let token = OneTimeToken::gen();
             self.apply_to_create_account(email, &hash, birth_year, region, language, &token).await?;
             self.send_verification_email(email, language, &token).await
         } else {
