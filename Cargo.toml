@@ -13,6 +13,7 @@ deadpool-redis = "0.16.0"
 dotenvy = "0.15.7"
 http = "1.1.0"
 idna = "1.0.2"
+pin-project = "1.1.5"
 rand = "0.8.5"
 rand_chacha = "0.3.1"
 redis = { version = "0.25.4", features = ["tokio-comp"]}
@@ -24,7 +25,7 @@ serde_json = "1.0.1"
 thiserror = "1.0.61"
 time = "0.3.36"
 tokio = { version = "1.38.0", features = ["rt-multi-thread"] }
-tower = "0.5.0"
+tower = "0.4.13"
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["time"] }
 uuid = { version = "1.10.0", features = ["fast-rng", "serde", "v4", "v7"] }
