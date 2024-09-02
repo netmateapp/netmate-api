@@ -5,7 +5,6 @@ use cookie::{Cookie, SplitCookies};
 use http::{header::COOKIE, HeaderMap, Request};
 use pin_project::pin_project;
 use scylla::Session;
-use thiserror::Error;
 use tower::{Layer, Service};
 
 use crate::common::session::{dsl::SessionManagementId, interpreter::{LOGIN_COOKIE_KEY, SESSION_MANAGEMENT_COOKIE_KEY}};
@@ -49,24 +48,21 @@ where
     S::Error: Into<anyhow::Error>,
 {
     type Response = S::Response;
-    type Error = anyhow::Error; //S::Error;
-    type Future = SessionFuture<S, B>; // S::Future
+    type Error = anyhow::Error;
+    type Future = SessionFuture<S, B>;
 
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.inner.poll_ready(cx).map_err(Into::into)
     }
 
     fn call(&mut self, req: Request<B>) -> Self::Future {
-        let cookies = headers_to_optional_cookies(req.headers());
-        let res = get_session_management_cookie_and_login_cookie(cookies.unwrap());
-        let cookies = cookies_to_values(res);
-
-        //let response_future = self.inner.call(req);
+        let cookies = extract_cookies(req.headers());
+        let res = extract_session_management_cookie_and_login_cookie(cookies.unwrap());
+        let cookies = map_to_cookie_values(res);
 
         SessionFuture {
-            req: Some(req),
-            inner: self.inner.clone(),
-            //response_future,
+            req: Some(req), // `inner.call(req)`が`req`の所有権を必要とするため渡す必要がある
+            inner: self.inner.clone(), // 上記の都合で`Future::poll`内で`inner.call(req)`を呼ぶ必要があるため複製して渡す
             cookies,
             db: self.db.clone(),
             cache: self.cache.clone()
@@ -75,12 +71,10 @@ where
 }
 
 #[pin_project]
-pub struct SessionFuture<S, B> // F
+pub struct SessionFuture<S, B>
 where
     S: Service<Request<B>>,
 {
-    //#[pin]
-    //response_future: F,
     req: Option<Request<B>>,
     inner: S,
     cookies: (Option<String>, Option<String>),
@@ -88,15 +82,10 @@ where
     cache: Arc<Connection>,
 }
 
-#[derive(Debug, Error)]
-#[error("")]
-struct TestError;
-
-impl<S, B, R, E> Future for SessionFuture<S, B> //F
+impl<S, B, R, E> Future for SessionFuture<S, B>
 where
     S: Service<Request<B>>,
     S::Future: Future<Output = Result<R, E>>,
-    // F: Future<Output = Result<R, E>>,
     E: Into<anyhow::Error>,
 {
     type Output = Result<R, anyhow::Error>;
@@ -146,7 +135,15 @@ where
     }
 }
 
-fn headers_to_optional_cookies(headers: &HeaderMap) -> Option<SplitCookies<'_>> {
+fn extract_session_cookie_values(headers: &HeaderMap) -> (Option<String>, Option<String>) {
+    match extract_cookies(headers) {
+        Some(cookies) => map_to_cookie_values(extract_session_management_cookie_and_login_cookie(cookies)),
+        None => (None, None)
+    }
+}
+
+fn extract_cookies(headers: &HeaderMap) -> Option<SplitCookies<'_>> {
+    // 攻撃を防ぐため、上限バイト数を決めておく
     // __Host-id1=(11)<24>; (2)__Host-id2=(11)<24>$(1)<24> = 97bytes;
     // https://developer.mozilla.org/ja/docs/Web/HTTP/Headers/Cookie
     const MAX_COOKIE_BYTES: usize = 100;
@@ -157,7 +154,7 @@ fn headers_to_optional_cookies(headers: &HeaderMap) -> Option<SplitCookies<'_>> 
         .map(|cookie_str| Cookie::split_parse(cookie_str))
 }
 
-fn get_session_management_cookie_and_login_cookie(cookies: SplitCookies<'_>) -> (Option<Cookie<'_>>, Option<Cookie<'_>>) {
+fn extract_session_management_cookie_and_login_cookie(cookies: SplitCookies<'_>) -> (Option<Cookie<'_>>, Option<Cookie<'_>>) {
     let mut session_management_cookie = None;
     let mut login_cookie = None;
 
@@ -176,16 +173,8 @@ fn get_session_management_cookie_and_login_cookie(cookies: SplitCookies<'_>) -> 
     (session_management_cookie, login_cookie)
 }
 
-fn cookies_to_values(cookies: (Option<Cookie<'_>>, Option<Cookie<'_>>)) -> (Option<String>, Option<String>) {
+fn map_to_cookie_values(cookies: (Option<Cookie<'_>>, Option<Cookie<'_>>)) -> (Option<String>, Option<String>) {
     (cookies.0.map(|c| c.value().to_string()), cookies.1.map(|c| c.value().to_string()))
-}
-
-async fn check_session_existence(session_management_id: &SessionManagementId) {
-
-}
-
-async fn check_session_existence2(session_management_id: &SessionManagementId) -> Result<bool, ()> {
-    Ok(true)
 }
 
 /*
