@@ -1,7 +1,8 @@
 use std::{net::SocketAddr, sync::Arc};
 
-use axum::{extract::{ConnectInfo, State}, http::StatusCode, response::IntoResponse, Json, Router};
-use deadpool_redis::Pool;
+use axum::{error_handling::HandleErrorLayer, extract::{ConnectInfo, State}, http::StatusCode, response::IntoResponse, routing::post, Json, Router};
+use axum_macros::debug_handler;
+use bb8_redis::{bb8::Pool, RedisConnectionManager};
 use scylla::Session;
 use tower::ServiceBuilder;
 use tracing::info;
@@ -10,19 +11,26 @@ use crate::{helper::error::InitError, middlewares::login_session::LoginSessionLa
 
 use super::{dsl::{VerifyEmail, VerifyEmailError}, interpreter::VerifyEmailImpl};
 
-pub async fn endpoint(db: Arc<Session>, cache: Arc<Pool>) -> Result<Router, InitError<VerifyEmailImpl>> {
+// cacheは使わない
+pub async fn endpoint(db: Arc<Session>, cache: Arc<Pool<RedisConnectionManager>>) -> Result<Router, InitError<VerifyEmailImpl>> {
     let verify_email = VerifyEmailImpl::try_new(db.clone()).await?;
 
+    // 実際には`verify_email`では使わない
     let services = ServiceBuilder::new()
+        .layer(HandleErrorLayer::new(|e: anyhow::Error| async move {
+            StatusCode::BAD_REQUEST
+        }))
         .layer(LoginSessionLayer::new(db.clone(), cache.clone()));
 
     let router = Router::new()
-        .layer(services)
+        .route("/verify_email", post(handler))
+        .layer(services) // 実際には`verify_email`では使わない
         .with_state(Arc::new(verify_email));
 
     Ok(router)
 }
 
+#[debug_handler]
 pub async fn handler(
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     State(routine): State<Arc<VerifyEmailImpl>>,

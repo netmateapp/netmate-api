@@ -5,6 +5,7 @@ use cookie::{Cookie, SplitCookies};
 use http::{header::COOKIE, HeaderMap, Request};
 use pin_project::pin_project;
 use scylla::Session;
+use thiserror::Error;
 use tower::{Layer, Service};
 
 use crate::common::session::{dsl::SessionManagementId, interpreter::{LOGIN_COOKIE_KEY, SESSION_MANAGEMENT_COOKIE_KEY}};
@@ -44,26 +45,28 @@ pub struct LoginSessionService<S> {
 
 impl <S, B> Service<Request<B>> for LoginSessionService<S>
 where
-    S: Service<Request<B>>,
+    S: Service<Request<B>> + Clone,
     S::Error: Into<anyhow::Error>,
 {
     type Response = S::Response;
-    type Error = S::Error;
-    type Future = SessionFuture<S::Future>;
+    type Error = anyhow::Error; //S::Error;
+    type Future = SessionFuture<S, B>; // S::Future
 
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        self.inner.poll_ready(cx)
+        self.inner.poll_ready(cx).map_err(Into::into)
     }
 
-    fn call(&mut self, mut req: Request<B>) -> Self::Future {
+    fn call(&mut self, req: Request<B>) -> Self::Future {
         let cookies = headers_to_optional_cookies(req.headers());
         let res = get_session_management_cookie_and_login_cookie(cookies.unwrap());
         let cookies = cookies_to_values(res);
 
-        let response_future = self.inner.call(req);
+        //let response_future = self.inner.call(req);
 
         SessionFuture {
-            response_future,
+            req: Some(req),
+            inner: self.inner.clone(),
+            //response_future,
             cookies,
             db: self.db.clone(),
             cache: self.cache.clone()
@@ -72,20 +75,31 @@ where
 }
 
 #[pin_project]
-pub struct SessionFuture<F> {
-    #[pin]
-    response_future: F,
+pub struct SessionFuture<S, B> // F
+where
+    S: Service<Request<B>>,
+{
+    //#[pin]
+    //response_future: F,
+    req: Option<Request<B>>,
+    inner: S,
     cookies: (Option<String>, Option<String>),
     db: Arc<Session>,
     cache: Arc<Connection>,
 }
 
-impl<F, R, E> Future for SessionFuture<F>
+#[derive(Debug, Error)]
+#[error("")]
+struct TestError;
+
+impl<S, B, R, E> Future for SessionFuture<S, B> //F
 where
-    F: Future<Output = Result<R, E>>,
+    S: Service<Request<B>>,
+    S::Future: Future<Output = Result<R, E>>,
+    // F: Future<Output = Result<R, E>>,
     E: Into<anyhow::Error>,
 {
-    type Output = Result<R, E>;
+    type Output = Result<R, anyhow::Error>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         /*
@@ -97,22 +111,27 @@ where
         5. None(S) -> None(L) (UIからは送れないはず、UI外でエンドポイントを叩いている可能性が高い)
          */
 
-        if let Some(session_management_id) = &self.cookies.0 {
+        let this = self.project();
+        let r = this.req.take().unwrap();
+
+        if let Some(session_management_id) = &this.cookies.0 {
             if let Ok(id) = SessionManagementId::from_str(session_management_id) {
-                let mut conn = ready!(pin!(self.cache.get()).poll(cx));
+                let conn = ready!(pin!(this.cache.get()).poll(cx));
                 
                 match conn {
-                    Ok(conn) => {
+                    Ok(mut conn) => {
                         let key = format!("{}:{}", "", id.value());
-                        let res = ready!(pin!(cmd("GET").arg(key).query_async(&mut *conn)).poll(cx));
+                        let res: Result<Option<String>, _> = ready!(pin!(cmd("GET").arg(key).query_async(&mut *conn)).poll(cx));
                     },
-                    Err(e) => return Poll::Ready(Err(e))
+                    Err(e) => {
+                        return Poll::Ready(Err(e.into()));
+                    }
                 }
             }
             //let res = ready!(pin!(check_session_existence(&id)).poll(cx));
         }
 
-        if let Some(logion_id) = &self.cookies.1 { //login_cookie {
+        if let Some(logion_id) = &this.cookies.1 { //login_cookie {
             // insert series, timestamp ttl 400days;
             // ↑現状最も長い日数。ブラウザの制限の厳格化で更に短くなる可能性がある。いずれにせよ削除の*自動化*が重要。
             // per 30m: select series, timestamp from...; now - timestamp >= 閾値月数; update ttl 400days;
@@ -121,9 +140,9 @@ where
             //     閾値月数経過直前からログインしなくなった場合は、400 - (閾値月数 * 30)日後にセッションが無効化
         }
 
-        let future = self.project().response_future;
-        let res = ready!(future.poll(cx));
-        Poll::Ready(res)
+        let future = this.inner.call(r);
+        let res = ready!(pin!(future).poll(cx));
+        Poll::Ready(res.map_err(Into::into))
     }
 }
 
