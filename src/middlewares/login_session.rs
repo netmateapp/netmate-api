@@ -1,33 +1,33 @@
 use std::{future::Future, pin::{pin, Pin}, str::FromStr, sync::Arc, task::{ready, Context, Poll}};
 
+use bb8_redis::{bb8::Pool, redis::cmd, RedisConnectionManager};
 use cookie::{Cookie, SplitCookies};
-use deadpool_redis::Pool;
 use http::{header::COOKIE, HeaderMap, Request};
 use pin_project::pin_project;
 use scylla::Session;
-use thiserror::Error;
 use tower::{Layer, Service};
 
 use crate::common::session::{dsl::SessionManagementId, interpreter::{LOGIN_COOKIE_KEY, SESSION_MANAGEMENT_COOKIE_KEY}};
 
+type Connection = Pool<RedisConnectionManager>;
+
 #[derive(Clone)]
 pub struct LoginSessionLayer {
     db: Arc<Session>,
-    cache: Arc<Pool>,
+    cache: Arc<Connection>,
 }
 
 impl LoginSessionLayer {
-    pub fn new(db: Arc<Session>, cache: Arc<Pool>) -> Self {
+    pub fn new(db: Arc<Session>, cache: Arc<Connection>) -> Self {
         LoginSessionLayer { db, cache }
     }
 }
 
-// ここにトレイト境界は不要
 impl<S> Layer<S> for LoginSessionLayer {
-    type Service = AccountService<S>;
+    type Service = LoginSessionService<S>;
 
     fn layer(&self, inner: S) -> Self::Service {
-        AccountService {
+        LoginSessionService {
             inner,
             db: self.db.clone(),
             cache: self.cache.clone(),
@@ -36,86 +36,80 @@ impl<S> Layer<S> for LoginSessionLayer {
 }
 
 #[derive(Clone)]
-pub struct AccountService<S> {
+pub struct LoginSessionService<S> {
     inner: S,
     db: Arc<Session>,
-    cache: Arc<Pool>,
+    cache: Arc<Connection>,
 }
 
-impl <S> AccountService<S> {
-    fn new(inner: S, db: Arc<Session>, cache: Arc<Pool>) -> Self {
-        Self { inner, db, cache }
-    }
-}
-
-impl <S, B> Service<Request<B>> for AccountService<S>
+impl <S, B> Service<Request<B>> for LoginSessionService<S>
 where
     S: Service<Request<B>>,
     S::Error: Into<anyhow::Error>,
 {
     type Response = S::Response;
     type Error = S::Error;
-    type Future = SessionFuture<S::Future>; //SessionFuture<B, S::Future>; // S
+    type Future = SessionFuture<S::Future>;
 
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        match self.inner.poll_ready(cx) {
-            Poll::Ready(v) => match v {
-                Ok(m) => Poll::Ready(Ok(())),
-                Err(e) => Poll::Ready(Err(e))
-            },
-            Poll::Pending => Poll::Pending
-        }
+        self.inner.poll_ready(cx)
     }
 
-    fn call(&mut self, req: Request<B>) -> Self::Future {
+    fn call(&mut self, mut req: Request<B>) -> Self::Future {
         let cookies = headers_to_optional_cookies(req.headers());
         let res = get_session_management_cookie_and_login_cookie(cookies.unwrap());
-        let cookies = cookies_to_names(res);
+        let cookies = cookies_to_values(res);
 
         let response_future = self.inner.call(req);
 
         SessionFuture {
             response_future,
-            //inner: self.inner.clone(),
-            cookies
+            cookies,
+            db: self.db.clone(),
+            cache: self.cache.clone()
         }
     }
 }
 
-#[derive(Debug, Error)]
-#[error("")]
-pub struct SessionError(#[source] anyhow::Error);
-
 #[pin_project]
-pub struct SessionFuture<F> { //S: Service<Request<B>>, B
-    // inner: S,
+pub struct SessionFuture<F> {
     #[pin]
     response_future: F,
-    
     cookies: (Option<String>, Option<String>),
-    //req: Request<B>,
+    db: Arc<Session>,
+    cache: Arc<Connection>,
 }
 
-impl<F, R, E> Future for SessionFuture<F> // S, B
+impl<F, R, E> Future for SessionFuture<F>
 where
-    //B: Clone,
-    //S: Service<Request<B>> + Clone,
-    //S::Error: Into<anyhow::Error>,
     F: Future<Output = Result<R, E>>,
     E: Into<anyhow::Error>,
 {
     type Output = Result<R, E>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        //let cookies = headers_to_optional_cookies(&self.cookies);
-        //let (session_management_cookie, login_cookie) = get_session_management_cookie_and_login_cookie(cookies.unwrap());
-        
-        if let Some(session_management_id) = &self.cookies.0 { //session_management_cookie {
-            let id = SessionManagementId::from_str(session_management_id); //.value());
+        /*
+        処理のパターンは5通り(S: セッション管理識別子, L: ログイン識別子)
+        1. S (通常のセッション認証、これが最も多い)
+        2. None/Fail(S) -> L (セッションの更新、次に多い)
+        3. None/Fail(S) -> Fail(L) (セッション削除後/期限切れ後の場合、まれにある)
+        4. Fail(S) -> None(L) (普通はない、クライアント側でユーザーが何らかの操作を行っている可能性がある)
+        5. None(S) -> None(L) (UIからは送れないはず、UI外でエンドポイントを叩いている可能性が高い)
+         */
 
-            let id = id.unwrap();
-            let res = ready!(pin!(check_session_existence(&id)).poll(cx));
-            let res2 = ready!(pin!(check_session_existence2(&id)).poll(cx));
+        if let Some(session_management_id) = &self.cookies.0 {
+            if let Ok(id) = SessionManagementId::from_str(session_management_id) {
+                let mut conn = ready!(pin!(self.cache.get()).poll(cx));
+                
+                match conn {
+                    Ok(conn) => {
+                        let key = format!("{}:{}", "", id.value());
+                        let res = ready!(pin!(cmd("GET").arg(key).query_async(&mut *conn)).poll(cx));
+                    },
+                    Err(e) => return Poll::Ready(Err(e))
+                }
+            }
+            //let res = ready!(pin!(check_session_existence(&id)).poll(cx));
         }
 
         if let Some(logion_id) = &self.cookies.1 { //login_cookie {
@@ -126,14 +120,6 @@ where
             // ex. update直後からログインしなくなった場合は400日後にセッションが無効化、
             //     閾値月数経過直前からログインしなくなった場合は、400 - (閾値月数 * 30)日後にセッションが無効化
         }
-
-        /*let req = self.req.clone();
-        let call = self.project().inner.call(req);
-        let res = ready!(pin!(call).poll(cx));
-        match res {
-            Ok(v) => Poll::Ready(Ok(v)),
-            Err(e) => Poll::Ready(Err(SessionError(e.into())))
-        }*/
 
         let future = self.project().response_future;
         let res = ready!(future.poll(cx));
@@ -171,8 +157,8 @@ fn get_session_management_cookie_and_login_cookie(cookies: SplitCookies<'_>) -> 
     (session_management_cookie, login_cookie)
 }
 
-fn cookies_to_names(cookies: (Option<Cookie<'_>>, Option<Cookie<'_>>)) -> (Option<String>, Option<String>) {
-    (cookies.0.map(|c| c.name().to_string()), cookies.1.map(|c| c.name().to_string()))
+fn cookies_to_values(cookies: (Option<Cookie<'_>>, Option<Cookie<'_>>)) -> (Option<String>, Option<String>) {
+    (cookies.0.map(|c| c.value().to_string()), cookies.1.map(|c| c.value().to_string()))
 }
 
 async fn check_session_existence(session_management_id: &SessionManagementId) {
@@ -195,7 +181,6 @@ async fn check_session_existence2(session_management_id: &SessionManagementId) -
                     }
                 }
             }
-
             self.inner.call(req).await
         })
     }
