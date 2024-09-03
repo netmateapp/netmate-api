@@ -88,7 +88,7 @@ mod tests {
         MockSignUp.sign_up(
             &Email::from_str(case).unwrap(),
             &Password::from_str("vK,tOiHyLsehvnv").unwrap(),
-            &BirthYear::try_from(2000).unwrap(),
+            &BirthYear::try_from(2000u16).unwrap(),
             &Region::Japan,
             &Language::Japanese,
         ).await
