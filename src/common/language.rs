@@ -1,4 +1,4 @@
-use serde::{de, Deserialize};
+use serde::{de, Deserialize, Serialize};
 use thiserror::Error;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -46,6 +46,15 @@ impl TryFrom<i8> for Language {
     fn try_from(value: i8) -> Result<Self, Self::Error> {
       Language::try_from(value as u8)
     }
+}
+
+impl Serialize for Language {
+  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+  where
+    S: serde::Serializer
+  {
+    serializer.serialize_u8(u8::from(*self))
+  }
 }
 
 impl<'de> Deserialize<'de> for Language {
