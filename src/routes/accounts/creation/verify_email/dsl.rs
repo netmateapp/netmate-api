@@ -1,12 +1,11 @@
 use thiserror::Error;
-use uuid::Uuid;
 
-use crate::{common::{birth_year::BirthYear, email::Email, fallible::Fallible, id::{AccountId, Uuid7}, language::Language, password::PasswordHash, region::Region}, routes::accounts::creation::sign_up::value::OneTimeToken};
+use crate::{common::{birth_year::BirthYear, email::Email, fallible::Fallible, id::{uuid7::Uuid7, AccountId}, language::Language, password::PasswordHash, region::Region}, routes::accounts::creation::sign_up::value::OneTimeToken};
 
 pub(crate) trait VerifyEmail {
     async fn verify_email(&self, token: &OneTimeToken) -> Fallible<Language, VerifyEmailError> {
         let (email, password_hash, birth_year, region, language) = self.retrieve_account_creation_application_by(token).await?;
-        let account_id: AccountId = Uuid7::new_unchecked(Uuid::now_v7());
+        let account_id: AccountId = Uuid7::now();
         match self.create_account(&account_id, &email, &password_hash, &birth_year, &region, &language).await {
             Ok(_) => {
                 // 失敗してもTTLにより削除されるため続行

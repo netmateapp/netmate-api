@@ -1,13 +1,11 @@
 use thiserror::Error;
 use uuid::Uuid;
 
-pub type AccountId = Uuid7;
-
 pub struct Uuid7(Uuid);
 
 impl Uuid7 {
-    pub fn new_unchecked(uuid: Uuid) -> Self {
-        Self(uuid)
+    pub fn now() -> Uuid7 {
+        Uuid7(Uuid::now_v7())
     }
 
     pub fn value(&self) -> &Uuid {
