@@ -7,7 +7,7 @@
         5. None(S) -> None(L) (UIからは送れないはず、UI外でエンドポイントを叩いている可能性が高い)
 */
 
-use std::convert::Infallible;
+use std::{convert::Infallible, time::{SystemTime, UNIX_EPOCH}};
 
 use http::{header::SET_COOKIE, Extensions, HeaderMap, HeaderName, Request, Response};
 use thiserror::Error;
@@ -51,18 +51,23 @@ pub(crate) trait ManageSession {
                     if !response.headers().contains_key(SET_COOKIE) {
                         // 新しい識別子やトークンの発行に失敗した場合は、エラーを無視してセッションを継続する
                         // これによる影響はセキュリティリスクの微小な増加のみである
-                        let new_session_management_id = self.issue_new_session_management_id().await?;
-                        let new_login_token = self.issue_new_login_token().await?;
-    
-                        Self::set_new_session_management_id(response.headers_mut(), &new_session_management_id);
-                        Self::set_new_login_token(response.headers_mut(), &login_id.series_id(), &new_login_token);
+                        let new_session_management_id = self.issue_new_session_management_id().await;
+                        let new_login_token = self.issue_new_login_token().await;
 
-                                    // insert series, timestamp ttl 400days;
-            // ↑現状最も長い日数。ブラウザの制限の厳格化で更に短くなる可能性がある。いずれにせよ削除の*自動化*が重要。
-            // per 30m: select series, timestamp from...; now - timestamp >= 閾値月数; update ttl 400days;
-            // ↑この場合、最大で400日、最短で400 - (閾値月数 * 30)日で永続セッションが消える可能性がある
-            // ex. update直後からログインしなくなった場合は400日後にセッションが無効化、
-            //     閾値月数経過直前からログインしなくなった場合は、400 - (閾値月数 * 30)日後にセッションが無効化
+                        if let (Ok(new_session_management_id), Ok(new_login_token)) = (new_session_management_id, new_login_token) {
+                            Self::set_new_session_management_id(response.headers_mut(), &new_session_management_id);
+                            Self::set_new_login_token(response.headers_mut(), &login_id.series_id(), &new_login_token);
+
+                            let series_id_update_at = self.series_id_update_at(&account_id).await?;
+
+                            let now = SystemTime::now().duration_since(UNIX_EPOCH);
+                            if let Ok(now) = now {
+                                if now.as_secs() - series_id_update_at.value() > 30 * 24 * 60 * 60 {
+                                    // 既存のシリーズIDの有効期限を延長する
+                                    self.extend_series_id_expiration(login_id.series_id()).await?;
+                                }
+                            }
+                        }
                     }
                     return Ok(response);
                 } else {
@@ -98,6 +103,10 @@ pub(crate) trait ManageSession {
 
     async fn issue_new_login_token(&self) -> Fallible<LoginToken, ManageSessionError>;
 
+    async fn series_id_update_at(&self, account_id: &AccountId) -> Fallible<UnixtimeSeconds, ManageSessionError>;
+
+    async fn extend_series_id_expiration(&self, series_id: &LoginSeriesId) -> Fallible<(), ManageSessionError>;
+
     fn set_new_session_management_id(headers: &mut HeaderMap, new_session_management_id: &SessionManagementId);
 
     fn set_new_login_token(headers: &mut HeaderMap, series_id: &LoginSeriesId, new_login_token: &LoginToken);
@@ -107,41 +116,22 @@ pub(crate) trait ManageSession {
     fn clear_login_id_header() -> (HeaderName, &'static str);
 }
 
-/*
-        if let Some(session_management_id) = &cookies.0 {
-            if let Ok(id) = SessionManagementId::from_str(session_management_id) {
-                let conn = ready!(pin!(this.cache.get()).poll(cx));
-                
-                match conn {
-                    Ok(mut conn) => {
-                        let key = format!("{}:{}", "", id.value());
-                        let res: Result<Option<String>, _> = ready!(pin!(cmd("GET").arg(key).query_async(&mut *conn)).poll(cx));
-                    },
-                    Err(e) => {
-                        return Poll::Ready(Err(e.into()));
-                    }
-                }
-            }
-        }
-*/
-        /*
-        if let Some(logion_id) = &cookies.1 {
-
-        }
-
-        let future = this.inner.call(r);
-        let res: Result<Response<B>, S::Error> = ready!(pin!(future).poll(cx));
-        let mut a = match res {
-            Ok(v) => v,
-            _ => return Poll::Ready(Err(anyhow!(""))) // Infallibleなので起こりえない
-        };
-
-*/
-
 #[derive(Debug, Error)]
 pub enum ManageSessionError {
     #[error("セッションがありません")]
     NoSession,
     #[error("無効なセッションです")]
     InvalidSession([(HeaderName, &'static str); 2])
+}
+
+pub struct UnixtimeSeconds(u64);
+
+impl UnixtimeSeconds {
+    pub fn new(unixtime_seconds: u64) -> Self {
+        Self(unixtime_seconds)
+    }
+
+    pub fn value(&self) -> u64 {
+        self.0
+    }
 }
