@@ -15,14 +15,20 @@ pub const MAX_BIRTH_YEAR: LazyLock<u16> = LazyLock::new(current_year);
 pub struct BirthYear(Option<NonZeroU16>);
 
 impl BirthYear {
-    pub fn value(&self) -> Option<u16> {
-        self.0.map(|v| v.get())
+    pub fn value(&self) -> &Option<NonZeroU16> {
+        &self.0
     }
 }
 
 impl From<BirthYear> for u16 {
     fn from(value: BirthYear) -> Self {
         value.0.map_or_else(|| 0, |v| v.get())
+    }
+}
+
+impl From<BirthYear> for i16 {
+    fn from(value: BirthYear) -> Self {
+        u16::from(value) as i16
     }
 }
 
@@ -41,6 +47,14 @@ impl TryFrom<u16> for BirthYear {
         } else {
             Err(ParseBirthYearError)
         }
+    }
+}
+
+impl TryFrom<i16> for BirthYear {
+    type Error = ParseBirthYearError;
+
+    fn try_from(value: i16) -> Result<Self, Self::Error> {
+        BirthYear::try_from(value as u16)
     }
 }
 
@@ -128,10 +142,36 @@ mod tests {
     }
 
     #[test]
+    fn try_from_valid_u16() {
+        assert_eq!(*BirthYear::try_from(0u16).unwrap().value(), NonZeroU16::new(0));
+        assert_eq!(*BirthYear::try_from(MIN_BIRTH_YEAR).unwrap().value(), NonZeroU16::new(MIN_BIRTH_YEAR));
+        assert_eq!(*BirthYear::try_from(*MAX_BIRTH_YEAR).unwrap().value(), NonZeroU16::new(*MAX_BIRTH_YEAR));
+    }
+
+    #[test]
+    fn try_from_invalid_u16() {
+        assert_eq!(BirthYear::try_from(MIN_BIRTH_YEAR - 1), Err(ParseBirthYearError));
+        assert_eq!(BirthYear::try_from(*MAX_BIRTH_YEAR + 1), Err(ParseBirthYearError));
+    }
+
+    #[test]
+    fn try_from_valid_i16() {
+        assert_eq!(*BirthYear::try_from(0i16).unwrap().value(), NonZeroU16::new(0));
+        assert_eq!(*BirthYear::try_from(MIN_BIRTH_YEAR as i16).unwrap().value(), NonZeroU16::new(MIN_BIRTH_YEAR));
+        assert_eq!(*BirthYear::try_from(*MAX_BIRTH_YEAR as i16).unwrap().value(), NonZeroU16::new(*MAX_BIRTH_YEAR));
+    }
+
+    #[test]
+    fn try_from_invalid_i16() {
+        assert_eq!(BirthYear::try_from((MIN_BIRTH_YEAR - 1) as i16), Err(ParseBirthYearError));
+        assert_eq!(BirthYear::try_from((*MAX_BIRTH_YEAR + 1) as i16), Err(ParseBirthYearError));
+    }
+
+    #[test]
     fn deserialize_valid_json() {
         let json = r#"2000"#;
         let birth_year: BirthYear = serde_json::from_str(json).unwrap();
-        assert_eq!(birth_year, BirthYear::try_from(2000).unwrap());
+        assert_eq!(birth_year, BirthYear::try_from(2000u16).unwrap());
     }
 
     #[test]
