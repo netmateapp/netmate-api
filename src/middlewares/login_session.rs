@@ -1,13 +1,13 @@
-use std::{future::Future, pin::{pin, Pin}, str::FromStr, sync::Arc, task::{ready, Context, Poll}};
+use std::{fmt::Debug, future::Future, pin::{pin, Pin}, str::FromStr, sync::Arc, task::{ready, Context, Poll}};
 
 use bb8_redis::{bb8::Pool, redis::cmd, RedisConnectionManager};
 use cookie::{Cookie, SplitCookies};
-use http::{header::COOKIE, HeaderMap, Request};
+use http::{header::{COOKIE, SET_COOKIE}, HeaderMap, HeaderValue, Request, Response};
 use pin_project::pin_project;
 use scylla::Session;
 use tower::{Layer, Service};
 
-use crate::common::session::{dsl::SessionManagementId, interpreter::{LOGIN_COOKIE_KEY, SESSION_MANAGEMENT_COOKIE_KEY}};
+use crate::common::session::value::{SessionManagementId, LOGIN_COOKIE_KEY, SESSION_MANAGEMENT_COOKIE_KEY};
 
 type Connection = Pool<RedisConnectionManager>;
 
@@ -45,9 +45,10 @@ pub struct LoginSessionService<S> {
 impl <S, B> Service<Request<B>> for LoginSessionService<S>
 where
     S: Service<Request<B>> + Clone,
-    S::Error: Into<anyhow::Error>,
+    S::Future: Future<Output = Result<Response<B>, S::Error>>,
+    S::Error: Into<anyhow::Error> + Debug,
 {
-    type Response = S::Response;
+    type Response = Response<B>;//S::Response;
     type Error = anyhow::Error;
     type Future = SessionFuture<S, B>;
 
@@ -56,9 +57,7 @@ where
     }
 
     fn call(&mut self, req: Request<B>) -> Self::Future {
-        let cookies = extract_cookies(req.headers());
-        let res = extract_session_management_cookie_and_login_cookie(cookies.unwrap());
-        let cookies = map_to_cookie_values(res);
+        let cookies = extract_session_cookie_values(req.headers());
 
         SessionFuture {
             req: Some(req), // `inner.call(req)`が`req`の所有権を必要とするため渡す必要がある
@@ -82,13 +81,13 @@ where
     cache: Arc<Connection>,
 }
 
-impl<S, B, R, E> Future for SessionFuture<S, B>
+impl<S, B, E> Future for SessionFuture<S, B>
 where
     S: Service<Request<B>>,
-    S::Future: Future<Output = Result<R, E>>,
-    E: Into<anyhow::Error>,
+    S::Future: Future<Output = Result<Response<B>, E>>,
+    E: Into<anyhow::Error> + Debug,
 {
-    type Output = Result<R, anyhow::Error>;
+    type Output = Result<Response<B>, anyhow::Error>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         /*
@@ -130,8 +129,11 @@ where
         }
 
         let future = this.inner.call(r);
-        let res = ready!(pin!(future).poll(cx));
-        Poll::Ready(res.map_err(Into::into))
+        let res: Result<Response<B>, E> = ready!(pin!(future).poll(cx));
+        let mut a = res.unwrap();
+        a.headers_mut().insert(SET_COOKIE, HeaderValue::from_static(""));
+        Poll::Ready(Ok(a))
+        //Poll::Ready(res.map_err(Into::into))
     }
 }
 
