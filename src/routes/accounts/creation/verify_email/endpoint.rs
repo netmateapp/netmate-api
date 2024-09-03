@@ -32,7 +32,7 @@ pub async fn handler(
                 "メールアドレスの認証に成功しました"
             );
 
-            Ok(Json(top_tag_id.value().to_string()))
+            Ok(Json(top_tag_id.value().value().to_string()))
         },
         Err(e) => {
             info!(

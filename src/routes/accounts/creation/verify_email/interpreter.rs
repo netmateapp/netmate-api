@@ -64,7 +64,7 @@ impl VerifyEmail for VerifyEmailImpl {
         let language = i8::from(*language);
         
         self.session
-            .execute(&self.insert_account, (account_id.value(), email.value(), password_hash.value(), birth_year, region, language))
+            .execute(&self.insert_account, (account_id.value().value(), email.value(), password_hash.value(), birth_year, region, language))
             .await
             .map(|_| ())
             .map_err(|e| VerifyEmailError::CreateAccountFailed(e.into()))
