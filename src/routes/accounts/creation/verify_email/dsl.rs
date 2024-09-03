@@ -71,7 +71,7 @@ mod tests {
                     Ok((
                         Email::from_str("test@example.com").unwrap(),
                         PasswordHash::new_unchecked(case.value()),
-                        BirthYear::try_from(0).unwrap(),
+                        BirthYear::try_from(0u16).unwrap(),
                         Region::Japan,
                         Language::Japanese
                     ))
