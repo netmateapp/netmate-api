@@ -4,7 +4,7 @@ use super::{id::{uuid4::Uuid4, TagId}, language::Language};
 
 const JAPANESE_TOP_TAG: TagId = Uuid4::new_unchecked(Uuid::from_fields(0x00, 0x00, 0x4000, &[0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]));
 
-pub const fn top_tag_id_by_language(_language: Language) -> TagId {
+pub const fn top_tag_id_by_language(_language: &Language) -> TagId {
     JAPANESE_TOP_TAG
 }
 

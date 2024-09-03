@@ -1,16 +1,16 @@
 use thiserror::Error;
 
-use crate::{common::{birth_year::BirthYear, email::Email, fallible::Fallible, id::{uuid7::Uuid7, AccountId}, language::Language, password::PasswordHash, region::Region}, routes::accounts::creation::sign_up::value::OneTimeToken};
+use crate::{common::{birth_year::BirthYear, email::Email, fallible::Fallible, id::{uuid7::Uuid7, AccountId, TagId}, language::Language, password::PasswordHash, region::Region, tag::top_tag_id_by_language}, routes::accounts::creation::sign_up::value::OneTimeToken};
 
 pub(crate) trait VerifyEmail {
-    async fn verify_email(&self, token: &OneTimeToken) -> Fallible<Language, VerifyEmailError> {
+    async fn verify_email(&self, token: &OneTimeToken) -> Fallible<TagId, VerifyEmailError> {
         let (email, password_hash, birth_year, region, language) = self.retrieve_account_creation_application_by(token).await?;
         let account_id: AccountId = Uuid7::now();
         match self.create_account(&account_id, &email, &password_hash, &birth_year, &region, &language).await {
             Ok(_) => {
                 // 失敗してもTTLにより削除されるため続行
                 let _ = self.delete_account_creation_application_by(token).await;
-                Ok(language)
+                Ok(top_tag_id_by_language(&language))
             },
             Err(VerifyEmailError::AccountAlreadyExists) => { // この状況は基本的に発生しない
                 let _ = self.delete_account_creation_application_by(token).await;
@@ -47,7 +47,7 @@ mod tests {
 
     use thiserror::Error;
 
-    use crate::{common::{birth_year::BirthYear, email::Email, fallible::Fallible, id::AccountId, language::Language, password::PasswordHash, region::Region}, routes::accounts::creation::sign_up::value::OneTimeToken};
+    use crate::{common::{birth_year::BirthYear, email::Email, fallible::Fallible, id::{AccountId, TagId}, language::Language, password::PasswordHash, region::Region}, routes::accounts::creation::sign_up::value::OneTimeToken};
 
     use super::{VerifyEmail, VerifyEmailError};
 
@@ -95,7 +95,7 @@ mod tests {
         }
     }
 
-    async fn test_verify_email(case: &str) -> Fallible<Language, VerifyEmailError> {
+    async fn test_verify_email(case: &str) -> Fallible<TagId, VerifyEmailError> {
         MockVerifyEmail.verify_email(&OneTimeToken::new_unchecked(case)).await
     }
 

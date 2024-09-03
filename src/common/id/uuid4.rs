@@ -4,6 +4,10 @@ use uuid::Uuid;
 pub struct Uuid4(Uuid);
 
 impl Uuid4 {
+    pub const fn new_unchecked(uuidv4: Uuid) -> Uuid4 {
+        Uuid4(uuidv4)
+    }
+
     pub fn value(&self) -> &Uuid {
         &self.0
     }
