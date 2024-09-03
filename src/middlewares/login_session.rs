@@ -1,5 +1,6 @@
-use std::{fmt::Debug, future::Future, pin::{pin, Pin}, str::FromStr, sync::Arc, task::{ready, Context, Poll}};
+use std::{future::Future, pin::{pin, Pin}, str::FromStr, sync::Arc, task::{ready, Context, Poll}};
 
+use anyhow::anyhow;
 use bb8_redis::{bb8::Pool, redis::cmd, RedisConnectionManager};
 use cookie::{Cookie, SplitCookies};
 use http::{header::{COOKIE, SET_COOKIE}, HeaderMap, HeaderValue, Request, Response};
@@ -46,9 +47,9 @@ impl <S, B> Service<Request<B>> for LoginSessionService<S>
 where
     S: Service<Request<B>> + Clone,
     S::Future: Future<Output = Result<Response<B>, S::Error>>,
-    S::Error: Into<anyhow::Error> + Debug,
+    S::Error: Into<anyhow::Error>,
 {
-    type Response = Response<B>;//S::Response;
+    type Response = Response<B>;
     type Error = anyhow::Error;
     type Future = SessionFuture<S, B>;
 
@@ -81,11 +82,10 @@ where
     cache: Arc<Connection>,
 }
 
-impl<S, B, E> Future for SessionFuture<S, B>
+impl<S, B> Future for SessionFuture<S, B>
 where
     S: Service<Request<B>>,
-    S::Future: Future<Output = Result<Response<B>, E>>,
-    E: Into<anyhow::Error> + Debug,
+    S::Future: Future<Output = Result<Response<B>, S::Error>>,
 {
     type Output = Result<Response<B>, anyhow::Error>;
 
@@ -116,10 +116,9 @@ where
                     }
                 }
             }
-            //let res = ready!(pin!(check_session_existence(&id)).poll(cx));
         }
 
-        if let Some(logion_id) = &this.cookies.1 { //login_cookie {
+        if let Some(logion_id) = &this.cookies.1 {
             // insert series, timestamp ttl 400days;
             // ↑現状最も長い日数。ブラウザの制限の厳格化で更に短くなる可能性がある。いずれにせよ削除の*自動化*が重要。
             // per 30m: select series, timestamp from...; now - timestamp >= 閾値月数; update ttl 400days;
@@ -129,8 +128,11 @@ where
         }
 
         let future = this.inner.call(r);
-        let res: Result<Response<B>, E> = ready!(pin!(future).poll(cx));
-        let mut a = res.unwrap();
+        let res: Result<Response<B>, S::Error> = ready!(pin!(future).poll(cx));
+        let mut a = match res {
+            Ok(v) => v,
+            _ => return Poll::Ready(Err(anyhow!(""))) // Infallibleなので起こりえない
+        };
         a.headers_mut().insert(SET_COOKIE, HeaderValue::from_static(""));
         Poll::Ready(Ok(a))
         //Poll::Ready(res.map_err(Into::into))
