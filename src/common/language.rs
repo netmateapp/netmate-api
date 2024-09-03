@@ -9,15 +9,21 @@ pub enum Language {
   TaiwaneseMandarin = 3,
 }
 
-impl From<Language> for u8 {
-  fn from(value: Language) -> Self {
-      value as u8
-  }
-}
-
 #[derive(Debug, PartialEq, Error)]
 #[error("有効な言語ではありません")]
 pub struct ParseLanguageError;
+
+impl From<Language> for u8 {
+  fn from(value: Language) -> Self {
+    value as u8
+  }
+}
+
+impl From<Language> for i8 {
+  fn from(value: Language) -> Self {
+    u8::from(value) as i8
+  }
+}
 
 impl TryFrom<u8> for Language {
   type Error = ParseLanguageError;
@@ -34,6 +40,14 @@ impl TryFrom<u8> for Language {
   }
 }
 
+impl TryFrom<i8> for Language {
+    type Error = ParseLanguageError;
+
+    fn try_from(value: i8) -> Result<Self, Self::Error> {
+      Language::try_from(value as u8)
+    }
+}
+
 impl<'de> Deserialize<'de> for Language {
   fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
   where
@@ -46,9 +60,9 @@ impl<'de> Deserialize<'de> for Language {
 
 #[cfg(test)]
 mod tests {
-    use crate::common::language::ParseLanguageError;
+  use crate::common::language::ParseLanguageError;
 
-    use super::Language;
+  use super::Language;
 
   #[test]
   fn try_from_valid_u8() {
@@ -63,6 +77,27 @@ mod tests {
     for i in 4u8..=u8::MAX {
       let language = Language::try_from(i);
       assert_eq!(language.map(u8::from), Err(ParseLanguageError))
+    }
+  }
+
+  #[test]
+  fn try_from_valid_i8() {
+    for i in 0u8..4 {
+      let language = Language::try_from(i);
+      assert_eq!(language.map(u8::from), Ok(i))
+    }
+  }
+
+  #[test]
+  fn try_from_invalid_i8() {
+    for i in i8::MIN..0i8 {
+      let language = Language::try_from(i);
+      assert_eq!(language.map(i8::from), Err(ParseLanguageError))
+    }
+
+    for i in 5..=i8::MAX {
+      let language = Language::try_from(i);
+      assert_eq!(language.map(i8::from), Err(ParseLanguageError))
     }
   }
 
