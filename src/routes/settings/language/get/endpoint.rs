@@ -1,14 +1,32 @@
 use std::sync::Arc;
 
-use axum::{extract::{Request, State}, Json};
+use axum::{error_handling::HandleErrorLayer, extract::{Request, State}, routing::get, Json, Router};
 use axum_macros::debug_handler;
 use http::StatusCode;
+use scylla::Session;
+use tower::ServiceBuilder;
 use tracing::info;
 
-use crate::{common::{id::AccountId, language::Language}, routes::settings::language::get::dsl::GetLanguage};
+use crate::{common::{id::AccountId, language::Language}, helper::{error::InitError, garnet::Pool}, middlewares::login_session::LoginSessionLayer, routes::settings::language::get::dsl::GetLanguage};
 
 use super::interpreter::GetLanguageImpl;
 
+pub async fn endpoint(db: Arc<Session>, cache: Arc<Pool>) -> Result<Router, InitError<GetLanguageImpl>> {
+    let get_language = GetLanguageImpl::try_new(db.clone()).await?;
+
+    let services = ServiceBuilder::new()
+        .layer(HandleErrorLayer::new(|e: anyhow::Error| async move { // ここは後から共通化
+            StatusCode::BAD_REQUEST
+        }))
+        .layer(LoginSessionLayer::new(db, cache));
+
+    let router = Router::new()
+        .route("/language", get(handler))
+        .layer(services)
+        .with_state(Arc::new(get_language));
+
+    Ok(router)
+}
 
 
 #[debug_handler]

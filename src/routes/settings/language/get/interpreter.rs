@@ -23,7 +23,7 @@ impl GetLanguageImpl {
 }
 
 impl GetLanguage for GetLanguageImpl {
-    async fn get_language(&self, account_id: AccountId) -> Fallible<Language, GetLanguageError> {
+    async fn get_language(&self, account_id: &AccountId) -> Fallible<Language, GetLanguageError> {
         let language: Language = self.session
             .execute(&self.select_language, (account_id.value(), ))
             .await
