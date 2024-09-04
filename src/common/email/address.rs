@@ -86,7 +86,7 @@ impl<'de> Deserialize<'de> for Email {
 mod tests {
     use std::str::FromStr;
 
-    use crate::common::email::{validate_email, Email};
+    use crate::common::email::address::{validate_email, Email};
 
     #[test]
     fn normal() {

@@ -5,7 +5,6 @@ pub mod id;
 pub mod language;
 pub mod password;
 pub mod region;
-pub mod send_email;
 pub mod session;
 pub mod tag;
 pub mod token;
