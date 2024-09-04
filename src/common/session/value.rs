@@ -1,7 +1,6 @@
 use std::str::FromStr;
 
 use cookie::{Cookie, CookieBuilder, SameSite};
-use http::HeaderMap;
 use thiserror::Error;
 use time::Duration;
 
@@ -142,38 +141,25 @@ pub fn secure_cookie_builder(key: &'static str, value: String) -> CookieBuilder<
         .partitioned(true)
 }
 
-/*
-fn append() {
-    set_cookie(response.headers_mut(), &gen_session_management_cookie());
-    set_cookie(response.headers_mut(), &gen_login_cookie());
-}
+#[cfg(test)]
+mod tests {
+    use cookie::SameSite;
 
-fn set_cookie(headers: &mut HeaderMap, cookie: &Cookie<'static>) {
-    headers.insert(
-        SET_COOKIE,
-        HeaderValue::from_str(cookie.to_string().as_str()).unwrap()
-    );
-}
+    use crate::common::session::value::SESSION_TIMEOUT_MINUTES;
 
-fn gen_session_management_cookie() -> Cookie<'static> {
-    secure_cookie_builder(
-        SESSION_MANAGEMENT_COOKIE_KEY,
-        SessionManagementId::gen().value().clone()
-    ).build()
-}
+    #[test]
+    fn test_secure_cookie_builder() {
+        let cookie = super::secure_cookie_builder("key", "value".to_string())
+            .max_age(SESSION_TIMEOUT_MINUTES)
+            .build();
 
-fn gen_login_cookie() -> Cookie<'static> {
-    login_cookie(LoginSeriesId::gen(), LoginToken::gen())
+        assert_eq!(cookie.name(), "key");
+        assert_eq!(cookie.value(), "value");
+        assert_eq!(cookie.http_only().unwrap(), true);
+        assert_eq!(cookie.secure().unwrap(), true);
+        assert_eq!(cookie.same_site(), Some(SameSite::Strict));
+        assert_eq!(cookie.path(), Some("/"));
+        assert_eq!(cookie.max_age(), Some(SESSION_TIMEOUT_MINUTES));
+        assert_eq!(cookie.partitioned().unwrap(), true);
+    }
 }
-
-fn login_cookie_with_new_token(series_id: LoginSeriesId) -> Cookie<'static> {
-    login_cookie(series_id, LoginToken::gen())
-}
-
-fn login_cookie(series_id: LoginSeriesId, token: LoginToken) -> Cookie<'static> {
-    secure_cookie_builder(LOGIN_COOKIE_KEY, LoginId::new(series_id, token).0)
-        .max_age(MAX_CHROME_COOKIE_EXPIRY_DAYS)
-        .build()
-}
-
-*/
