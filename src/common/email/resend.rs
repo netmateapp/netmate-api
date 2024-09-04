@@ -2,9 +2,9 @@ use resend_rs::{types::CreateEmailBaseOptions, Resend};
 
 use super::{address::Email, send::{Body, EmailSendFailed, EmailSender, NetmateEmail, SenderName, Subject}};
 
-pub struct ResendEmailService;
+pub struct ResendEmailSender;
 
-impl EmailSender for ResendEmailService {
+impl EmailSender for ResendEmailSender {
     async fn send(from: &NetmateEmail, to: &Email, sender_name: &SenderName, subject: &Subject, body: &Body) -> Result<(), EmailSendFailed> {
         let resend = Resend::new("");
 
