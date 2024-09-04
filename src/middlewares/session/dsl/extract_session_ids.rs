@@ -49,20 +49,18 @@ fn convert_to_session_ids(cookies: (Option<Cookie<'_>>, Option<Cookie<'_>>)) -> 
         .map(|s| SessionManagementId::from_str(&s))
         .and_then(|r| r.ok());
 
-    let login_id = cookies.1
-        .map(|c| c.value().to_string())
-        .map(|s| {
-            let mut parts = s.splitn(2, '$');
-            (parts.next().map(String::from), parts.next().map(String::from))
-        })
-        .map(|(p1, p2)| (
-            p1.and_then(|p| LoginSeriesId::from_str(p.as_str()).ok()),
-            p2.and_then(|p| LoginToken::from_str(p.as_str()).ok())
-        ))
-        .and_then(|(series_id, token)| {
-            series_id.and_then(|series| token.map(|tok| LoginId::new(series, tok)))
-        });
-    
+    let login_id = cookies.1.and_then(|cookie| {
+        let series_id_and_token = cookie.value();
+        let mut parts = series_id_and_token.splitn(2, '$');
+        let series_id = parts.next()?;
+        let token = parts.next()?;
+        
+        let series_id = LoginSeriesId::from_str(series_id).ok()?;
+        let token = LoginToken::from_str(token).ok()?;
+        
+        Some(LoginId::new(series_id, token))
+    });
+
     (session_management_id, login_id)
 }
 
