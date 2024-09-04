@@ -1,4 +1,7 @@
+use std::str::FromStr;
+
 use http::HeaderMap;
+use thiserror::Error;
 use time::Duration;
 
 use crate::common::token::{calc_entropy_bytes, Token};
@@ -10,10 +13,30 @@ type SMId = Token<{calc_entropy_bytes(SESSION_MANAGEMENT_ID_ENTROPY_BITS)}>;
 pub struct SessionManagementId(SMId);
 
 impl SessionManagementId {
+    pub fn gen() -> Self {
+        Self(SMId::gen())
+    }
+
     pub fn value(&self) -> &SMId {
         &self.0
     }
 }
+
+#[derive(Debug, Error)]
+#[error("セッション管理識別子への変換に失敗しました")]
+pub struct ParseSessionManagementIdError(#[source] pub anyhow::Error);
+
+impl FromStr for SessionManagementId {
+    type Err = ParseSessionManagementIdError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Token::from_str(s)
+            .map(|t| Self(t))
+            .map_err(|e| ParseSessionManagementIdError(e.into()))
+    }
+}
+
+
 
 const LOGIN_COOKIE_SERIES_ID_ENTROPY_BITS: usize = 120;
 
@@ -27,6 +50,22 @@ impl LoginSeriesId {
     }
 }
 
+#[derive(Debug, Error)]
+#[error("ログイン系列識別子への変換に失敗しました")]
+pub struct ParseLoginSeriesIdError(#[source] pub anyhow::Error);
+
+impl FromStr for LoginSeriesId {
+    type Err = ParseLoginSeriesIdError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Token::from_str(s)
+            .map(|t| Self(t))
+            .map_err(|e| ParseLoginSeriesIdError(e.into()))
+    }
+}
+
+
+
 const LOGIN_COOKIE_TOKEN_ENTROPY_BITS: usize = 120;
 
 type LT = Token<{calc_entropy_bytes(LOGIN_COOKIE_TOKEN_ENTROPY_BITS)}>;
@@ -34,10 +73,29 @@ type LT = Token<{calc_entropy_bytes(LOGIN_COOKIE_TOKEN_ENTROPY_BITS)}>;
 pub struct LoginToken(LT);
 
 impl LoginToken {
+    pub fn gen() -> Self {
+        Self(LT::gen())
+    }
+
     pub fn value(&self) -> &LT {
         &self.0
     }
 }
+
+#[derive(Debug, Error)]
+#[error("ログイントークンへの変換に失敗しました")]
+pub struct ParseLoginTokenError(#[source] pub anyhow::Error);
+
+impl FromStr for LoginToken {
+    type Err = ParseLoginTokenError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Token::from_str(s)
+            .map(|t| Self(t))
+            .map_err(|e| ParseLoginTokenError(e.into()))
+    }
+}
+
 
 
 pub struct LoginId(LoginSeriesId, LoginToken);
