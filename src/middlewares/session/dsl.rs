@@ -1,11 +1,12 @@
-use std::{convert::Infallible, time::{SystemTime, UNIX_EPOCH}};
+use std::{convert::Infallible, str::FromStr, time::{SystemTime, UNIX_EPOCH}};
 
-use http::{header::SET_COOKIE, Extensions, HeaderMap, HeaderName, Request, Response};
+use cookie::{Cookie, SplitCookies};
+use http::{header::{COOKIE, SET_COOKIE}, Extensions, HeaderMap, HeaderName, Request, Response};
 use thiserror::Error;
 use tower::Service;
 use tracing::info;
 
-use crate::common::{fallible::Fallible, id::AccountId, session::value::{LoginId, LoginSeriesId, LoginToken, SessionManagementId}};
+use crate::common::{fallible::Fallible, id::AccountId, session::value::{LoginId, LoginSeriesId, LoginToken, SessionManagementId, LOGIN_COOKIE_KEY, SESSION_MANAGEMENT_COOKIE_KEY}};
 
 pub(crate) trait ManageSession {
     /*
@@ -88,7 +89,66 @@ pub(crate) trait ManageSession {
         ]))
     }
 
-    fn extract_session_ids(headers: &HeaderMap) -> (Option<SessionManagementId>, Option<LoginId>);
+    fn extract_session_ids(request_headers: &HeaderMap) -> (Option<SessionManagementId>, Option<LoginId>) {
+        fn extract_cookies(headers: &HeaderMap) -> Option<SplitCookies<'_>> {
+            // 攻撃を防ぐため、上限バイト数を決めておく
+            // __Host-id1=(11)<24>; (2)__Host-id2=(11)<24>$(1)<24> = 97bytes;
+            // https://developer.mozilla.org/ja/docs/Web/HTTP/Headers/Cookie
+            const MAX_COOKIE_BYTES: usize = 100;
+        
+            headers.get(COOKIE)
+                .and_then(|cookie_header| cookie_header.to_str().ok())
+                .filter(|cookie_str| cookie_str.len() <= MAX_COOKIE_BYTES)
+                .map(|cookie_str| Cookie::split_parse(cookie_str))
+        }
+
+        fn extract_session_management_cookie_and_login_cookie(cookies: SplitCookies<'_>) -> (Option<Cookie<'_>>, Option<Cookie<'_>>) {
+            let mut session_management_cookie = None;
+            let mut login_cookie = None;
+        
+            // セッション管理クッキーとログインクッキーがあれば取得する
+            for cookie in cookies {
+                match cookie {
+                    Ok(cookie) => match cookie.name() {
+                        SESSION_MANAGEMENT_COOKIE_KEY => session_management_cookie = Some(cookie),
+                        LOGIN_COOKIE_KEY => login_cookie = Some(cookie),
+                        _ => ()
+                    },
+                    _ => ()
+                }
+            }
+        
+            (session_management_cookie, login_cookie)
+        }
+
+        fn convert_to_session_ids(cookies: (Option<Cookie<'_>>, Option<Cookie<'_>>)) -> (Option<SessionManagementId>, Option<LoginId>) {
+            let session_management_id = cookies.0
+                .map(|c| c.value().to_string())
+                .map(|s| SessionManagementId::from_str(&s))
+                .and_then(|r| r.ok());
+
+            let login_id = cookies.1
+                .map(|c| c.value().to_string())
+                .map(|s| {
+                    let mut parts = s.splitn(2, '$');
+                    (parts.next().map(String::from), parts.next().map(String::from))
+                })
+                .map(|(p1, p2)| (
+                    p1.and_then(|p| LoginSeriesId::from_str(p.as_str()).ok()),
+                    p2.and_then(|p| LoginToken::from_str(p.as_str()).ok())
+                ))
+                .and_then(|(series_id, token)| {
+                    series_id.and_then(|series| token.map(|tok| LoginId::new(series, tok)))
+                });
+            
+            (session_management_id, login_id)
+        }
+
+        match extract_cookies(request_headers) {
+            Some(cookies) => convert_to_session_ids(extract_session_management_cookie_and_login_cookie(cookies)),
+            None => (None, None)
+        }
+    }
 
     async fn resolve(&self, session_management_id: &SessionManagementId) -> Fallible<Option<AccountId>, ManageSessionError>;
 
@@ -100,7 +160,7 @@ pub(crate) trait ManageSession {
         !headers.contains_key(SET_COOKIE)
     }
 
-    fn reset_session_timeout(headers: &mut HeaderMap, session_management_id: &SessionManagementId);
+    fn reset_session_timeout(response_headers: &mut HeaderMap, session_management_id: &SessionManagementId);
 
     async fn get_login_token_and_account_id(&self, series_id: &LoginSeriesId) -> Fallible<(Option<LoginToken>, Option<AccountId>), ManageSessionError>;
 
@@ -108,19 +168,19 @@ pub(crate) trait ManageSession {
         request_token.value().value() == registered_token.value().value()
     }
 
-    async fn rotate_session_ids(&self, headers: &mut HeaderMap, account_id: &AccountId, series_id: &LoginSeriesId) -> Fallible<(), ManageSessionError> {
+    async fn rotate_session_ids(&self, response_headers: &mut HeaderMap, account_id: &AccountId, series_id: &LoginSeriesId) -> Fallible<(), ManageSessionError> {
         // 新しい識別子やトークンの登録に失敗した場合は、エラーを無視してセッションを継続する
         // これによる影響はセキュリティリスクの微小な増加のみである
         // 登録に成功した場合は必ずヘッダーに付加する
         let new_session_management_id = SessionManagementId::gen();
         self.register_new_session_management_id_with_account_id(&new_session_management_id, account_id).await?;
-        Self::set_new_session_management_id_in_header(headers, &new_session_management_id);
+        Self::set_new_session_management_id_in_header(response_headers, &new_session_management_id);
 
         // 新しいログイントークンの登録に失敗した場合は、現在のトークンを使い続けることになる
         // トークンの窃取と誤判定されることはない
         let new_login_token = LoginToken::gen();
         self.register_new_login_id_with_account_id(series_id, &new_login_token, account_id).await?;
-        Self::set_new_login_token_in_header(headers, series_id, &new_login_token);
+        Self::set_new_login_token_in_header(response_headers, series_id, &new_login_token);
 
         self.try_extend_series_id_expiration(&account_id, series_id).await
     }
@@ -161,9 +221,9 @@ pub(crate) trait ManageSession {
 
     async fn extend_series_id_expiration(&self, series_id: &LoginSeriesId) -> Fallible<(), ManageSessionError>;
 
-    fn set_new_session_management_id_in_header(headers: &mut HeaderMap, new_session_management_id: &SessionManagementId);
+    fn set_new_session_management_id_in_header(response_headers: &mut HeaderMap, new_session_management_id: &SessionManagementId);
 
-    fn set_new_login_token_in_header(headers: &mut HeaderMap, series_id: &LoginSeriesId, new_login_token: &LoginToken);
+    fn set_new_login_token_in_header(response_headers: &mut HeaderMap, series_id: &LoginSeriesId, new_login_token: &LoginToken);
 
     async fn delete_all_sessions(&self, account_id: &AccountId) -> Fallible<(), ManageSessionError>;
 
