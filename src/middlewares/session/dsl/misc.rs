@@ -46,12 +46,12 @@ mod tests {
 
     use http::Extensions;
 
-    use crate::{common::{id::AccountId, session::value::LoginToken}, middlewares::session::dsl::misc::{can_set_cookie_in_response_header, is_same_token, should_extend_series_id_expiration, UnixtimeSeconds, SESSION_EXTENSION_THRESHOLD}};
+    use crate::{common::{id::{uuid7::Uuid7, AccountId}, session::value::LoginToken}, middlewares::session::dsl::misc::{can_set_cookie_in_response_header, is_same_token, should_extend_series_id_expiration, UnixtimeSeconds, SESSION_EXTENSION_THRESHOLD}};
 
     #[test]
     fn test_insert_account_id() {
         let mut extensions = Extensions::new();
-        let account_id = AccountId::gen();
+        let account_id = AccountId::new(Uuid7::now());
         super::insert_account_id(&mut extensions, account_id.clone());
         assert_eq!(extensions.get::<AccountId>(), Some(&account_id));
     }
