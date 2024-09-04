@@ -68,5 +68,34 @@ fn convert_to_session_ids(cookies: (Option<Cookie<'_>>, Option<Cookie<'_>>)) -> 
 
 #[cfg(test)]
 mod tests {
+    use http::{header::COOKIE, HeaderMap, HeaderValue};
 
+    use crate::common::session::value::{LoginId, LoginSeriesId, LoginToken, SessionManagementId, LOGIN_COOKIE_KEY, SESSION_MANAGEMENT_COOKIE_KEY};
+
+    use super::extract_session_ids;
+
+    #[test]
+    fn extract() {
+        let session_management_id = SessionManagementId::gen();
+        let login_id = LoginId::new(LoginSeriesId::gen(), LoginToken::gen());
+
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            COOKIE,
+            HeaderValue::from_str(
+                &format!(
+                    "{}={}; {}={}${}",
+                    SESSION_MANAGEMENT_COOKIE_KEY,
+                    session_management_id.value().value(),
+                    LOGIN_COOKIE_KEY,
+                    login_id.series_id().value().value(),
+                    login_id.token().value().value()
+                )
+            ).unwrap()
+        );
+
+        let (ex_session_management_id, ex_login_id) = extract_session_ids(&headers);
+        assert_eq!(ex_session_management_id, Some(session_management_id));
+        assert_eq!(ex_login_id, Some(login_id));
+    }
 }
