@@ -4,10 +4,14 @@ use uuid7::Uuid7;
 pub mod uuid4;
 pub mod uuid7;
 
-#[derive(Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct AccountId(Uuid7);
 
 impl AccountId {
+    pub fn gen() -> Self {
+        AccountId(Uuid7::now())
+    }
+
     pub fn value(&self) -> &Uuid7 {
         &self.0
     }
