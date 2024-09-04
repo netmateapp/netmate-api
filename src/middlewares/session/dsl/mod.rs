@@ -1,14 +1,18 @@
-use std::{convert::Infallible, time::{SystemTime, UNIX_EPOCH}};
+use std::convert::Infallible;
 
 use extract_session_ids::extract_session_ids;
-use http::{header::SET_COOKIE, Extensions, HeaderMap, HeaderName, Request, Response};
+use http::{HeaderMap, Request, Response};
+use misc::{can_set_cookie_in_response_header, insert_account_id, is_same_token, should_extend_series_id_expiration, UnixtimeSeconds};
+use set_cookie::{clear_session_ids_in_response_header, reset_session_timeout, set_new_login_token_in_header, set_new_session_management_id_in_header};
 use thiserror::Error;
 use tower::Service;
 use tracing::info;
 
-use crate::common::{fallible::Fallible, id::AccountId, session::value::{LoginId, LoginSeriesId, LoginToken, SessionManagementId}};
+use crate::common::{fallible::Fallible, id::AccountId, session::value::{LoginSeriesId, LoginToken, SessionManagementId}};
 
 mod extract_session_ids;
+mod misc;
+mod set_cookie;
 
 pub(crate) trait ManageSession {
     /*
@@ -34,80 +38,66 @@ pub(crate) trait ManageSession {
         // 通常のセッション識別子からアカウント識別子の取得を試みる
         if let Some(session_management_id) = maybe_session_management_id {
             if let Some(account_id) = self.resolve(&session_management_id).await? {
-                Self::insert_account_id(req.extensions_mut(), account_id.clone());
+                insert_account_id(req.extensions_mut(), account_id.clone());
 
                 // `Error`は`Infallible`で起こり得ないので`unwrap()`で問題ない
                 let mut response = inner.call(req).await.unwrap();
 
                 // パスワード変更やログアウトによるSet-Cookieヘッダが無い場合のみセッションを延長
-                if Self::can_set_cookie_in_response_header(response.headers()) {
-                    Self::reset_session_timeout(response.headers_mut(), &session_management_id);
+                if can_set_cookie_in_response_header(response.headers()) {
+                    reset_session_timeout(response.headers_mut(), &session_management_id);
                 }
                 return Ok(response);
             }
         }
 
-        // 系列識別子からセッション識別子の生成とアカウント識別子の取得を試みる
+        // 系列識別子から新しいセッション識別子の生成とアカウント識別子の取得を試みる
         if let Some(login_id) = maybe_login_id {
             if let (Some(login_token), Some(account_id)) = self.get_login_token_and_account_id(login_id.series_id()).await? {
-                if Self::is_same_token(&login_id.token(), &login_token) {
-                    Self::insert_account_id(req.extensions_mut(), account_id.clone());
+                if is_same_token(&login_id.token(), &login_token) {
+                    insert_account_id(req.extensions_mut(), account_id.clone());
 
                     // `Error`は`Infallible`で起こり得ないので`unwrap()`で問題ない
                     let mut response = inner.call(req).await.unwrap();
 
                     // パスワード変更やログアウトによるSet-Cookieヘッダが無い場合のみセッションを延長
-                    if Self::can_set_cookie_in_response_header(response.headers()) {
-                        self.rotate_session_ids(response.headers_mut(), &account_id, &login_id.series_id()).await;
+                    if can_set_cookie_in_response_header(response.headers()) {
+                        let _ = self.rotate_session_ids(response.headers_mut(), &account_id, &login_id.series_id()).await;
                     }
 
                     return Ok(response);
                 } else {
-                    // セッション識別子が窃取された可能性
+                    // この分岐に到達した場合、ログイン識別子が盗用された可能性がある
 
                     let is_email_sent = self.send_security_notifications_email(&account_id)
                         .await
                         .is_ok();
 
-                    let can_print_series_id = self.delete_all_sessions(&account_id)
-                        .await
-                        .is_ok();
-
-                    // 全てのセッションが削除されたため、ログに出力して問題ない
-                    info!(
-                        account_id = %account_id.value().value(),
-                        series_id = if can_print_series_id { Some(login_id.series_id().value().value()) } else { None },
-                        is_email_sent = is_email_sent,
-                        "セッション識別子が盗用された可能性を検知しました"
-                    );
+                    match self.delete_all_sessions(&account_id).await {
+                        // セッションは削除されているため、ログに出力しても問題ない
+                        Ok(_) => info!(
+                            account_id = %account_id.value().value(),
+                            series_id = login_id.series_id().value().value(),
+                            is_email_sent = is_email_sent,
+                            "セッション識別子が盗用された可能性を検知したため、当該アカウントの全セッションを削除しました"
+                        ),
+                        Err(_) => info!(
+                            account_id = %account_id.value().value(),
+                            is_email_sent = is_email_sent,
+                            "セッション識別子が盗用された可能性を検知しましたが、当該アカウントの全セッションの削除に失敗しました"
+                        )
+                    }                    
                 }
             }
         }
 
         // 無効なセッション識別子であるため、削除指令を送信する
-        Err(ManageSessionError::InvalidSession([
-            Self::clear_session_management_id_header(),
-            Self::clear_login_id_header()
-        ]))
+        Err(ManageSessionError::InvalidSession(clear_session_ids_in_response_header()))
     }
 
     async fn resolve(&self, session_management_id: &SessionManagementId) -> Fallible<Option<AccountId>, ManageSessionError>;
 
-    fn insert_account_id(extensions: &mut Extensions, account_id: AccountId) {
-        extensions.insert(account_id);
-    }
-
-    fn can_set_cookie_in_response_header(headers: &HeaderMap) -> bool {
-        !headers.contains_key(SET_COOKIE)
-    }
-
-    fn reset_session_timeout(response_headers: &mut HeaderMap, session_management_id: &SessionManagementId);
-
     async fn get_login_token_and_account_id(&self, series_id: &LoginSeriesId) -> Fallible<(Option<LoginToken>, Option<AccountId>), ManageSessionError>;
-
-    fn is_same_token(request_token: &LoginToken, registered_token: &LoginToken) -> bool {
-        request_token.value().value() == registered_token.value().value()
-    }
 
     async fn rotate_session_ids(&self, response_headers: &mut HeaderMap, account_id: &AccountId, series_id: &LoginSeriesId) -> Fallible<(), ManageSessionError> {
         // 新しい識別子やトークンの登録に失敗した場合は、エラーを無視してセッションを継続する
@@ -115,13 +105,13 @@ pub(crate) trait ManageSession {
         // 登録に成功した場合は必ずヘッダーに付加する
         let new_session_management_id = SessionManagementId::gen();
         self.register_new_session_management_id_with_account_id(&new_session_management_id, account_id).await?;
-        Self::set_new_session_management_id_in_header(response_headers, &new_session_management_id);
+        set_new_session_management_id_in_header(response_headers, &new_session_management_id);
 
         // 新しいログイントークンの登録に失敗した場合は、現在のトークンを使い続けることになる
         // トークンの窃取と誤判定されることはない
         let new_login_token = LoginToken::gen();
         self.register_new_login_id_with_account_id(series_id, &new_login_token, account_id).await?;
-        Self::set_new_login_token_in_header(response_headers, series_id, &new_login_token);
+        set_new_login_token_in_header(response_headers, series_id, &new_login_token);
 
         self.try_extend_series_id_expiration(&account_id, series_id).await
     }
@@ -137,7 +127,7 @@ pub(crate) trait ManageSession {
         // その点は`series_id_update_at`内でレートリミットを設け対策する
         let should_extend = self.last_series_id_expiration_update_time(account_id, series_id)
             .await
-            .and_then(|t| Self::should_extend_series_id_expiration(&t))?;
+            .and_then(|t| should_extend_series_id_expiration(&t))?;
 
         if should_extend {
             // 既存のシリーズIDの有効期限を延長する
@@ -149,30 +139,11 @@ pub(crate) trait ManageSession {
 
     async fn last_series_id_expiration_update_time(&self, account_id: &AccountId, series_id: &LoginSeriesId) -> Fallible<UnixtimeSeconds, ManageSessionError>;
 
-    fn should_extend_series_id_expiration(last_series_id_expiration_update_time: &UnixtimeSeconds) -> Fallible<bool, ManageSessionError> {
-        let current_unixtime = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map(|d| d.as_secs())
-            .map_err(|e| ManageSessionError::CheckSeriesIdExpirationExtendabilityFailed(e.into()))?;
-
-        const SESSION_EXTENSION_THRESHOLD: u64 = 30 * 24 * 60 * 60;
-        
-        Ok(current_unixtime - last_series_id_expiration_update_time.value() > SESSION_EXTENSION_THRESHOLD)
-    }
-
     async fn extend_series_id_expiration(&self, series_id: &LoginSeriesId) -> Fallible<(), ManageSessionError>;
-
-    fn set_new_session_management_id_in_header(response_headers: &mut HeaderMap, new_session_management_id: &SessionManagementId);
-
-    fn set_new_login_token_in_header(response_headers: &mut HeaderMap, series_id: &LoginSeriesId, new_login_token: &LoginToken);
 
     async fn delete_all_sessions(&self, account_id: &AccountId) -> Fallible<(), ManageSessionError>;
 
     async fn send_security_notifications_email(&self, account_id: &AccountId) -> Fallible<(), ManageSessionError>;
-
-    fn clear_session_management_id_header() -> (HeaderName, &'static str);
-
-    fn clear_login_id_header() -> (HeaderName, &'static str) ;
 }
 
 #[derive(Debug, Error)]
@@ -180,19 +151,7 @@ pub enum ManageSessionError {
     #[error("セッションがありません")]
     NoSession,
     #[error("無効なセッションです")]
-    InvalidSession([(HeaderName, &'static str); 2]),
+    InvalidSession(HeaderMap),
     #[error("系列識別子の期限延長可能性の確認に失敗しました")]
     CheckSeriesIdExpirationExtendabilityFailed(#[source] anyhow::Error),
-}
-
-pub struct UnixtimeSeconds(u64);
-
-impl UnixtimeSeconds {
-    pub fn new(unixtime_seconds: u64) -> Self {
-        Self(unixtime_seconds)
-    }
-
-    pub fn value(&self) -> u64 {
-        self.0
-    }
 }

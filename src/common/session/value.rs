@@ -1,5 +1,6 @@
 use std::str::FromStr;
 
+use cookie::{Cookie, CookieBuilder, SameSite};
 use http::HeaderMap;
 use thiserror::Error;
 use time::Duration;
@@ -10,6 +11,7 @@ const SESSION_MANAGEMENT_ID_ENTROPY_BITS: usize = 120;
 
 type SMId = Token<{calc_entropy_bytes(SESSION_MANAGEMENT_ID_ENTROPY_BITS)}>;
 
+#[derive(Debug, PartialEq)]
 pub struct SessionManagementId(SMId);
 
 impl SessionManagementId {
@@ -42,9 +44,14 @@ const LOGIN_COOKIE_SERIES_ID_ENTROPY_BITS: usize = 120;
 
 type LSId = Token<{calc_entropy_bytes(LOGIN_COOKIE_SERIES_ID_ENTROPY_BITS)}>;
 
+#[derive(Debug, PartialEq)]
 pub struct LoginSeriesId(LSId);
 
 impl LoginSeriesId {
+    pub fn gen() -> Self {
+        Self(LSId::gen())
+    }
+
     pub fn value(&self) -> &LSId {
         &self.0
     }
@@ -70,6 +77,7 @@ const LOGIN_COOKIE_TOKEN_ENTROPY_BITS: usize = 120;
 
 type LT = Token<{calc_entropy_bytes(LOGIN_COOKIE_TOKEN_ENTROPY_BITS)}>;
 
+#[derive(Debug, PartialEq)]
 pub struct LoginToken(LT);
 
 impl LoginToken {
@@ -97,10 +105,14 @@ impl FromStr for LoginToken {
 }
 
 
-
+#[derive(Debug, PartialEq)]
 pub struct LoginId(LoginSeriesId, LoginToken);
 
 impl LoginId {
+    pub fn new(series_id: LoginSeriesId, token: LoginToken) -> Self {
+        Self(series_id, token)
+    }
+
     pub fn series_id(&self) -> &LoginSeriesId {
         &self.0
     }
@@ -110,67 +122,25 @@ impl LoginId {
     }
 }
 
+pub fn to_cookie_value(series_id: &LoginSeriesId, token: &LoginToken) -> String {
+    format!("{}:{}", series_id.value().value(), token.value().value())
+}
+
 pub const SESSION_MANAGEMENT_COOKIE_KEY: &str = "__Host-id1";
 pub const LOGIN_COOKIE_KEY: &str = "__Host-id2";
 
-const MAX_CHROME_COOKIE_EXPIRY_DAYS: Duration = Duration::days(400);
+pub const SESSION_TIMEOUT_MINUTES: Duration = Duration::minutes(30);
+pub const LOGIN_ID_EXPIRY_DAYS: Duration = Duration::days(400);
 
-pub struct SessionManagerImpl; // trait: Init, Fin, 
-
-pub(crate) trait SessionManager {
-    async fn initialize(&self, headers: &mut HeaderMap);
-    // 生成
-    // 保存
-    // Set-Cookie
-
-    async fn finalize(&self, headers: &mut HeaderMap);
-    // 削除
-    // Set-Cookie
-
-    async fn reset(&self, headers: &mut HeaderMap) {
-        self.delete_all_sessions().await;
-        self.initialize(headers).await;
-    }
-
-    async fn delete_all_sessions(&self);
-
-    /*
-    ↓かなり複雑、ミドルウェアのロジックが出ている？
-    pub async fn update() { // = 半生成 semi-generate
-    // dbは使わない
-
-    // id1クエリ
-    // あれば -> ret
-    // なければ -> 期限切れ処理へ
-    // response -> Set-Cookie 延長
-
-    // 期限切れ処理
-    // id2クエリ -> token$account_id
-    // tokenが、なければ -> ret
-    // 異なれば -> on_attack() = all_delete() -> メール送信
-    // 合ってれば -> id1セット & id2のトークン更新 
-    // response -> Set-Cookie 延長
-} */
+// 全てのクッキーはこの関数を使用して生成されなければならない
+pub fn secure_cookie_builder(key: &'static str, value: String) -> CookieBuilder<'static> {
+    Cookie::build((key, value))
+        .same_site(SameSite::Strict)
+        .secure(true)
+        .http_only(true)
+        .path("/")
+        .partitioned(true)
 }
-
-/*
-セキュリティのため共通化が必要な部分
-・トークン生成(済)
-・Cookie設定(生成、id1更新、id1&2更新)
-
-on_gen(), on_attack() などごとにDSL定義？
-
-handlers:
-generate() or delete()
-↓
-middlewares:
-Set-Cookie 延長 ← 前のセッションで上書きしてしまう
-対策: middlewaresで下位ハンドラからのレスポンスにSet-Cookieヘッダが含まれているかチェック
-
-delete() -> 2種削除 Set-Cookie x2, generate() -> 2種追加 Set-Cookie x2
-update() -> id1延長のみ Set-Cookie x1, ローテ -> Set-Cookie x2
-*/
-
 
 /*
 fn append() {
@@ -206,11 +176,4 @@ fn login_cookie(series_id: LoginSeriesId, token: LoginToken) -> Cookie<'static> 
         .build()
 }
 
-fn secure_cookie_builder(key: &'static str, value: String) -> CookieBuilder<'static> {
-    Cookie::build((key, value))
-        .same_site(SameSite::Strict)
-        .secure(true)
-        .http_only(true)
-        .path("/")
-        .partitioned(true)
-}*/
+*/

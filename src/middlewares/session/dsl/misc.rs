@@ -4,8 +4,6 @@ use http::{header::SET_COOKIE, Extensions, HeaderMap};
 
 use crate::{common::{fallible::Fallible, id::AccountId, session::value::LoginToken}, middlewares::session::dsl::ManageSessionError};
 
-use super::UnixtimeSeconds;
-
 pub fn insert_account_id(extensions: &mut Extensions, account_id: AccountId) {
     extensions.insert(account_id);
 }
@@ -29,13 +27,26 @@ pub fn should_extend_series_id_expiration(last_series_id_expiration_update_time:
     Ok(current_unixtime - last_series_id_expiration_update_time.value() > SESSION_EXTENSION_THRESHOLD)
 }
 
+pub struct UnixtimeSeconds(u64);
+
+impl UnixtimeSeconds {
+    pub fn new(unixtime_seconds: u64) -> Self {
+        Self(unixtime_seconds)
+    }
+
+    pub fn value(&self) -> u64 {
+        self.0
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
     use std::time::SystemTime;
 
     use http::Extensions;
 
-    use crate::{common::{id::AccountId, session::value::LoginToken}, middlewares::session::dsl::{misc::{can_set_cookie_in_response_header, is_same_token, should_extend_series_id_expiration, SESSION_EXTENSION_THRESHOLD}, UnixtimeSeconds}};
+    use crate::{common::{id::AccountId, session::value::LoginToken}, middlewares::session::dsl::misc::{can_set_cookie_in_response_header, is_same_token, should_extend_series_id_expiration, UnixtimeSeconds, SESSION_EXTENSION_THRESHOLD}};
 
     #[test]
     fn test_insert_account_id() {
