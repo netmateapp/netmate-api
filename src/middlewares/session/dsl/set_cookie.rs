@@ -1,5 +1,5 @@
 use cookie::Cookie;
-use http::{header::SET_COOKIE, HeaderMap, HeaderName, HeaderValue};
+use http::{header::SET_COOKIE, HeaderMap, HeaderValue};
 use time::Duration;
 
 use crate::common::session::value::{secure_cookie_builder, to_cookie_value, LoginSeriesId, LoginToken, SessionManagementId, LOGIN_COOKIE_KEY, LOGIN_ID_EXPIRY_DAYS, SESSION_MANAGEMENT_COOKIE_KEY, SESSION_TIMEOUT_MINUTES};
@@ -46,4 +46,61 @@ fn set_cookie(headers: &mut HeaderMap, cookie: &Cookie<'static>) {
         SET_COOKIE,
         HeaderValue::from_str(cookie.to_string().as_str()).unwrap()
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use cookie::Cookie;
+    use http::{header::SET_COOKIE, HeaderMap};
+
+    use crate::{common::session::value::{to_cookie_value, LoginSeriesId, LoginToken, SessionManagementId, LOGIN_COOKIE_KEY, LOGIN_ID_EXPIRY_DAYS, SESSION_MANAGEMENT_COOKIE_KEY, SESSION_TIMEOUT_MINUTES}, middlewares::session::dsl::set_cookie::{set_new_login_token_in_header, set_new_session_management_id_in_header}};
+
+    use super::set_cookie;
+
+    #[test]
+    fn test_set_new_session_management_id_in_header() {
+        let mut headers = HeaderMap::new();
+        let id = SessionManagementId::gen();
+
+        set_new_session_management_id_in_header(&mut headers, &id);
+
+        let cookie = parse_cookie(&headers);
+
+        assert_eq!(cookie.name(), SESSION_MANAGEMENT_COOKIE_KEY);
+        assert_eq!(cookie.value(), id.value().value().as_str());
+        assert_eq!(cookie.max_age().unwrap(), SESSION_TIMEOUT_MINUTES);
+    }
+
+    #[test]
+    fn test_set_new_login_token_in_header() {
+        let mut headers = HeaderMap::new();
+        let series_id = LoginSeriesId::gen();
+        let token = LoginToken::gen();
+
+        set_new_login_token_in_header(&mut headers, &series_id, &token);
+
+        let cookie = parse_cookie(&headers);
+
+        assert_eq!(cookie.name(), LOGIN_COOKIE_KEY);
+        assert_eq!(cookie.value(), to_cookie_value(&series_id, &token));
+        assert_eq!(cookie.max_age().unwrap(), LOGIN_ID_EXPIRY_DAYS);
+    }
+
+    #[test]
+    fn test_set_cookie() {
+        let mut headers = HeaderMap::new();
+        let cookie = Cookie::new("key", "value");
+
+        set_cookie(&mut headers, &cookie);
+
+        let cookie = parse_cookie(&headers);
+
+        assert_eq!(cookie.name(), "key");
+        assert_eq!(cookie.value(), "value");
+    }
+
+    fn parse_cookie<'a>(headers: &'a HeaderMap) -> Cookie<'a> {
+        let cookie_str = headers.get(SET_COOKIE).unwrap().to_str().unwrap();
+        Cookie::parse(cookie_str).unwrap()
+    }
 }
