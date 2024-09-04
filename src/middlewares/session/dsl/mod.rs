@@ -2,16 +2,17 @@ use std::convert::Infallible;
 
 use extract_session_ids::extract_session_ids;
 use http::{HeaderMap, Request, Response};
-use misc::{can_set_cookie_in_response_header, insert_account_id, is_same_token, should_extend_series_id_expiration, UnixtimeSeconds};
+use misc::{can_set_cookie_in_response_header, insert_account_id, is_same_token, should_extend_series_id_expiration};
 use set_cookie::{clear_session_ids_in_response_header, reset_session_timeout, set_new_login_token_in_header, set_new_session_management_id_in_header};
 use thiserror::Error;
 use tower::Service;
 use tracing::info;
 
-use crate::common::{fallible::Fallible, id::AccountId, session::value::{LoginSeriesId, LoginToken, SessionManagementId}};
+use crate::common::{email::address::Email, fallible::Fallible, id::AccountId, language::Language, session::value::{LoginSeriesId, LoginToken, SessionManagementId}};
 
 mod extract_session_ids;
 mod misc;
+pub use misc::UnixtimeMillis;
 mod set_cookie;
 
 pub(crate) trait ManageSession {
@@ -23,7 +24,7 @@ pub(crate) trait ManageSession {
         4. Fail(S) -> None(L) (普通はない、クライアント側でユーザーが何らかの操作を行っている可能性がある)
         5. None(S) -> None(L) (UIからは送れないはず、UI外でエンドポイントを叩いている可能性が高い)
     */
-    async fn manage_session<S, B>(&self, mut inner: S, mut req: Request<B>) -> Fallible<Response<B>, ManageSessionError>
+    async fn manage_session<S, B>(&self, inner: &mut S, mut req: Request<B>) -> Fallible<S::Response, ManageSessionError>
     where
         S: Service<Request<B>, Error = Infallible, Response = Response<B>>,
     {
@@ -70,9 +71,12 @@ pub(crate) trait ManageSession {
                 } else {
                     // この分岐に到達した場合、ログイン識別子が盗用された可能性がある
 
-                    let is_email_sent = self.send_security_notifications_email(&account_id)
-                        .await
-                        .is_ok();
+                    let is_email_sent = match self.get_email_and_language(&account_id).await {
+                        Ok((email, language)) => self.send_security_notification_email(&email, &language)
+                            .await
+                            .is_ok(),
+                        _ => false
+                    };
 
                     match self.delete_all_sessions(&account_id).await {
                         // セッションは削除されているため、ログに出力しても問題ない
@@ -132,19 +136,21 @@ pub(crate) trait ManageSession {
 
         if should_extend {
             // 既存のシリーズIDの有効期限を延長する
-            self.extend_series_id_expiration(series_id).await
+            self.extend_series_id_expiration(account_id, series_id).await
         } else {
             Ok(())
         }
     }
 
-    async fn get_last_series_id_extension_time(&self, account_id: &AccountId, series_id: &LoginSeriesId) -> Fallible<UnixtimeSeconds, ManageSessionError>;
+    async fn get_last_series_id_extension_time(&self, account_id: &AccountId, series_id: &LoginSeriesId) -> Fallible<UnixtimeMillis, ManageSessionError>;
 
-    async fn extend_series_id_expiration(&self, series_id: &LoginSeriesId) -> Fallible<(), ManageSessionError>;
+    async fn extend_series_id_expiration(&self, account_id: &AccountId, series_id: &LoginSeriesId) -> Fallible<(), ManageSessionError>;
 
     async fn delete_all_sessions(&self, account_id: &AccountId) -> Fallible<(), ManageSessionError>;
 
-    async fn send_security_notifications_email(&self, account_id: &AccountId) -> Fallible<(), ManageSessionError>;
+    async fn get_email_and_language(&self, account_id: &AccountId) -> Fallible<(Email, Language), ManageSessionError>;
+
+    async fn send_security_notification_email(&self, email: &Email, language: &Language) -> Fallible<(), ManageSessionError>;
 }
 
 #[derive(Debug, Error)]
@@ -161,6 +167,16 @@ pub enum ManageSessionError {
     RegisteredNewLoginIdFailed(#[source] anyhow::Error),
     #[error("系列識別子の期限延長可能性の確認に失敗しました")]
     CheckSeriesIdExpirationExtendabilityFailed(#[source] anyhow::Error),
+    #[error("系列識別子の期限を延長した最終時刻の取得に失敗しました")]
+    GetLastSeriesIdExtensionTimeFailed(#[source] anyhow::Error),
+    #[error("系列識別子の期限延長に失敗しました")]
+    ExtendSeriesIdExpirationFailed(#[source] anyhow::Error),
+    #[error("ユーザーの基本情報の取得に失敗しました")]
+    GetEmailAndLanguageFailed(#[source] anyhow::Error),
+    #[error("セキュリティ通知の送信に失敗しました")]
+    SendSecurityNotificationEmailFailed(#[source] anyhow::Error),
+    #[error("全セッションの削除に失敗しました")]
+    DeleteAllSessionsFailed(#[source] anyhow::Error),
     #[error("無効なセッションです")]
     InvalidSession(HeaderMap),
 }
@@ -175,10 +191,13 @@ mod tests {
     use http::{HeaderValue, Request, Response};
     use tower::Service;
 
+    use crate::common::email::address::Email;
     use crate::common::fallible::Fallible;
+    use crate::common::id::uuid7::Uuid7;
     use crate::common::id::AccountId;
+    use crate::common::language::Language;
     use crate::common::session::value::{to_cookie_value, LoginId, LoginSeriesId, LoginToken, SessionManagementId, LOGIN_COOKIE_KEY, SESSION_MANAGEMENT_COOKIE_KEY};
-    use super::{misc::UnixtimeSeconds, ManageSession, ManageSessionError};
+    use super::{misc::UnixtimeMillis, ManageSession, ManageSessionError};
 
     /*
         1. S (通常のセッション認証、これが最も多い)
@@ -200,7 +219,7 @@ mod tests {
     impl ManageSession for MockManageSession {
         async fn resolve(&self, session_management_id: &SessionManagementId) -> Fallible<Option<AccountId>, ManageSessionError> {
             if session_management_id == &*CASE_1 {
-                Ok(Some(AccountId::gen()))
+                Ok(Some(AccountId::new(Uuid7::now())))
             } else {
                 Ok(None)
             }
@@ -208,9 +227,9 @@ mod tests {
 
         async fn get_login_token_and_account_id(&self, series_id: &LoginSeriesId) -> Fallible<(Option<LoginToken>, Option<AccountId>), ManageSessionError> {
             if series_id == &*CASE_2.series_id() {
-                Ok((Some(LoginToken::from_str(*&CASE_2.token().value().value()).unwrap()), Some(AccountId::gen())))
+                Ok((Some(LoginToken::from_str(*&CASE_2.token().value().value()).unwrap()), Some(AccountId::new(Uuid7::now()))))
             } else if series_id == &*CASE_5.series_id() {
-                Ok((Some(LoginToken::gen()), Some(AccountId::gen())))
+                Ok((Some(LoginToken::gen()), Some(AccountId::new(Uuid7::now()))))
             } else {
                 Ok((None, None))
             }
@@ -224,11 +243,11 @@ mod tests {
             Ok(())
         }
 
-        async fn get_last_series_id_extension_time(&self, _: &AccountId, _: &LoginSeriesId) -> Fallible<UnixtimeSeconds, ManageSessionError> {
-            Ok(UnixtimeSeconds::new(0))
+        async fn get_last_series_id_extension_time(&self, _: &AccountId, _: &LoginSeriesId) -> Fallible<UnixtimeMillis, ManageSessionError> {
+            Ok(UnixtimeMillis::new(0))
         }
 
-        async fn extend_series_id_expiration(&self, _: &LoginSeriesId) -> Fallible<(), ManageSessionError> {
+        async fn extend_series_id_expiration(&self, _: &AccountId, _: &LoginSeriesId) -> Fallible<(), ManageSessionError> {
             Ok(())
         }
 
@@ -236,7 +255,11 @@ mod tests {
             Ok(())
         }
 
-        async fn send_security_notifications_email(&self, _: &AccountId) -> Fallible<(), ManageSessionError> {
+        async fn get_email_and_language(&self, _: &AccountId) -> Fallible<(Email, Language), ManageSessionError> {
+            Ok((Email::from_str("test@example.com").unwrap(), Language::Japanese))
+        }
+
+        async fn send_security_notification_email(&self, _: &Email, _: &Language) -> Fallible<(), ManageSessionError> {
             Ok(())
         }
     }
@@ -271,7 +294,7 @@ mod tests {
         }
         
         MockManageSession.manage_session(
-            MockInnerService,
+            &mut MockInnerService,
             request,
         ).await
     }

@@ -8,6 +8,7 @@ use crate::{common::{email::{address::Email, resend::ResendEmailSender, send::{B
 
 use super::dsl::{ManageSession, ManageSessionError, UnixtimeMillis};
 
+#[derive(Clone)]
 pub struct ManageSessionImpl {
     db: Arc<Session>,
     cache: Arc<Pool>,
