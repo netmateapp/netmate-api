@@ -122,11 +122,13 @@ impl LoginId {
 }
 
 pub fn to_cookie_value(series_id: &LoginSeriesId, token: &LoginToken) -> String {
-    format!("{}${}", series_id.value().value(), token.value().value())
+    format!("{}{}{}", series_id.value().value(), LOGIN_ID_SEPARATOR, token.value().value())
 }
 
 pub const SESSION_MANAGEMENT_COOKIE_KEY: &str = "__Host-id1";
 pub const LOGIN_COOKIE_KEY: &str = "__Host-id2";
+
+pub const LOGIN_ID_SEPARATOR: char = '$';
 
 pub const SESSION_TIMEOUT_MINUTES: Duration = Duration::minutes(30);
 pub const LOGIN_ID_EXPIRY_DAYS: Duration = Duration::days(400);
