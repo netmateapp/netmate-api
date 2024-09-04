@@ -31,6 +31,8 @@ impl SignUpImpl {
 }
 
 static AUTHENTICATION_EMAIL_ADDRESS: LazyLock<NetmateEmail> = LazyLock::new(|| NetmateEmail::try_from(Email::from_str("verify-email@account.netmate.app").unwrap()).unwrap());
+static JA_AUTHENTICATION_EMAIL_SUBJECT: LazyLock<Subject> = LazyLock::new(|| Subject::from_str(ja::sign_up::AUTHENTICATION_EMAIL_SUBJECT).unwrap());
+static US_EN_AUTHENTICATION_EMAIL_SUBJECT: LazyLock<Subject> = LazyLock::new(|| Subject::from_str(us_en::sign_up::AUTHENTICATION_EMAIL_SUBJECT).unwrap());
 
 impl SignUp for SignUpImpl {
     async fn is_available_email(&self, email: &Email) -> Fallible<bool, SignUpError> {
@@ -65,16 +67,15 @@ impl SignUp for SignUpImpl {
 
         // ユーザーの設定言語に応じたテキストを取得する
         let (subject, html_content, plain_text) = match language {
-            Language::Japanese => (ja::sign_up::AUTHENTICATION_EMAIL_SUBJECT, ja::sign_up::ATUHENTICATION_EMAIL_BODY_HTML, ja::sign_up::AUTHENTICATION_EMAIL_BODY_PLAIN),
-            _ => (us_en::sign_up::AUTHENTICATION_EMAIL_SUBJECT, us_en::sign_up::ATUHENTICATION_EMAIL_BODY_HTML, us_en::sign_up::AUTHENTICATION_EMAIL_BODY_PLAIN),
+            Language::Japanese => (&*JA_AUTHENTICATION_EMAIL_SUBJECT, ja::sign_up::ATUHENTICATION_EMAIL_BODY_HTML, ja::sign_up::AUTHENTICATION_EMAIL_BODY_PLAIN),
+            _ => (&*US_EN_AUTHENTICATION_EMAIL_SUBJECT, us_en::sign_up::ATUHENTICATION_EMAIL_BODY_HTML, us_en::sign_up::AUTHENTICATION_EMAIL_BODY_PLAIN),
         };
 
-        // `new_unchecked`により生成された値オブジェクトの正当性は自動テストが保証する
         ResendEmailService::send(
             sender_name,
             &*AUTHENTICATION_EMAIL_ADDRESS,
             email,
-            &Subject::new_unchecked(subject),
+            &subject,
             &Body::new(
                 &html_content.replace("{token}", token.value()),
                 &plain_text.replace("{token}", token.value())

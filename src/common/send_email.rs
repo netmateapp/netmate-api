@@ -46,8 +46,8 @@ impl TryFrom<Email> for NetmateEmail {
 pub struct Subject(String);
 
 impl Subject {
-    pub fn new_unchecked(s: &str) -> Self {
-        Self(String::from(s))
+    pub fn value(&self) -> &String {
+        &self.0
     }
 }
 
