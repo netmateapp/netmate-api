@@ -1,6 +1,6 @@
 use std::{convert::Infallible, time::{SystemTime, UNIX_EPOCH}};
 
-use extract::{convert_to_session_ids, extract_cookies, extract_session_management_cookie_and_login_cookie};
+use extract_session_ids::extract_session_ids;
 use http::{header::SET_COOKIE, Extensions, HeaderMap, HeaderName, Request, Response};
 use thiserror::Error;
 use tower::Service;
@@ -8,7 +8,7 @@ use tracing::info;
 
 use crate::common::{fallible::Fallible, id::AccountId, session::value::{LoginId, LoginSeriesId, LoginToken, SessionManagementId}};
 
-mod extract;
+mod extract_session_ids;
 
 pub(crate) trait ManageSession {
     /*
@@ -23,7 +23,7 @@ pub(crate) trait ManageSession {
     where
         S: Service<Request<B>, Error = Infallible, Response = Response<B>>,
     {
-        let (maybe_session_management_id, maybe_login_id) = Self::extract_session_ids(req.headers());
+        let (maybe_session_management_id, maybe_login_id) = extract_session_ids(req.headers());
 
         // ここで戻ることは基本的にない
         // ルート設定が誤っているか、クライアントが不適切にリクエストをしているかのどちらかである
@@ -89,13 +89,6 @@ pub(crate) trait ManageSession {
             Self::clear_session_management_id_header(),
             Self::clear_login_id_header()
         ]))
-    }
-
-    fn extract_session_ids(request_headers: &HeaderMap) -> (Option<SessionManagementId>, Option<LoginId>) {
-        match extract_cookies(request_headers) {
-            Some(cookies) => convert_to_session_ids(extract_session_management_cookie_and_login_cookie(cookies)),
-            None => (None, None)
-        }
     }
 
     async fn resolve(&self, session_management_id: &SessionManagementId) -> Fallible<Option<AccountId>, ManageSessionError>;

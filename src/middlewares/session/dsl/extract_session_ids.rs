@@ -5,7 +5,14 @@ use http::{header::COOKIE, HeaderMap};
 
 use crate::common::session::value::{LoginId, LoginSeriesId, LoginToken, SessionManagementId, LOGIN_COOKIE_KEY, SESSION_MANAGEMENT_COOKIE_KEY};
 
-pub fn extract_cookies(headers: &HeaderMap) -> Option<SplitCookies<'_>> {
+pub fn extract_session_ids(request_headers: &HeaderMap) -> (Option<SessionManagementId>, Option<LoginId>) {
+    match extract_cookies(request_headers) {
+        Some(cookies) => convert_to_session_ids(extract_session_management_cookie_and_login_cookie(cookies)),
+        None => (None, None)
+    }
+}
+
+fn extract_cookies(headers: &HeaderMap) -> Option<SplitCookies<'_>> {
     // 攻撃を防ぐため、上限バイト数を決めておく
     // __Host-id1=(11)<24>; (2)__Host-id2=(11)<24>$(1)<24> = 97bytes;
     // https://developer.mozilla.org/ja/docs/Web/HTTP/Headers/Cookie
@@ -17,7 +24,7 @@ pub fn extract_cookies(headers: &HeaderMap) -> Option<SplitCookies<'_>> {
         .map(|cookie_str| Cookie::split_parse(cookie_str))
 }
 
-pub fn extract_session_management_cookie_and_login_cookie(cookies: SplitCookies<'_>) -> (Option<Cookie<'_>>, Option<Cookie<'_>>) {
+fn extract_session_management_cookie_and_login_cookie(cookies: SplitCookies<'_>) -> (Option<Cookie<'_>>, Option<Cookie<'_>>) {
     let mut session_management_cookie = None;
     let mut login_cookie = None;
 
@@ -36,7 +43,7 @@ pub fn extract_session_management_cookie_and_login_cookie(cookies: SplitCookies<
     (session_management_cookie, login_cookie)
 }
 
-pub fn convert_to_session_ids(cookies: (Option<Cookie<'_>>, Option<Cookie<'_>>)) -> (Option<SessionManagementId>, Option<LoginId>) {
+fn convert_to_session_ids(cookies: (Option<Cookie<'_>>, Option<Cookie<'_>>)) -> (Option<SessionManagementId>, Option<LoginId>) {
     let session_management_id = cookies.0
         .map(|c| c.value().to_string())
         .map(|s| SessionManagementId::from_str(&s))
@@ -57,4 +64,9 @@ pub fn convert_to_session_ids(cookies: (Option<Cookie<'_>>, Option<Cookie<'_>>))
         });
     
     (session_management_id, login_id)
+}
+
+#[cfg(test)]
+mod tests {
+
 }
