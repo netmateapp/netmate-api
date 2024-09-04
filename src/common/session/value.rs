@@ -122,7 +122,7 @@ impl LoginId {
 }
 
 pub fn to_cookie_value(series_id: &LoginSeriesId, token: &LoginToken) -> String {
-    format!("{}:{}", series_id.value().value(), token.value().value())
+    format!("{}${}", series_id.value().value(), token.value().value())
 }
 
 pub const SESSION_MANAGEMENT_COOKIE_KEY: &str = "__Host-id1";
