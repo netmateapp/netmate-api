@@ -8,7 +8,8 @@ use serde::Deserialize;
 use tokio::task;
 use tracing::info;
 
-use crate::common::{birth_year::BirthYear, email::Email, language::Language, password::Password, region::Region};
+use crate::common::email::address::Email;
+use crate::common::{birth_year::BirthYear, language::Language, password::Password, region::Region};
 use crate::helper::error::InitError;
 
 use super::dsl::SignUp;

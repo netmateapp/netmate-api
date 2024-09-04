@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::common::{birth_year::BirthYear, email::Email, fallible::Fallible, language::Language, password::{Password, PasswordHash}, region::Region};
+use crate::common::{birth_year::BirthYear, email::address::Email, fallible::Fallible, language::Language, password::{Password, PasswordHash}, region::Region};
 
 use super::value::OneTimeToken;
 
@@ -43,7 +43,7 @@ mod tests {
 
     use thiserror::Error;
 
-    use crate::{common::{birth_year::BirthYear, email::Email, language::Language, password::{Password, PasswordHash}, region::Region}, routes::accounts::creation::sign_up::value::OneTimeToken};
+    use crate::{common::{birth_year::BirthYear, email::address::Email, language::Language, password::{Password, PasswordHash}, region::Region}, routes::accounts::creation::sign_up::value::OneTimeToken};
 
     use super::{Fallible, SignUp, SignUpError};
 

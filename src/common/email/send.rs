@@ -107,8 +107,8 @@ impl PlainText {
 pub struct Body(HtmlContent, PlainText);
 
 impl Body {
-    pub fn new(html_content: &str, plain_text: &str) -> Self {
-        Self(HtmlContent::new(html_content), PlainText::new(plain_text))
+    pub fn new(html_content: HtmlContent, plain_text: PlainText) -> Self {
+        Self(html_content, plain_text)
     }
 
     pub fn html_content(&self) -> &HtmlContent {

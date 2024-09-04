@@ -2,7 +2,7 @@ use std::{str::FromStr, sync::{Arc, LazyLock}};
 
 use scylla::{prepared_statement::PreparedStatement, Session};
 
-use crate::{common::{birth_year::BirthYear, email::Email, fallible::Fallible, language::Language, password::PasswordHash, region::Region, send_email::{Body, NetmateEmail, ResendEmailService, SenderNameLocale, Subject, TransactionalEmailService}}, helper::{error::InitError, scylla::prepare}, translation::{ja, us_en}};
+use crate::{common::{birth_year::BirthYear, email::{address::Email, resend::ResendEmailSender, send::{Body, EmailSender, HtmlContent, NetmateEmail, PlainText, SenderName, Subject}}, fallible::Fallible, language::Language, password::PasswordHash, region::Region}, helper::{error::InitError, scylla::prepare}, translation::{ja, us_en}};
 
 use super::{dsl::{SignUp, SignUpError}, value::OneTimeToken};
 
@@ -63,7 +63,7 @@ impl SignUp for SignUpImpl {
     }
 
     async fn send_verification_email(&self, email: &Email, language: &Language, token: &OneTimeToken) -> Result<(), SignUpError> {
-        let sender_name = &SenderNameLocale::expressed_in(language);
+        let sender_name = SenderName::by(language);
 
         // ユーザーの設定言語に応じたテキストを取得する
         let (subject, html_content, plain_text) = match language {
@@ -71,30 +71,13 @@ impl SignUp for SignUpImpl {
             _ => (&*US_EN_AUTHENTICATION_EMAIL_SUBJECT, us_en::sign_up::ATUHENTICATION_EMAIL_BODY_HTML, us_en::sign_up::AUTHENTICATION_EMAIL_BODY_PLAIN),
         };
 
-        ResendEmailService::send(
-            sender_name,
-            &*AUTHENTICATION_EMAIL_ADDRESS,
-            email,
-            &subject,
-            &Body::new(
-                &html_content.replace("{token}", token.value()),
-                &plain_text.replace("{token}", token.value())
-            )
-        )
+        let body = Body::new(
+            HtmlContent::new(&html_content.replace("{token}", token.value())),
+            PlainText::new(&plain_text.replace("{token}", token.value()))
+        );
+
+        ResendEmailSender::send(&*AUTHENTICATION_EMAIL_ADDRESS, email, &sender_name, &subject, &body)
             .await
             .map_err(|e| SignUpError::AuthenticationEmailSendFailed(e.into()))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use std::str::FromStr;
-
-    use crate::{common::send_email::Subject, translation::{ja, us_en}};
-
-    #[test]
-    fn all_language_subjects() {
-        let _ = Subject::from_str(ja::sign_up::AUTHENTICATION_EMAIL_SUBJECT);
-        let _ = Subject::from_str(us_en::sign_up::AUTHENTICATION_EMAIL_SUBJECT);
     }
 }
