@@ -22,13 +22,7 @@ impl SenderNameLocale {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct NetmateEmail(String);
-
-impl NetmateEmail {
-    pub fn new_unchecked(s: &str) -> Self {
-        NetmateEmail(String::from(s))
-    }
-}
+pub struct NetmateEmail(Email);
 
 #[derive(Debug, PartialEq, Error)]
 #[error("ドメインのメールアドレスの形式を満たしませんでした")]
@@ -108,7 +102,7 @@ impl TransactionalEmailService for ResendEmailService {
             SenderNameLocale::English => us_en::email::SENDER_NAME,
         };
 
-        let from = format!("{} <{}>", sender_name, from.0);
+        let from = format!("{} <{}>", sender_name, from.0.value());
         let to = [to.value()];
 
         let email = CreateEmailBaseOptions::new(from, to, &subject.0)

@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{str::FromStr, sync::{Arc, LazyLock}};
 
 use scylla::{prepared_statement::PreparedStatement, Session};
 
@@ -30,7 +30,7 @@ impl SignUpImpl {
     }
 }
 
-const AUTHENTICATION_EMAIL_ADDRESS: &str = "verify-email@account.netmate.app";
+static AUTHENTICATION_EMAIL_ADDRESS: LazyLock<NetmateEmail> = LazyLock::new(|| NetmateEmail::try_from(Email::from_str("verify-email@account.netmate.app").unwrap()).unwrap());
 
 impl SignUp for SignUpImpl {
     async fn is_available_email(&self, email: &Email) -> Fallible<bool, SignUpError> {
@@ -72,7 +72,7 @@ impl SignUp for SignUpImpl {
         // `new_unchecked`により生成された値オブジェクトの正当性は自動テストが保証する
         ResendEmailService::send(
             sender_name,
-            &NetmateEmail::new_unchecked(AUTHENTICATION_EMAIL_ADDRESS),
+            &*AUTHENTICATION_EMAIL_ADDRESS,
             email,
             &Subject::new_unchecked(subject),
             &Body::new(
@@ -89,21 +89,7 @@ impl SignUp for SignUpImpl {
 mod tests {
     use std::str::FromStr;
 
-    use crate::{common::{email::Email, send_email::{NetmateEmail, Subject}}, translation::{ja, us_en}};
-
-    use super::{SignUpError, AUTHENTICATION_EMAIL_ADDRESS};
-
-    #[test]
-    fn sender_email() {
-        let from = match Email::from_str(AUTHENTICATION_EMAIL_ADDRESS) {
-            Ok(email) => match NetmateEmail::try_from(email) {
-                Ok(ne) => Ok(ne),
-                Err(e) => Err(SignUpError::AuthenticationEmailSendFailed(e.into())),
-            },
-            Err(e) => Err(SignUpError::AuthenticationEmailSendFailed(e.into()))
-        };
-        assert!(from.is_ok());
-    }
+    use crate::{common::send_email::Subject, translation::{ja, us_en}};
 
     #[test]
     fn all_language_subjects() {
