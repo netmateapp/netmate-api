@@ -22,10 +22,13 @@ pub(crate) trait ManageSession {
     {
         let (maybe_session_management_id, maybe_login_id) = Self::extract_session_ids(req.headers());
 
+        // ここで戻ることは基本的にない
+        // ルート設定が誤っているか、クライアントが不適切にリクエストをしているかのどちらかである
         if maybe_session_management_id.is_none() && maybe_login_id.is_none() {
             return Err(ManageSessionError::NoSession);
         }
 
+        // 通常のセッション識別子からアカウント識別子の取得を試みる
         if let Some(session_management_id) = maybe_session_management_id {
             if let Some(account_id) = self.resolve(&session_management_id).await? {
                 Self::insert_account_id(req.extensions_mut(), &account_id);
@@ -41,6 +44,7 @@ pub(crate) trait ManageSession {
             }
         }
 
+        // 系列識別子からセッション識別子の生成とアカウント識別子の取得を試みる
         if let Some(login_id) = maybe_login_id {
             if let (Some(login_token), Some(account_id)) = self.get_login_token_and_account_id(login_id.series_id()).await? {
                 if Self::is_same_token(&login_id.token(), &login_token) {
@@ -77,6 +81,7 @@ pub(crate) trait ManageSession {
             }
         }
 
+        // 無効なセッション識別子であるため、削除指令を送信する
         Err(ManageSessionError::InvalidSession([
             Self::clear_session_management_id_header(),
             Self::clear_login_id_header()
