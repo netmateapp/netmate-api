@@ -1,4 +1,4 @@
-use std::convert::Infallible;
+use std::{convert::Infallible, time::{SystemTime, UNIX_EPOCH}};
 
 use http::{header::SET_COOKIE, Extensions, HeaderMap, HeaderName, Request, Response};
 use thiserror::Error;
@@ -31,7 +31,7 @@ pub(crate) trait ManageSession {
         // 通常のセッション識別子からアカウント識別子の取得を試みる
         if let Some(session_management_id) = maybe_session_management_id {
             if let Some(account_id) = self.resolve(&session_management_id).await? {
-                Self::insert_account_id(req.extensions_mut(), &account_id);
+                Self::insert_account_id(req.extensions_mut(), account_id.clone());
 
                 // `Error`は`Infallible`で起こり得ないので`unwrap()`で問題ない
                 let mut response = inner.call(req).await.unwrap();
@@ -48,7 +48,7 @@ pub(crate) trait ManageSession {
         if let Some(login_id) = maybe_login_id {
             if let (Some(login_token), Some(account_id)) = self.get_login_token_and_account_id(login_id.series_id()).await? {
                 if Self::is_same_token(&login_id.token(), &login_token) {
-                    Self::insert_account_id(req.extensions_mut(), &account_id);
+                    Self::insert_account_id(req.extensions_mut(), account_id.clone());
 
                     // `Error`は`Infallible`で起こり得ないので`unwrap()`で問題ない
                     let mut response = inner.call(req).await.unwrap();
@@ -92,7 +92,9 @@ pub(crate) trait ManageSession {
 
     async fn resolve(&self, session_management_id: &SessionManagementId) -> Fallible<Option<AccountId>, ManageSessionError>;
 
-    fn insert_account_id(extensions: &mut Extensions, account_id: &AccountId);
+    fn insert_account_id(extensions: &mut Extensions, account_id: AccountId) {
+        extensions.insert(account_id);
+    }
 
     fn can_set_cookie_in_response_header(headers: &HeaderMap) -> bool {
         !headers.contains_key(SET_COOKIE)
@@ -146,7 +148,16 @@ pub(crate) trait ManageSession {
 
     async fn last_series_id_expiration_update_time(&self, account_id: &AccountId, series_id: &LoginSeriesId) -> Fallible<UnixtimeSeconds, ManageSessionError>;
 
-    fn should_extend_series_id_expiration(last_series_id_expiration_update_time: &UnixtimeSeconds) -> Fallible<bool, ManageSessionError>;
+    fn should_extend_series_id_expiration(last_series_id_expiration_update_time: &UnixtimeSeconds) -> Fallible<bool, ManageSessionError> {
+        let current_unixtime = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .map_err(|e| ManageSessionError::CheckSeriesIdExpirationExtendabilityFailed(e.into()))?;
+
+        const SESSION_EXTENSION_THRESHOLD: u64 = 30 * 24 * 60 * 60;
+        
+        Ok(current_unixtime - last_series_id_expiration_update_time.value() > SESSION_EXTENSION_THRESHOLD)
+    }
 
     async fn extend_series_id_expiration(&self, series_id: &LoginSeriesId) -> Fallible<(), ManageSessionError>;
 
@@ -160,7 +171,7 @@ pub(crate) trait ManageSession {
 
     fn clear_session_management_id_header() -> (HeaderName, &'static str);
 
-    fn clear_login_id_header() -> (HeaderName, &'static str);
+    fn clear_login_id_header() -> (HeaderName, &'static str) ;
 }
 
 #[derive(Debug, Error)]
@@ -168,7 +179,9 @@ pub enum ManageSessionError {
     #[error("セッションがありません")]
     NoSession,
     #[error("無効なセッションです")]
-    InvalidSession([(HeaderName, &'static str); 2])
+    InvalidSession([(HeaderName, &'static str); 2]),
+    #[error("系列識別子の期限延長可能性の確認に失敗しました")]
+    CheckSeriesIdExpirationExtendabilityFailed(#[source] anyhow::Error),
 }
 
 pub struct UnixtimeSeconds(u64);
