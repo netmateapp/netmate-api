@@ -1,6 +1,7 @@
 use thiserror::Error;
 use uuid::Uuid;
 
+#[derive(Clone)]
 pub struct Uuid7(Uuid);
 
 impl Uuid7 {

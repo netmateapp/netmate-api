@@ -4,6 +4,7 @@ use uuid7::Uuid7;
 pub mod uuid4;
 pub mod uuid7;
 
+#[derive(Clone)]
 pub struct AccountId(Uuid7);
 
 impl AccountId {
