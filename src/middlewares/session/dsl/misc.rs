@@ -16,22 +16,29 @@ pub fn is_same_token(request_token: &LoginToken, registered_token: &LoginToken) 
     request_token.value().value() == registered_token.value().value()
 }
 
-const SESSION_EXTENSION_THRESHOLD: u64 = 30 * 24 * 60 * 60;
+const SESSION_EXTENSION_THRESHOLD: u64 = 30 * 24 * 60 * 60 * 1000;
 
-pub fn should_extend_series_id_expiration(last_series_id_expiration_update_time: &UnixtimeSeconds) -> Fallible<bool, ManageSessionError> {
+pub fn should_extend_series_id_expiration(last_series_id_expiration_update_time: &UnixtimeMillis) -> Fallible<bool, ManageSessionError> {
     let current_unixtime = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs())
+        .map(|d| d.as_millis() as u64)
         .map_err(|e| ManageSessionError::CheckSeriesIdExpirationExtendabilityFailed(e.into()))?;
 
     Ok(current_unixtime - last_series_id_expiration_update_time.value() > SESSION_EXTENSION_THRESHOLD)
 }
 
-pub struct UnixtimeSeconds(u64);
+pub struct UnixtimeMillis(u64);
 
-impl UnixtimeSeconds {
-    pub fn new(unixtime_seconds: u64) -> Self {
-        Self(unixtime_seconds)
+impl UnixtimeMillis {
+    pub fn new(unixtime_millis: u64) -> Self {
+        Self(unixtime_millis)
+    }
+
+    pub fn now() -> Self {
+        Self(SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_millis() as u64)
     }
 
     pub fn value(&self) -> u64 {
@@ -42,11 +49,9 @@ impl UnixtimeSeconds {
 
 #[cfg(test)]
 mod tests {
-    use std::time::SystemTime;
-
     use http::Extensions;
 
-    use crate::{common::{id::{uuid7::Uuid7, AccountId}, session::value::LoginToken}, middlewares::session::dsl::misc::{can_set_cookie_in_response_header, is_same_token, should_extend_series_id_expiration, UnixtimeSeconds, SESSION_EXTENSION_THRESHOLD}};
+    use crate::{common::{id::{uuid7::Uuid7, AccountId}, session::value::LoginToken}, middlewares::session::dsl::misc::{can_set_cookie_in_response_header, is_same_token, should_extend_series_id_expiration, UnixtimeMillis, SESSION_EXTENSION_THRESHOLD}};
 
     #[test]
     fn test_insert_account_id() {
@@ -73,13 +78,10 @@ mod tests {
 
     #[test]
     fn test_should_extend_series_id_expiration() {
-        let current_unixtime = SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
+        let current_unixtime = UnixtimeMillis::now();
 
-        let within_threshold_unixtime = UnixtimeSeconds::new(current_unixtime - SESSION_EXTENSION_THRESHOLD + 10);
-        let over_threshold_unixtime = UnixtimeSeconds::new(current_unixtime - SESSION_EXTENSION_THRESHOLD - 1);
+        let within_threshold_unixtime = UnixtimeMillis::new(current_unixtime.value() - SESSION_EXTENSION_THRESHOLD + 10);
+        let over_threshold_unixtime = UnixtimeMillis::new(current_unixtime.value() - SESSION_EXTENSION_THRESHOLD - 1);
 
         assert_eq!(should_extend_series_id_expiration(&within_threshold_unixtime).unwrap(), false);
         assert_eq!(should_extend_series_id_expiration(&over_threshold_unixtime).unwrap(), true);
