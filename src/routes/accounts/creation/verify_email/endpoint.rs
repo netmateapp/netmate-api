@@ -29,7 +29,7 @@ pub async fn handler(
         Ok(top_tag_id) => {
             info!(
                 ip_address = %addr.ip(),
-                "メールアドレスの認証に成功しました"
+                "メールアドレスの認証に成功しました。"
             );
 
             Ok(Json(top_tag_id.value().value().to_string()))
@@ -38,7 +38,7 @@ pub async fn handler(
             info!(
                 ip_address = %addr.ip(),
                 error = %e,
-                "メールアドレスの認証に失敗しました"
+                "メールアドレスの認証に失敗しました。"
             );
 
             match e {
