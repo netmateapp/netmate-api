@@ -2,7 +2,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use http::{header::SET_COOKIE, Extensions, HeaderMap};
 
-use crate::{common::{fallible::Fallible, id::AccountId, session::value::LoginToken}, middlewares::session::dsl::ManageSessionError};
+use crate::{common::{fallible::Fallible, id::AccountId, session::value::LoginToken, unixtime::UnixtimeMillis}, middlewares::session::dsl::ManageSessionError};
 
 pub fn insert_account_id(extensions: &mut Extensions, account_id: AccountId) {
     extensions.insert(account_id);
@@ -18,34 +18,26 @@ pub fn is_same_token(request_token: &LoginToken, registered_token: &LoginToken) 
 
 const SESSION_EXTENSION_THRESHOLD: u64 = 30 * 24 * 60 * 60 * 1000;
 
-pub fn should_extend_series_id_expiration(last_series_id_expiration_update_time: &UnixtimeMillis) -> Fallible<bool, ManageSessionError> {
+pub struct SeriesIdRefreshTimestamp(UnixtimeMillis);
+
+impl SeriesIdRefreshTimestamp {
+    pub fn new(unixtime: UnixtimeMillis) -> Self {
+        Self(unixtime)
+    }
+
+    pub fn value(&self) -> &UnixtimeMillis {
+        &self.0
+    }
+}
+
+pub fn should_extend_series_id_expiration(timestamp: &SeriesIdRefreshTimestamp) -> Fallible<bool, ManageSessionError> {
     let current_unixtime = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_millis() as u64)
         .map_err(|e| ManageSessionError::CheckSeriesIdExpirationExtendabilityFailed(e.into()))?;
 
-    Ok(current_unixtime - last_series_id_expiration_update_time.value() > SESSION_EXTENSION_THRESHOLD)
+    Ok(current_unixtime - timestamp.value().value() > SESSION_EXTENSION_THRESHOLD)
 }
-
-pub struct UnixtimeMillis(u64);
-
-impl UnixtimeMillis {
-    pub fn new(unixtime_millis: u64) -> Self {
-        Self(unixtime_millis)
-    }
-
-    pub fn now() -> Self {
-        Self(SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_millis() as u64)
-    }
-
-    pub fn value(&self) -> u64 {
-        self.0
-    }
-}
-
 
 #[cfg(test)]
 mod tests {
@@ -100,20 +92,20 @@ mod tests {
     }
 
     mod should_extend_series_id_expiration_tests {
-        use crate::middlewares::session::dsl::misc::{should_extend_series_id_expiration, UnixtimeMillis, SESSION_EXTENSION_THRESHOLD};
+        use crate::middlewares::session::dsl::misc::{should_extend_series_id_expiration, SeriesIdRefreshTimestamp, UnixtimeMillis, SESSION_EXTENSION_THRESHOLD};
 
         #[test]
         fn within_threshold() {
             let current_unixtime = UnixtimeMillis::now();
-            let within_threshold_unixtime = UnixtimeMillis::new(current_unixtime.value() - SESSION_EXTENSION_THRESHOLD + 86400);
-            assert_eq!(should_extend_series_id_expiration(&within_threshold_unixtime).unwrap(), false);
+            let within_threshold_unixtime = UnixtimeMillis::from(current_unixtime.value() - SESSION_EXTENSION_THRESHOLD + 86400);
+            assert_eq!(should_extend_series_id_expiration(&SeriesIdRefreshTimestamp::new(within_threshold_unixtime)).unwrap(), false);
         }
 
         #[test]
         fn over_threshold() {
             let current_unixtime = UnixtimeMillis::now();
-            let over_threshold_unixtime = UnixtimeMillis::new(current_unixtime.value() - SESSION_EXTENSION_THRESHOLD - 1);
-            assert_eq!(should_extend_series_id_expiration(&over_threshold_unixtime).unwrap(), true);
+            let over_threshold_unixtime = UnixtimeMillis::from(current_unixtime.value() - SESSION_EXTENSION_THRESHOLD - 1);
+            assert_eq!(should_extend_series_id_expiration(&SeriesIdRefreshTimestamp::new(over_threshold_unixtime)).unwrap(), true);
         }
     }
 }

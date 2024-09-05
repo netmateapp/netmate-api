@@ -12,7 +12,7 @@ use crate::common::{email::address::Email, fallible::Fallible, id::AccountId, la
 
 mod extract_session_ids;
 mod misc;
-pub use misc::UnixtimeMillis;
+pub use misc::SeriesIdRefreshTimestamp;
 mod set_cookie;
 
 pub(crate) trait ManageSession {
@@ -142,7 +142,7 @@ pub(crate) trait ManageSession {
         }
     }
 
-    async fn get_last_series_id_extension_time(&self, account_id: &AccountId, series_id: &LoginSeriesId) -> Fallible<UnixtimeMillis, ManageSessionError>;
+    async fn get_last_series_id_extension_time(&self, account_id: &AccountId, series_id: &LoginSeriesId) -> Fallible<SeriesIdRefreshTimestamp, ManageSessionError>;
 
     async fn extend_series_id_expiration(&self, account_id: &AccountId, series_id: &LoginSeriesId) -> Fallible<(), ManageSessionError>;
 
@@ -198,7 +198,9 @@ mod tests {
     use crate::common::id::AccountId;
     use crate::common::language::Language;
     use crate::common::session::value::{to_cookie_value, LoginId, LoginSeriesId, LoginToken, SessionManagementId, LOGIN_COOKIE_KEY, SESSION_MANAGEMENT_COOKIE_KEY};
-    use super::{misc::UnixtimeMillis, ManageSession, ManageSessionError};
+    use crate::common::unixtime::UnixtimeMillis;
+    use super::misc::SeriesIdRefreshTimestamp;
+    use super::{ManageSession, ManageSessionError};
 
     /*
         1. S (通常のセッション認証、これが最も多い)
@@ -244,8 +246,8 @@ mod tests {
             Ok(())
         }
 
-        async fn get_last_series_id_extension_time(&self, _: &AccountId, _: &LoginSeriesId) -> Fallible<UnixtimeMillis, ManageSessionError> {
-            Ok(UnixtimeMillis::new(0))
+        async fn get_last_series_id_extension_time(&self, _: &AccountId, _: &LoginSeriesId) -> Fallible<SeriesIdRefreshTimestamp, ManageSessionError> {
+            Ok(SeriesIdRefreshTimestamp::new(UnixtimeMillis::from(0)))
         }
 
         async fn extend_series_id_expiration(&self, _: &AccountId, _: &LoginSeriesId) -> Fallible<(), ManageSessionError> {

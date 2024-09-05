@@ -4,9 +4,9 @@ use bb8_redis::redis::cmd;
 use scylla::{prepared_statement::PreparedStatement, Session};
 use uuid::Uuid;
 
-use crate::{common::{email::{address::Email, resend::ResendEmailSender, send::{Body, EmailSender, HtmlContent, NetmateEmail, PlainText, SenderName, Subject}}, fallible::Fallible, id::{uuid7::Uuid7, AccountId}, language::Language, session::value::{LoginSeriesId, LoginToken, SessionManagementId, LOGIN_ID_SEPARATOR}}, helper::{error::InitError, garnet::Pool, scylla::prepare}, translation::ja};
+use crate::{common::{email::{address::Email, resend::ResendEmailSender, send::{Body, EmailSender, HtmlContent, NetmateEmail, PlainText, SenderName, Subject}}, fallible::Fallible, id::{uuid7::Uuid7, AccountId}, language::Language, session::value::{LoginSeriesId, LoginToken, SessionManagementId, LOGIN_ID_SEPARATOR}, unixtime::UnixtimeMillis}, helper::{error::InitError, garnet::Pool, scylla::prepare}, translation::ja};
 
-use super::dsl::{ManageSession, ManageSessionError, UnixtimeMillis};
+use super::dsl::{ManageSession, ManageSessionError, SeriesIdRefreshTimestamp};
 
 #[derive(Debug, Clone)]
 pub struct ManageSessionImpl {
@@ -124,14 +124,14 @@ impl ManageSession for ManageSessionImpl {
             .map_err(|e| ManageSessionError::RegisteredNewLoginIdFailed(e.into()))
     }
 
-    async fn get_last_series_id_extension_time(&self, account_id: &AccountId, series_id: &LoginSeriesId) -> Fallible<UnixtimeMillis, ManageSessionError> {
+    async fn get_last_series_id_extension_time(&self, account_id: &AccountId, series_id: &LoginSeriesId) -> Fallible<SeriesIdRefreshTimestamp, ManageSessionError> {
         self.db
             .execute(&self.select_last_series_id_extension_time, (account_id.value().value(), series_id.value().value()))
             .await
             .map_err(|e| ManageSessionError::GetLastSeriesIdExtensionTimeFailed(e.into()))?
             .first_row_typed::<(i64, )>()
             .map_err(|e| ManageSessionError::GetLastSeriesIdExtensionTimeFailed(e.into()))
-            .map(|(updated_at, )| UnixtimeMillis::new(updated_at as u64))
+            .map(|(updated_at, )| SeriesIdRefreshTimestamp::new(UnixtimeMillis::from(updated_at as u64)))
     }
 
     async fn extend_series_id_expiration(&self, account_id: &AccountId, series_id: &LoginSeriesId) -> Fallible<(), ManageSessionError> {
