@@ -147,11 +147,11 @@ pub fn secure_cookie_builder(key: &'static str, value: String) -> CookieBuilder<
 mod tests {
     use cookie::SameSite;
 
-    use crate::common::session::value::SESSION_TIMEOUT_MINUTES;
+    use crate::common::session::value::{secure_cookie_builder, SESSION_TIMEOUT_MINUTES};
 
     #[test]
     fn test_secure_cookie_builder() {
-        let cookie = super::secure_cookie_builder("key", "value".to_string())
+        let cookie = secure_cookie_builder("key", "value".to_string())
             .max_age(SESSION_TIMEOUT_MINUTES)
             .build();
 
