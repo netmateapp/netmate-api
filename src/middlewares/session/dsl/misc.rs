@@ -97,14 +97,14 @@ mod tests {
         #[test]
         fn within_threshold() {
             let current_unixtime = UnixtimeMillis::now();
-            let within_threshold_unixtime = UnixtimeMillis::from(current_unixtime.value() - SESSION_EXTENSION_THRESHOLD + 86400);
+            let within_threshold_unixtime = UnixtimeMillis::new(current_unixtime.value() - SESSION_EXTENSION_THRESHOLD + 86400);
             assert_eq!(should_extend_series_id_expiration(&SeriesIdRefreshTimestamp::new(within_threshold_unixtime)).unwrap(), false);
         }
 
         #[test]
         fn over_threshold() {
             let current_unixtime = UnixtimeMillis::now();
-            let over_threshold_unixtime = UnixtimeMillis::from(current_unixtime.value() - SESSION_EXTENSION_THRESHOLD - 1);
+            let over_threshold_unixtime = UnixtimeMillis::new(current_unixtime.value() - SESSION_EXTENSION_THRESHOLD - 1);
             assert_eq!(should_extend_series_id_expiration(&SeriesIdRefreshTimestamp::new(over_threshold_unixtime)).unwrap(), true);
         }
     }

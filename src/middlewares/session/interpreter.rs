@@ -131,7 +131,7 @@ impl ManageSession for ManageSessionImpl {
             .map_err(|e| ManageSessionError::GetLastSeriesIdExtensionTimeFailed(e.into()))?
             .first_row_typed::<(i64, )>()
             .map_err(|e| ManageSessionError::GetLastSeriesIdExtensionTimeFailed(e.into()))
-            .map(|(updated_at, )| SeriesIdRefreshTimestamp::new(UnixtimeMillis::from(updated_at as u64)))
+            .map(|(updated_at, )| SeriesIdRefreshTimestamp::new(UnixtimeMillis::new(updated_at as u64)))
     }
 
     async fn extend_series_id_expiration(&self, account_id: &AccountId, series_id: &LoginSeriesId) -> Fallible<(), ManageSessionError> {

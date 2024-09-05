@@ -247,7 +247,7 @@ mod tests {
         }
 
         async fn get_last_series_id_extension_time(&self, _: &AccountId, _: &LoginSeriesId) -> Fallible<SeriesIdRefreshTimestamp, ManageSessionError> {
-            Ok(SeriesIdRefreshTimestamp::new(UnixtimeMillis::from(0)))
+            Ok(SeriesIdRefreshTimestamp::new(UnixtimeMillis::new(0)))
         }
 
         async fn extend_series_id_expiration(&self, _: &AccountId, _: &LoginSeriesId) -> Fallible<(), ManageSessionError> {
