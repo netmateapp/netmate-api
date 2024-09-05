@@ -43,6 +43,8 @@ fn extract_session_management_cookie_and_login_cookie(cookies: SplitCookies<'_>)
     (session_management_cookie, login_cookie)
 }
 
+// クッキーはユーザー入力と同様に信頼できないものであるため、検証を行う必要がある
+// ここでは、各値オブジェクトへの変換の際に検証処理が行われている
 fn convert_to_session_ids(cookies: (Option<Cookie<'_>>, Option<Cookie<'_>>)) -> (Option<SessionManagementId>, Option<LoginId>) {
     let session_management_id = cookies.0
         .map(|c| c.value().to_string())
@@ -68,32 +70,56 @@ fn convert_to_session_ids(cookies: (Option<Cookie<'_>>, Option<Cookie<'_>>)) -> 
 mod tests {
     use http::{header::COOKIE, HeaderMap, HeaderValue};
 
-    use crate::common::session::value::{LoginId, LoginSeriesId, LoginToken, SessionManagementId, LOGIN_COOKIE_KEY, SESSION_MANAGEMENT_COOKIE_KEY};
+    use crate::common::session::value::{to_cookie_value, LoginId, LoginSeriesId, LoginToken, SessionManagementId, LOGIN_COOKIE_KEY, SESSION_MANAGEMENT_COOKIE_KEY};
 
     use super::extract_session_ids;
 
+    fn test_extract_session_ids(session_management_id: Option<SessionManagementId>, login_id: Option<LoginId>, value: Option<HeaderValue>) {
+        let mut headers = HeaderMap::new();
+        if let Some(value) = value {
+            headers.insert(COOKIE, value);
+        }
+        let (ex_session_management_id, ex_login_id) = extract_session_ids(&headers);
+        assert_eq!(session_management_id, ex_session_management_id);
+        assert_eq!(login_id, ex_login_id);
+    }
+
     #[test]
-    fn extract() {
+    fn has_no_cookie() {
+        test_extract_session_ids(None, None, None);
+    }
+
+    #[test]
+    fn has_no_session_management_cookie() {
+        let login_id = LoginId::new(LoginSeriesId::gen(), LoginToken::gen());
+
+        let value = format!("{}={}", LOGIN_COOKIE_KEY, to_cookie_value(login_id.series_id(), login_id.token()))
+            .parse::<HeaderValue>()
+            .unwrap();
+
+        test_extract_session_ids(None, Some(login_id), Some(value));
+    }
+
+    #[test]
+    fn has_no_login_cookie() {
+        let session_management_id = SessionManagementId::gen();
+
+        let value = format!("{}={}", SESSION_MANAGEMENT_COOKIE_KEY, session_management_id.value().value())
+            .parse::<HeaderValue>()
+            .unwrap();
+
+        test_extract_session_ids(Some(session_management_id), None, Some(value));
+    }
+
+    #[test]
+    fn has_both_cookies() {
         let session_management_id = SessionManagementId::gen();
         let login_id = LoginId::new(LoginSeriesId::gen(), LoginToken::gen());
 
-        let mut headers = HeaderMap::new();
-        headers.insert(
-            COOKIE,
-            HeaderValue::from_str(
-                &format!(
-                    "{}={}; {}={}${}",
-                    SESSION_MANAGEMENT_COOKIE_KEY,
-                    session_management_id.value().value(),
-                    LOGIN_COOKIE_KEY,
-                    login_id.series_id().value().value(),
-                    login_id.token().value().value()
-                )
-            ).unwrap()
-        );
+        let value = format!("{}={}; {}={}", SESSION_MANAGEMENT_COOKIE_KEY, session_management_id.value().value(), LOGIN_COOKIE_KEY, to_cookie_value(login_id.series_id(), login_id.token()))
+        .parse::<HeaderValue>()
+        .unwrap();
 
-        let (ex_session_management_id, ex_login_id) = extract_session_ids(&headers);
-        assert_eq!(ex_session_management_id, Some(session_management_id));
-        assert_eq!(ex_login_id, Some(login_id));
+        test_extract_session_ids(Some(session_management_id), Some(login_id), Some(value));
     }
 }
