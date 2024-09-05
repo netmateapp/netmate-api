@@ -5,8 +5,15 @@ use rand_chacha::ChaCha20Rng;
 use serde::{de, Deserialize};
 use thiserror::Error;
 
-const ENTROPY_BITS_PER_CHAR: usize = 5;
-const TOKEN_CHARSET: [char; 1 << ENTROPY_BITS_PER_CHAR] = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '0', '1', '2', '3', '4', '5'];
+const ENTROPY_BITS_PER_CHAR: usize = 6;
+
+const BASE64_URL: [char; 1 << ENTROPY_BITS_PER_CHAR] = [
+    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', // A-Z
+    'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', // a-z
+    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', // 0-9
+    '-', '_', // - と _
+];
+
 
 #[derive(Debug, PartialEq)]
 pub struct Token<const ENTROPY_BYTES: usize>(String);
@@ -34,25 +41,25 @@ impl<const ENTROPY_BYTES: usize> Token<ENTROPY_BYTES> {
         rng.fill_bytes(&mut random_bytes);
 
         let mut token = String::with_capacity(ENTROPY_BYTES * OCTET / ENTROPY_BITS_PER_CHAR);
-        let mut bit_buffer: u32 = 0;
+        let mut bit_buffer: u16 = 0;
         let mut bit_count = 0;
 
-        const MASK: u32 = (1 << ENTROPY_BITS_PER_CHAR) - 1;
+        const MASK: u16 = (1 << ENTROPY_BITS_PER_CHAR) - 1;
 
         for byte in random_bytes.iter() {
-            bit_buffer |= (*byte as u32) << bit_count;
+            bit_buffer |= (*byte as u16) << bit_count;
             bit_count += OCTET;
 
             while bit_count >= ENTROPY_BITS_PER_CHAR {
                 let index = (bit_buffer & MASK) as usize;
-                token.push(TOKEN_CHARSET[index]);
+                token.push(BASE64_URL[index]);
                 bit_buffer >>= ENTROPY_BITS_PER_CHAR;
                 bit_count -= ENTROPY_BITS_PER_CHAR;
             }
         }
 
         if bit_count > 0 {
-            token.push(TOKEN_CHARSET[(bit_buffer & MASK) as usize]);
+            token.push(BASE64_URL[(bit_buffer & MASK) as usize]);
         }
 
         Self(token)
@@ -76,7 +83,8 @@ impl<const ENTROPY_BYTES: usize> FromStr for Token<ENTROPY_BYTES> {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if s.len() == calc_token_length(ENTROPY_BYTES) {
-            if s.chars().all(|c| matches!(c, 'a'..='z' | '0'..='5')) {
+            // allは短絡評価であるため、一度`false`が返るとその時点で終了する
+            if s.chars().all(is_valid_char) {
                 Ok(Self(String::from(s)))
             } else {
                 Err(ParseTokenError::InvalidCharset)
@@ -84,6 +92,13 @@ impl<const ENTROPY_BYTES: usize> FromStr for Token<ENTROPY_BYTES> {
         } else {
             Err(ParseTokenError::InvalidLength)
         }
+    }
+}
+
+fn is_valid_char(c: char) -> bool {
+    match c {
+        'A'..='Z' | 'a'..='z' | '0'..='9' | '-' | '_' => true,
+        _ => false,
     }
 }
 
@@ -101,7 +116,7 @@ impl<'de, const BYTES: usize> Deserialize<'de> for Token<BYTES> {
 mod tests {
     use std::str::FromStr;
 
-    use crate::common::token::{calc_entropy_bytes, Token};
+    use crate::common::token::{calc_entropy_bytes, Token, ENTROPY_BITS_PER_CHAR};
 
     #[test]
     fn calc_bytes() {
@@ -111,17 +126,17 @@ mod tests {
     #[test]
     fn gen_token() {
         let token = Token::<{calc_entropy_bytes(120)}>::gen();
-        assert_eq!(token.value().len(), 120 / 5);
+        assert_eq!(token.value().len(), 120 / ENTROPY_BITS_PER_CHAR);
     }
 
     #[test]
     fn valid_token() {
-        assert!(Token::<{calc_entropy_bytes(120)}>::from_str("a02jform52hzifu2kqod0exs").is_ok());
+        assert!(Token::<{calc_entropy_bytes(120)}>::from_str("a02jA_rm-2hSixu2Bqv0").is_ok());
     }
 
     #[test]
     fn invalid_length_token() {
-        assert!(Token::<{calc_entropy_bytes(120)}>::from_str("a02jform52hzifu2kqod0ex").is_err());
+        assert!(Token::<{calc_entropy_bytes(120)}>::from_str("a02jA_rm-2hSixu2Bqv").is_err());
     }
 
     #[test]
