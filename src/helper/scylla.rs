@@ -1,4 +1,4 @@
-use std::{marker::PhantomData, sync::Arc};
+use std::sync::Arc;
 
 use scylla::{prepared_statement::PreparedStatement, transport::errors::QueryError, Session};
 
@@ -13,6 +13,6 @@ pub async fn prepare<T: From<QueryError>>(session: &Arc<Session>, query: &str) -
 
 impl<T> From<QueryError> for InitError<T> {
     fn from(value: QueryError) -> Self {
-        Self::new(value.into(), PhantomData)
+        Self::new(value.into())
     }
 }
