@@ -1,7 +1,7 @@
 use std::convert::Infallible;
 
 use extract_session_ids::extract_session_ids;
-use http::{HeaderMap, Request, Response};
+use http::{HeaderMap, HeaderName, HeaderValue, Request, Response};
 use misc::{can_set_cookie_in_response_header, insert_account_id, is_same_token, should_extend_series_id_expiration};
 use set_cookie::{clear_session_ids_in_response_header, reset_session_timeout, set_new_login_token_in_header, set_new_session_management_id_in_header};
 use thiserror::Error;
@@ -178,7 +178,7 @@ pub enum ManageSessionError {
     #[error("全セッションの削除に失敗しました")]
     DeleteAllSessionsFailed(#[source] anyhow::Error),
     #[error("無効なセッションです")]
-    InvalidSession(HeaderMap),
+    InvalidSession([(HeaderName, HeaderValue); 2]),
 }
 
 #[cfg(test)]

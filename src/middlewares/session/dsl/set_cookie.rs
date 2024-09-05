@@ -1,5 +1,5 @@
 use cookie::Cookie;
-use http::{header::SET_COOKIE, HeaderMap, HeaderValue};
+use http::{header::SET_COOKIE, HeaderMap, HeaderName, HeaderValue};
 use time::Duration;
 
 use crate::common::session::value::{secure_cookie_builder, to_cookie_value, LoginSeriesId, LoginToken, SessionManagementId, LOGIN_COOKIE_KEY, LOGIN_ID_EXPIRY_DAYS, SESSION_MANAGEMENT_COOKIE_KEY, SESSION_TIMEOUT_MINUTES};
@@ -25,20 +25,17 @@ pub fn set_new_login_token_in_header(response_headers: &mut HeaderMap, series_id
     set_cookie(response_headers, &cookie);
 }
 
-pub fn clear_session_ids_in_response_header() -> HeaderMap {
-    let mut headers = HeaderMap::new();
-
+pub fn clear_session_ids_in_response_header() -> [(HeaderName, HeaderValue); 2] {
     let session_management_cookie = secure_cookie_builder(&SESSION_MANAGEMENT_COOKIE_KEY, String::from(""))
         .max_age(Duration::seconds(0))
         .build();
-    let login_cookie = secure_cookie_builder(&LOGIN_COOKIE_KEY, String::from(""))
-        .max_age(Duration::seconds(0))
-        .build();
 
-    set_cookie(&mut headers, &session_management_cookie);
-    set_cookie(&mut headers, &login_cookie);
+    let login_cookie = secure_cookie_builder(&LOGIN_COOKIE_KEY, String::from(""));
 
-    headers
+    [
+        (SET_COOKIE, HeaderValue::from_str(session_management_cookie.to_string().as_str()).unwrap()),
+        (SET_COOKIE, HeaderValue::from_str(login_cookie.to_string().as_str()).unwrap())
+    ]
 }
 
 fn set_cookie(headers: &mut HeaderMap, cookie: &Cookie<'static>) {
