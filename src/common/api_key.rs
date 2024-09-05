@@ -4,9 +4,9 @@ use thiserror::Error;
 
 use super::token::{calc_entropy_bytes, Token};
 
-const NO_ACCOUNT_USER_API_KEY_ENTROPY_BITS: usize = 200;
+const API_KEY_ENTROPY_BITS: usize = 196;
 
-type AK = Token<{calc_entropy_bytes(NO_ACCOUNT_USER_API_KEY_ENTROPY_BITS)}>;
+type AK = Token<{calc_entropy_bytes(API_KEY_ENTROPY_BITS)}>;
 
 pub struct ApiKey(AK);
 
