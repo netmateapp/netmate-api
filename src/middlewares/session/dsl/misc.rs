@@ -49,41 +49,71 @@ impl UnixtimeMillis {
 
 #[cfg(test)]
 mod tests {
-    use http::Extensions;
+    mod insert_account_id_tests {
+        use http::Extensions;
 
-    use crate::{common::{id::{uuid7::Uuid7, AccountId}, session::value::LoginToken}, middlewares::session::dsl::misc::{can_set_cookie_in_response_header, is_same_token, should_extend_series_id_expiration, UnixtimeMillis, SESSION_EXTENSION_THRESHOLD}};
+        use crate::{common::id::{uuid7::Uuid7, AccountId}, middlewares::session::dsl::misc::insert_account_id};
 
-    #[test]
-    fn test_insert_account_id() {
-        let mut extensions = Extensions::new();
-        let account_id = AccountId::new(Uuid7::now());
-        super::insert_account_id(&mut extensions, account_id.clone());
-        assert_eq!(extensions.get::<AccountId>(), Some(&account_id));
+        #[test]
+        fn insert_one() {
+            let mut extensions = Extensions::new();
+            let account_id = AccountId::new(Uuid7::now());
+            insert_account_id(&mut extensions, account_id.clone());
+            assert_eq!(extensions.get::<AccountId>(), Some(&account_id));
+        }
     }
 
-    #[test]
-    fn test_can_set_cookie_in_response_header() {
-        let mut headers = http::HeaderMap::new();
-        assert_eq!(can_set_cookie_in_response_header(&headers), true);
+    mod test_can_set_cookie_in_response_header_tests {
+        use http::{header::SET_COOKIE, HeaderMap, HeaderValue};
 
-        headers.insert(http::header::SET_COOKIE, http::HeaderValue::from_static("dummy"));
-        assert_eq!(can_set_cookie_in_response_header(&headers), false);
+        use crate::middlewares::session::dsl::misc::can_set_cookie_in_response_header;
+
+        #[test]
+        fn can_set() {
+            let headers = HeaderMap::new();
+            assert_eq!(can_set_cookie_in_response_header(&headers), true);
+        }
+
+        #[test]
+        fn cannot_set() {
+            let mut headers = HeaderMap::new();
+            headers.insert(SET_COOKIE, HeaderValue::from_static("dummy"));
+            assert_eq!(can_set_cookie_in_response_header(&headers), false);
+        }
     }
 
-    #[test]
-    fn test_is_same_token() {
-        let token = LoginToken::gen();
-        assert_eq!(is_same_token(&token, &token), true);
+    mod is_same_token_tests {
+        use crate::{common::session::value::LoginToken, middlewares::session::dsl::misc::is_same_token};
+
+        #[test]
+        fn same() {
+            let token = LoginToken::gen();
+            assert_eq!(is_same_token(&token, &token), true);
+        }
+
+        #[test]
+        fn different() {
+            let token = LoginToken::gen();
+            let another_token = LoginToken::gen();
+            assert_eq!(is_same_token(&token, &another_token), false);
+        }
     }
 
-    #[test]
-    fn test_should_extend_series_id_expiration() {
-        let current_unixtime = UnixtimeMillis::now();
+    mod should_extend_series_id_expiration_tests {
+        use crate::middlewares::session::dsl::misc::{should_extend_series_id_expiration, UnixtimeMillis, SESSION_EXTENSION_THRESHOLD};
 
-        let within_threshold_unixtime = UnixtimeMillis::new(current_unixtime.value() - SESSION_EXTENSION_THRESHOLD + 10);
-        let over_threshold_unixtime = UnixtimeMillis::new(current_unixtime.value() - SESSION_EXTENSION_THRESHOLD - 1);
+        #[test]
+        fn within_threshold() {
+            let current_unixtime = UnixtimeMillis::now();
+            let within_threshold_unixtime = UnixtimeMillis::new(current_unixtime.value() - SESSION_EXTENSION_THRESHOLD + 86400);
+            assert_eq!(should_extend_series_id_expiration(&within_threshold_unixtime).unwrap(), false);
+        }
 
-        assert_eq!(should_extend_series_id_expiration(&within_threshold_unixtime).unwrap(), false);
-        assert_eq!(should_extend_series_id_expiration(&over_threshold_unixtime).unwrap(), true);
+        #[test]
+        fn over_threshold() {
+            let current_unixtime = UnixtimeMillis::now();
+            let over_threshold_unixtime = UnixtimeMillis::new(current_unixtime.value() - SESSION_EXTENSION_THRESHOLD - 1);
+            assert_eq!(should_extend_series_id_expiration(&over_threshold_unixtime).unwrap(), true);
+        }
     }
 }
