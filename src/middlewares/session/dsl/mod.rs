@@ -184,6 +184,7 @@ pub enum ManageSessionError {
 #[cfg(test)]
 mod tests {
     use std::convert::Infallible;
+    use std::future::{ready, Ready};
     use std::str::FromStr;
     use std::sync::LazyLock;
     use std::task::{Context, Poll};
@@ -208,17 +209,17 @@ mod tests {
         6. 空(S) -> 空(L) (UIからは送れないはず、UI外でエンドポイントを叩いている可能性が高い)
      */
 
-    static CASE_1: LazyLock<SessionManagementId> = LazyLock::new(|| SessionManagementId::gen());
-    static CASE_2: LazyLock<LoginId> = LazyLock::new(|| LoginId::new(LoginSeriesId::gen(), LoginToken::gen()));
-    static CASE_3: LazyLock<LoginId> = LazyLock::new(|| LoginId::new(LoginSeriesId::gen(), LoginToken::gen()));
-    static CASE_4: LazyLock<SessionManagementId> = LazyLock::new(|| SessionManagementId::gen());
-    static CASE_5: LazyLock<LoginId> = LazyLock::new(|| LoginId::new(LoginSeriesId::gen(), LoginToken::gen()));
+    static AUTH_WITH_SESSION_MANAGEMENT_ID: LazyLock<SessionManagementId> = LazyLock::new(|| SessionManagementId::gen());
+    static AUTH_WITH_LOGIN_ID: LazyLock<LoginId> = LazyLock::new(|| LoginId::new(LoginSeriesId::gen(), LoginToken::gen()));
+    static EXPIRED_SESSION: LazyLock<LoginId> = LazyLock::new(|| LoginId::new(LoginSeriesId::gen(), LoginToken::gen()));
+    static POSSIBLE_SESSION_FORGERY: LazyLock<SessionManagementId> = LazyLock::new(|| SessionManagementId::gen());
+    static POSSIBLE_SESSION_HIJACK: LazyLock<LoginId> = LazyLock::new(|| LoginId::new(LoginSeriesId::gen(), LoginToken::gen()));
 
     struct MockManageSession;
 
     impl ManageSession for MockManageSession {
         async fn resolve(&self, session_management_id: &SessionManagementId) -> Fallible<Option<AccountId>, ManageSessionError> {
-            if session_management_id == &*CASE_1 {
+            if session_management_id == &*AUTH_WITH_SESSION_MANAGEMENT_ID {
                 Ok(Some(AccountId::new(Uuid7::now())))
             } else {
                 Ok(None)
@@ -226,9 +227,9 @@ mod tests {
         }
 
         async fn get_login_token_and_account_id(&self, series_id: &LoginSeriesId) -> Fallible<(Option<LoginToken>, Option<AccountId>), ManageSessionError> {
-            if series_id == &*CASE_2.series_id() {
-                Ok((Some(LoginToken::from_str(*&CASE_2.token().value().value()).unwrap()), Some(AccountId::new(Uuid7::now()))))
-            } else if series_id == &*CASE_5.series_id() {
+            if series_id == &*AUTH_WITH_LOGIN_ID.series_id() {
+                Ok((Some(LoginToken::from_str(*&AUTH_WITH_LOGIN_ID.token().value().value()).unwrap()), Some(AccountId::new(Uuid7::now()))))
+            } else if series_id == &*POSSIBLE_SESSION_HIJACK.series_id() {
                 Ok((Some(LoginToken::gen()), Some(AccountId::new(Uuid7::now()))))
             } else {
                 Ok((None, None))
@@ -269,28 +270,21 @@ mod tests {
     impl Service<Request<()>> for MockInnerService {
         type Response = Response<()>;
         type Error = Infallible;
-        type Future = std::future::Ready<Result<Self::Response, Self::Error>>;
+        type Future = Ready<Result<Self::Response, Self::Error>>;
 
         fn poll_ready(&mut self, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
             Poll::Ready(Ok(()))
         }
 
         fn call(&mut self, _: Request<()>) -> Self::Future {
-            std::future::ready(Ok(Response::new(())))
+            ready(Ok(Response::new(())))
         }
     }
 
     async fn test_case(session_management_id: Option<&SessionManagementId>, login_id: Option<&LoginId>) -> Result<Response<()>, ManageSessionError> {
         let mut request = Request::new(());
-        if let (Some(session_management_id), Some(login_id)) = (session_management_id, login_id) {
-            let cookie_str = format!("{}={}; {}={}", SESSION_MANAGEMENT_COOKIE_KEY, session_management_id.value().value(), LOGIN_COOKIE_KEY, to_cookie_value(login_id.series_id(), login_id.token()));
-            request.headers_mut().insert(COOKIE, HeaderValue::from_str(&cookie_str).unwrap());
-        } else if let Some(session_management_id) = session_management_id {
-            let cookie_str = format!("{}={}", SESSION_MANAGEMENT_COOKIE_KEY, session_management_id.value().value());
-            request.headers_mut().insert(COOKIE, HeaderValue::from_str(&cookie_str).unwrap());
-        } else if let Some(login_id) = login_id {
-            let cookie_str = format!("{}={}", LOGIN_COOKIE_KEY, to_cookie_value(login_id.series_id(), login_id.token()));
-            request.headers_mut().insert(COOKIE, HeaderValue::from_str(&cookie_str).unwrap());
+        if session_management_id.is_some() || login_id.is_some() {
+            request.headers_mut().insert(COOKIE, to_header_value(session_management_id, login_id));
         }
         
         MockManageSession.manage_session(
@@ -299,43 +293,72 @@ mod tests {
         ).await
     }
 
-    #[tokio::test]
-    async fn case_1() {
-        assert!(test_case(Some(&*CASE_1), Some(&LoginId::new(LoginSeriesId::gen(), LoginToken::gen()))).await.is_ok());
+    fn to_header_value(session_management_id: Option<&SessionManagementId>, login_id: Option<&LoginId>) -> HeaderValue {
+        match (session_management_id, login_id) {
+            (Some(session_management_id), Some(login_id)) => {
+                format!("{}={}; {}={}", SESSION_MANAGEMENT_COOKIE_KEY, session_management_id.value().value(), LOGIN_COOKIE_KEY, to_cookie_value(login_id.series_id(), login_id.token()))
+            },
+            (Some(session_management_id), None) => {
+                format!("{}={}", SESSION_MANAGEMENT_COOKIE_KEY, session_management_id.value().value())
+            },
+            (None, Some(login_id)) => {
+                format!("{}={}", LOGIN_COOKIE_KEY, to_cookie_value(login_id.series_id(), login_id.token()))
+            },
+            _ => "".to_string()
+        }
+        .parse::<HeaderValue>()
+        .unwrap()
     }
 
     #[tokio::test]
-    async fn case_2() {
-        assert!(test_case(None, Some(&*CASE_2)).await.is_ok());
+    async fn auth_with_session_management_id() {
+        let session_management_id = &*AUTH_WITH_SESSION_MANAGEMENT_ID;
+        let login_id = LoginId::new(LoginSeriesId::gen(), LoginToken::gen());
+        let result = test_case(Some(session_management_id), Some(&login_id)).await;
+        assert!(result.is_ok());
     }
 
     #[tokio::test]
-    async fn case_3() {
-        match test_case(None, Some(&*CASE_3)).await.err() {
+    async fn auth_with_login_id() {
+        let login_id = &*AUTH_WITH_LOGIN_ID;
+        let result = test_case(None, Some(login_id)).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn expired_session() {
+        let login_id = &*EXPIRED_SESSION;
+        let result = test_case(None, Some(login_id)).await;
+        match result.err() {
             Some(ManageSessionError::InvalidSession(_)) => (),
             _ => panic!()
         }
     }
 
     #[tokio::test]
-    async fn case_4() {
-        match test_case(Some(&*CASE_4), None).await.err() {
+    async fn possible_session_forgery() {
+        let session_management_id = &*POSSIBLE_SESSION_FORGERY;
+        let result = test_case(Some(session_management_id), None).await;
+        match result.err() {
             Some(ManageSessionError::InvalidSession(_)) => (),
             _ => panic!()
         }
     }
 
     #[tokio::test]
-    async fn case_5() {
-        match test_case(None, Some(&*CASE_5)).await.err() {
+    async fn possible_session_hijack() {
+        let login_id = &*POSSIBLE_SESSION_HIJACK;
+        let result = test_case(None, Some(login_id)).await;
+        match result.err() {
             Some(ManageSessionError::InvalidSession(_)) => (),
             _ => panic!()
         }
     }
 
     #[tokio::test]
-    async fn case_6() {
-        match test_case(None, None).await.err() {
+    async fn no_session() {
+        let result = test_case(None, None).await;
+        match result.err() {
             Some(ManageSessionError::NoSession) => (),
             _ => panic!()
         }
