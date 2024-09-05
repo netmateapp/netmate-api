@@ -14,7 +14,7 @@ impl SenderName {
             Language::Japanese => ja::email::SENDER_NAME,
             _ => us_en::email::SENDER_NAME,
         };
-        Ok(sender_name)
+        Self(String::from(sender_name))
     }
 
     pub fn value(&self) -> &String {
@@ -42,7 +42,7 @@ impl TryFrom<Email> for NetmateEmail {
 
     fn try_from(value: Email) -> Result<Self, Self::Error> {
         if value.value().ends_with(".netmate.app") {
-            Ok(NetmateEmail(value.value().clone()))
+            Ok(NetmateEmail(value))
         } else {
             Err(ParseNetmateEmailError)
         }
