@@ -1,6 +1,6 @@
 use std::{convert::Infallible, future::Future, pin::Pin, sync::Arc, task::{ready, Context, Poll}};
 
-use http::{Request, Response};
+use http::{Request, Response, StatusCode};
 use pin_project::pin_project;
 use scylla::Session;
 use tokio::pin;
@@ -43,13 +43,14 @@ impl <S, B> Service<Request<B>> for LoginSessionService<S>
 where
     S: Service<Request<B>, Error = Infallible, Response = Response<B>> + Clone,
     S::Future: Future<Output = Result<S::Response, S::Error>>,
+    B: Default,
 {
     type Response = S::Response;
-    type Error = ManageSessionError;
+    type Error = S::Error;
     type Future = SessionFuture<S, B>;
 
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        self.inner.poll_ready(cx).map_err(|_| ManageSessionError::NoSession)
+        self.inner.poll_ready(cx)
     }
 
     fn call(&mut self, req: Request<B>) -> Self::Future {
@@ -65,6 +66,7 @@ where
 pub struct SessionFuture<S, B>
 where
     S: Service<Request<B>>,
+    B: Default,
 {
     inner: S,
     request: Option<Request<B>>,
@@ -75,17 +77,39 @@ impl<S, B> Future for SessionFuture<S, B>
 where
     S: Service<Request<B>, Error = Infallible, Response = Response<B>>,
     S::Future: Future<Output = Result<Response<B>, S::Error>>,
+    B: Default,
 {
-    type Output = Result<Response<B>, ManageSessionError>;
+    type Output = Result<S::Response, S::Error>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.project();
+
         let response_future = this.manage_session
             .manage_session::<S, B>(this.inner, this.request.take().unwrap());
         pin!(response_future);
+
+        // エラーもレスポンスに変換して返す
         match ready!(response_future.poll(cx)) {
             Ok(response) => Poll::Ready(Ok(response)),
-            Err(e) => Poll::Ready(Err(e)),
+            Err(e) => match e {
+                // セッションが無効な場合は、セッションを削除するヘッダーを含める
+                ManageSessionError::InvalidSession(headers) => {
+                    let response = Response::builder()
+                        .status(StatusCode::UNAUTHORIZED)
+                        .header(&headers[0].0, &headers[0].1)
+                        .header(&headers[1].0, &headers[1].1)
+                        .body(B::default())
+                        .unwrap();
+                    Poll::Ready(Ok(response))
+                },
+                _ => {
+                    let response = Response::builder()
+                        .status(StatusCode::UNAUTHORIZED)
+                        .body(B::default())
+                        .unwrap();
+                    Poll::Ready(Ok(response))
+                }
+            }
         }
     }
 }
