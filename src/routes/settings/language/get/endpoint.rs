@@ -7,18 +7,22 @@ use scylla::Session;
 use tower::ServiceBuilder;
 use tracing::info;
 
-use crate::{common::{id::AccountId, language::Language}, helper::{error::InitError, garnet::Pool}, middlewares::login_session::LoginSessionLayer, routes::settings::language::get::dsl::GetLanguage};
+use crate::{common::{id::AccountId, language::Language}, helper::{error::InitError, garnet::Pool}, middlewares::session::{dsl::ManageSessionError, middleware::LoginSessionLayer}, routes::settings::language::get::dsl::GetLanguage};
 
 use super::interpreter::GetLanguageImpl;
 
 pub async fn endpoint(db: Arc<Session>, cache: Arc<Pool>) -> Result<Router, InitError<GetLanguageImpl>> {
     let get_language = GetLanguageImpl::try_new(db.clone()).await?;
 
+    let login_session = LoginSessionLayer::try_new(db.clone(), cache.clone())
+        .await
+        .map_err(|e| InitError::<GetLanguageImpl>::new(e.into()))?;
+
     let services = ServiceBuilder::new()
-        .layer(HandleErrorLayer::new(|e: anyhow::Error| async move { // ここは後から共通化
+        .layer(HandleErrorLayer::new(|e: ManageSessionError| async move { // ここは後から共通化
             StatusCode::BAD_REQUEST
         }))
-        .layer(LoginSessionLayer::new(db, cache));
+        .layer(login_session);
 
     let router = Router::new()
         .route("/language", get(handler))

@@ -8,7 +8,7 @@ use tower::{Layer, Service};
 
 use crate::helper::{error::InitError, garnet::Pool};
 
-use super::{dsl::ManageSession, interpreter::ManageSessionImpl};
+use super::{dsl::{ManageSession, ManageSessionError}, interpreter::ManageSessionImpl};
 
 #[derive(Clone)]
 pub struct LoginSessionLayer {
@@ -45,11 +45,11 @@ where
     S::Future: Future<Output = Result<S::Response, S::Error>>,
 {
     type Response = S::Response;
-    type Error = anyhow::Error;
+    type Error = ManageSessionError;
     type Future = SessionFuture<S, B>;
 
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        self.inner.poll_ready(cx).map_err(Into::into)
+        self.inner.poll_ready(cx).map_err(|_| ManageSessionError::NoSession)
     }
 
     fn call(&mut self, req: Request<B>) -> Self::Future {
@@ -76,7 +76,7 @@ where
     S: Service<Request<B>, Error = Infallible, Response = Response<B>>,
     S::Future: Future<Output = Result<Response<B>, S::Error>>,
 {
-    type Output = Result<Response<B>, anyhow::Error>;
+    type Output = Result<Response<B>, ManageSessionError>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.project();
@@ -85,7 +85,7 @@ where
         pin!(response_future);
         match ready!(response_future.poll(cx)) {
             Ok(response) => Poll::Ready(Ok(response)),
-            Err(e) => Poll::Ready(Err(e.into())),
+            Err(e) => Poll::Ready(Err(e)),
         }
     }
 }
