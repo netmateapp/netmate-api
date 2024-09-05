@@ -147,21 +147,17 @@ pub fn secure_cookie_builder(key: &'static str, value: String) -> CookieBuilder<
 mod tests {
     use cookie::SameSite;
 
-    use crate::common::session::value::{secure_cookie_builder, SESSION_TIMEOUT_MINUTES};
+    use crate::common::session::value::secure_cookie_builder;
 
     #[test]
     fn test_secure_cookie_builder() {
-        let cookie = secure_cookie_builder("key", "value".to_string())
-            .max_age(SESSION_TIMEOUT_MINUTES)
-            .build();
-
+        let cookie = secure_cookie_builder("key", "value".to_string()).build();
         assert_eq!(cookie.name(), "key");
         assert_eq!(cookie.value(), "value");
         assert_eq!(cookie.http_only().unwrap(), true);
         assert_eq!(cookie.secure().unwrap(), true);
-        assert_eq!(cookie.same_site(), Some(SameSite::Strict));
-        assert_eq!(cookie.path(), Some("/"));
-        assert_eq!(cookie.max_age(), Some(SESSION_TIMEOUT_MINUTES));
+        assert_eq!(cookie.same_site().unwrap(), SameSite::Strict);
+        assert_eq!(cookie.path().unwrap(), "/");
         assert_eq!(cookie.partitioned().unwrap(), true);
     }
 }
