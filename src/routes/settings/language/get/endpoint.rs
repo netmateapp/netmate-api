@@ -1,13 +1,13 @@
 use std::sync::Arc;
 
-use axum::{error_handling::HandleErrorLayer, extract::{Request, State}, routing::get, Json, Router};
+use axum::{extract::{Request, State}, routing::get, Json, Router};
 use axum_macros::debug_handler;
 use http::StatusCode;
 use scylla::Session;
 use tower::ServiceBuilder;
 use tracing::info;
 
-use crate::{common::{id::AccountId, language::Language}, helper::{error::InitError, garnet::Pool}, middlewares::session::{dsl::ManageSessionError, middleware::LoginSessionLayer}, routes::settings::language::get::dsl::GetLanguage};
+use crate::{common::{id::AccountId, language::Language}, helper::{error::InitError, garnet::Pool}, middlewares::session::middleware::LoginSessionLayer, routes::settings::language::get::dsl::GetLanguage};
 
 use super::interpreter::GetLanguageImpl;
 
@@ -19,9 +19,6 @@ pub async fn endpoint(db: Arc<Session>, cache: Arc<Pool>) -> Result<Router, Init
         .map_err(|e| InitError::<GetLanguageImpl>::new(e.into()))?;
 
     let services = ServiceBuilder::new()
-        .layer(HandleErrorLayer::new(|e: ManageSessionError| async move { // ここは後から共通化
-            StatusCode::BAD_REQUEST
-        }))
         .layer(login_session);
 
     let router = Router::new()
