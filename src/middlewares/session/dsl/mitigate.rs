@@ -1,3 +1,4 @@
+use thiserror::Error;
 use tracing::info;
 
 use crate::common::{email::address::Email, fallible::Fallible, id::AccountId, language::Language};
@@ -28,6 +29,12 @@ pub(crate) trait MitigateSessionHijackingAttack {
     async fn delete_all_session_series(&self, account_id: &AccountId) -> Fallible<(), MitigateSessionHijackingAttackError>;
 }
 
+#[derive(Debug, Error)]
 pub enum MitigateSessionHijackingAttackError {
-
+    #[error("メールアドレスと言語の取得に失敗しました")]
+    FetchEmailAndLanguageFailed,
+    #[error("セキュリティ通知に失敗しました")]
+    SendSecurityNotificationFailed,
+    #[error("全セッション系列の削除に失敗しました")]
+    DeleteAllSessionSeriesFailed,
 }
