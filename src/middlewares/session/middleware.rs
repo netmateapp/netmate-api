@@ -103,8 +103,13 @@ where
                     Poll::Ready(Ok(response))
                 },
                 _ => {
+                    let status_code = match e {
+                        ManageSessionError::NoSession => StatusCode::UNAUTHORIZED,
+                        _ => StatusCode::INTERNAL_SERVER_ERROR,
+                    };
+
                     let response = Response::builder()
-                        .status(StatusCode::UNAUTHORIZED)
+                        .status(status_code)
                         .body(B::default())
                         .unwrap();
                     Poll::Ready(Ok(response))
