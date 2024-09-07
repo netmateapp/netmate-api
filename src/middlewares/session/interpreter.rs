@@ -19,23 +19,23 @@ pub struct ManageSessionImpl {
 }
 
 impl ManageSessionImpl {
-    pub async fn try_new(db: Arc<Session>, cache: Arc<Pool>) -> Result<Self, InitError<ManageSessionImpl>> {
-        let select_email_and_language = prepare::<InitError<ManageSessionImpl>>(
+    pub async fn try_new(db: Arc<Session>, cache: Arc<Pool>) -> Result<Self, InitError<Self>> {
+        let select_email_and_language = prepare::<InitError<Self>>(
             &db,
             "SELECT email, language FROM accounts WHERE id = ?"
         ).await?;
 
-        let select_last_series_id_extension_time = prepare::<InitError<ManageSessionImpl>>(
+        let select_last_series_id_extension_time = prepare::<InitError<Self>>(
             &db,
             "SELECT updated_at FROM login_ids WHERE account_id = ? AND series_id = ?"
         ).await?;
 
-        let update_series_id_expiration = prepare::<InitError<ManageSessionImpl>>(
+        let update_series_id_expiration = prepare::<InitError<Self>>(
             &db,
             "UPDATE login_ids SET updated_at = ? WHERE account_id = ? AND series_id = ? TTL 34560000"
         ).await?;
 
-        let delete_all_sessions = prepare::<InitError<ManageSessionImpl>>(
+        let delete_all_sessions = prepare::<InitError<Self>>(
             &db,
             "DELETE FROM login_ids WHERE account_id = ?"
         ).await?;
