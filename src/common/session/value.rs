@@ -6,122 +6,118 @@ use time::Duration;
 
 use crate::common::token::{calc_entropy_bytes, Token};
 
-const SESSION_MANAGEMENT_ID_ENTROPY_BITS: usize = 120;
+const SESSION_ID_ENTROPY_BITS: usize = 120;
 
-type SMId = Token<{calc_entropy_bytes(SESSION_MANAGEMENT_ID_ENTROPY_BITS)}>;
+type SId = Token<{calc_entropy_bytes(SESSION_ID_ENTROPY_BITS)}>;
 
 #[derive(Debug, PartialEq)]
-pub struct SessionManagementId(SMId);
+pub struct SessionId(SId);
 
-impl SessionManagementId {
+impl SessionId {
     pub fn gen() -> Self {
-        Self(SMId::gen())
+        Self(SId::gen())
     }
 
-    pub fn value(&self) -> &SMId {
+    pub fn value(&self) -> &SId {
         &self.0
     }
 }
 
 #[derive(Debug, Error)]
 #[error("セッション管理識別子への変換に失敗しました")]
-pub struct ParseSessionManagementIdError(#[source] pub anyhow::Error);
+pub struct ParseSessionIdError(#[source] pub anyhow::Error);
 
-impl FromStr for SessionManagementId {
-    type Err = ParseSessionManagementIdError;
+impl FromStr for SessionId {
+    type Err = ParseSessionIdError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Token::from_str(s)
             .map(|t| Self(t))
-            .map_err(|e| ParseSessionManagementIdError(e.into()))
+            .map_err(|e| ParseSessionIdError(e.into()))
     }
 }
 
+const SESSION_SERIES_ENTROPY_BITS: usize = 120;
 
-
-const LOGIN_COOKIE_SERIES_ID_ENTROPY_BITS: usize = 120;
-
-type LSId = Token<{calc_entropy_bytes(LOGIN_COOKIE_SERIES_ID_ENTROPY_BITS)}>;
+type SS = Token<{calc_entropy_bytes(SESSION_SERIES_ENTROPY_BITS)}>;
 
 #[derive(Debug, PartialEq)]
-pub struct LoginSeriesId(LSId);
+pub struct SessionSeries(SS);
 
-impl LoginSeriesId {
+impl SessionSeries {
     pub fn gen() -> Self {
-        Self(LSId::gen())
+        Self(SS::gen())
     }
 
-    pub fn value(&self) -> &LSId {
+    pub fn value(&self) -> &SS {
         &self.0
     }
 }
 
 #[derive(Debug, Error)]
 #[error("ログイン系列識別子への変換に失敗しました")]
-pub struct ParseLoginSeriesIdError(#[source] pub anyhow::Error);
+pub struct ParseSessionSeriesError(#[source] pub anyhow::Error);
 
-impl FromStr for LoginSeriesId {
-    type Err = ParseLoginSeriesIdError;
+impl FromStr for SessionSeries {
+    type Err = ParseSessionSeriesError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Token::from_str(s)
             .map(|t| Self(t))
-            .map_err(|e| ParseLoginSeriesIdError(e.into()))
+            .map_err(|e| ParseSessionSeriesError(e.into()))
     }
 }
 
+const REFRESH_TOKEN_ENTROPY_BITS: usize = 120;
 
-
-const LOGIN_COOKIE_TOKEN_ENTROPY_BITS: usize = 120;
-
-type LT = Token<{calc_entropy_bytes(LOGIN_COOKIE_TOKEN_ENTROPY_BITS)}>;
+type RT = Token<{calc_entropy_bytes(REFRESH_TOKEN_ENTROPY_BITS)}>;
 
 #[derive(Debug, PartialEq)]
-pub struct LoginToken(LT);
+pub struct RefreshToken(RT);
 
-impl LoginToken {
+impl RefreshToken {
     pub fn gen() -> Self {
-        Self(LT::gen())
+        Self(RT::gen())
     }
 
-    pub fn value(&self) -> &LT {
+    pub fn value(&self) -> &RT {
         &self.0
     }
 }
 
 #[derive(Debug, Error)]
 #[error("ログイントークンへの変換に失敗しました")]
-pub struct ParseLoginTokenError(#[source] pub anyhow::Error);
+pub struct ParseRefreshTokenError(#[source] pub anyhow::Error);
 
-impl FromStr for LoginToken {
-    type Err = ParseLoginTokenError;
+impl FromStr for RefreshToken {
+    type Err = ParseRefreshTokenError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Token::from_str(s)
             .map(|t| Self(t))
-            .map_err(|e| ParseLoginTokenError(e.into()))
+            .map_err(|e| ParseRefreshTokenError(e.into()))
     }
 }
 
 
-#[derive(Debug, PartialEq)]
-pub struct LoginId(LoginSeriesId, LoginToken);
+/*#[derive(Debug, PartialEq)]
+pub struct LoginId(SessionSeries, RefreshToken);
 
 impl LoginId {
-    pub fn new(series_id: LoginSeriesId, token: LoginToken) -> Self {
+    pub fn new(series_id: SessionSeries, token: RefreshToken) -> Self {
         Self(series_id, token)
     }
 
-    pub fn series_id(&self) -> &LoginSeriesId {
+    pub fn series_id(&self) -> &SessionSeries {
         &self.0
     }
 
-    pub fn token(&self) -> &LoginToken {
+    pub fn token(&self) -> &RefreshToken {
         &self.1
     }
-}
+}*/
 
-pub fn to_cookie_value(series_id: &LoginSeriesId, token: &LoginToken) -> String {
+pub fn to_cookie_value(series_id: &SessionSeries, token: &RefreshToken) -> String {
     format!("{}{}{}", series_id.value().value(), LOGIN_ID_SEPARATOR, token.value().value())
 }
 

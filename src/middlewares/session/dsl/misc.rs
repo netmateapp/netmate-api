@@ -1,6 +1,6 @@
 use http::{header::SET_COOKIE, Extensions, HeaderMap};
 
-use crate::common::{id::AccountId, session::value::LoginToken};
+use crate::common::{id::AccountId, session::value::RefreshToken};
 
 pub fn insert_account_id(extensions: &mut Extensions, account_id: AccountId) {
     extensions.insert(account_id);
@@ -10,7 +10,7 @@ pub fn can_set_cookie_in_response_header(headers: &HeaderMap) -> bool {
     !headers.contains_key(SET_COOKIE)
 }
 
-pub fn is_same_token(request_token: &LoginToken, registered_token: &LoginToken) -> bool {
+pub fn is_same_token(request_token: &RefreshToken, registered_token: &RefreshToken) -> bool {
     request_token.value().value() == registered_token.value().value()
 }
 
@@ -50,18 +50,18 @@ mod tests {
     }
 
     mod is_same_token_tests {
-        use crate::{common::session::value::LoginToken, middlewares::session::dsl::misc::is_same_token};
+        use crate::{common::session::value::RefreshToken, middlewares::session::dsl::misc::is_same_token};
 
         #[test]
         fn same() {
-            let token = LoginToken::gen();
+            let token = RefreshToken::gen();
             assert_eq!(is_same_token(&token, &token), true);
         }
 
         #[test]
         fn different() {
-            let token = LoginToken::gen();
-            let another_token = LoginToken::gen();
+            let token = RefreshToken::gen();
+            let another_token = RefreshToken::gen();
             assert_eq!(is_same_token(&token, &another_token), false);
         }
     }
