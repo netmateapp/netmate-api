@@ -2,14 +2,14 @@ use cookie::Cookie;
 use http::{header::SET_COOKIE, HeaderMap, HeaderName, HeaderValue};
 use time::Duration;
 
-use crate::common::session::value::{secure_cookie_builder, to_cookie_value, LoginSeriesId, LoginToken, SessionManagementId, LOGIN_COOKIE_KEY, LOGIN_ID_EXPIRY_DAYS, SESSION_MANAGEMENT_COOKIE_KEY, SESSION_TIMEOUT_MINUTES};
+use crate::common::session::value::{secure_cookie_builder, to_cookie_value, SessionSeries, RefreshToken, SessionId, LOGIN_COOKIE_KEY, LOGIN_ID_EXPIRY_DAYS, SESSION_MANAGEMENT_COOKIE_KEY, SESSION_TIMEOUT_MINUTES};
 
 // 期限の延長はクッキーの再設定により行われるため、実態はセッション識別子の再設定関数である
-pub fn reset_session_timeout(response_headers: &mut HeaderMap, session_management_id: &SessionManagementId) {
-    set_new_session_management_id_in_header(response_headers, session_management_id);
+pub fn reset_session_timeout(response_headers: &mut HeaderMap, session_management_id: &SessionId) {
+    set_new_session_id_into_response_header(response_headers, session_management_id);
 }
 
-pub fn set_new_session_management_id_in_header(response_headers: &mut HeaderMap, new_session_management_id: &SessionManagementId) {
+pub fn set_new_session_id_into_response_header(response_headers: &mut HeaderMap, new_session_management_id: &SessionId) {
     let cookie = secure_cookie_builder(&SESSION_MANAGEMENT_COOKIE_KEY, new_session_management_id.value().value().clone())
         .max_age(SESSION_TIMEOUT_MINUTES)
         .build();
@@ -17,7 +17,7 @@ pub fn set_new_session_management_id_in_header(response_headers: &mut HeaderMap,
     set_cookie(response_headers, &cookie);
 }
 
-pub fn set_new_login_token_in_header(response_headers: &mut HeaderMap, series_id: &LoginSeriesId, new_login_token: &LoginToken) {
+pub fn set_new_login_token_in_header(response_headers: &mut HeaderMap, series_id: &SessionSeries, new_login_token: &RefreshToken) {
     let cookie = secure_cookie_builder(&LOGIN_COOKIE_KEY, to_cookie_value(series_id, new_login_token))
         .max_age(LOGIN_ID_EXPIRY_DAYS)
         .build();
@@ -50,16 +50,16 @@ mod tests {
     use cookie::Cookie;
     use http::{header::SET_COOKIE, HeaderMap};
 
-    use crate::{common::session::value::{to_cookie_value, LoginSeriesId, LoginToken, SessionManagementId, LOGIN_COOKIE_KEY, LOGIN_ID_EXPIRY_DAYS, SESSION_MANAGEMENT_COOKIE_KEY, SESSION_TIMEOUT_MINUTES}, middlewares::session::dsl::set_cookie::{set_new_login_token_in_header, set_new_session_management_id_in_header}};
+    use crate::{common::session::value::{to_cookie_value, SessionSeries, RefreshToken, SessionId, LOGIN_COOKIE_KEY, LOGIN_ID_EXPIRY_DAYS, SESSION_MANAGEMENT_COOKIE_KEY, SESSION_TIMEOUT_MINUTES}, middlewares::session::dsl::set_cookie::{set_new_login_token_in_header, set_new_session_id_into_response_header}};
 
     use super::set_cookie;
 
     #[test]
     fn test_set_new_session_management_id_in_header() {
         let mut headers = HeaderMap::new();
-        let id = SessionManagementId::gen();
+        let id = SessionId::gen();
 
-        set_new_session_management_id_in_header(&mut headers, &id);
+        set_new_session_id_into_response_header(&mut headers, &id);
 
         let cookie = parse_cookie(&headers);
 
@@ -71,8 +71,8 @@ mod tests {
     #[test]
     fn test_set_new_login_token_in_header() {
         let mut headers = HeaderMap::new();
-        let series_id = LoginSeriesId::gen();
-        let token = LoginToken::gen();
+        let series_id = SessionSeries::gen();
+        let token = RefreshToken::gen();
 
         set_new_login_token_in_header(&mut headers, &series_id, &token);
 
