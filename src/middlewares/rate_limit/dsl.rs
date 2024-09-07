@@ -34,7 +34,7 @@ pub(crate) trait RateLimit {
                                 let response = inner.call(request).await.unwrap();
                                 Ok(response)
                             },
-                            None => Err(LimitRateError::NoApiKey)
+                            None => Err(LimitRateError::InvalidApiKey)
                         }
                     }
                 }
@@ -57,12 +57,14 @@ pub(crate) trait RateLimit {
 
 }
 
-#[derive(Debug, Error)]
+#[derive(Debug, Error, PartialEq)]
 pub enum LimitRateError {
     #[error("APIキーがありません")]
     NoApiKey,
     #[error("レート上限に達しています")]
     RateLimitOver,
+    #[error("無効なAPIキーです")]
+    InvalidApiKey,
 }
 
 fn extract_no_account_user_api_key(headers: &HeaderMap) -> Option<ApiKey> {
@@ -81,5 +83,118 @@ impl ApiKeyRefreshTimestamp {
 
     pub fn value(&self) -> &UnixtimeMillis {
         &self.0
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{convert::Infallible, future::{ready, Ready}, sync::LazyLock, task::{Context, Poll}};
+
+    use http::{HeaderValue, Request, Response};
+    use tower::Service;
+
+    use crate::common::{api_key::ApiKey, fallible::Fallible, unixtime::UnixtimeMillis};
+
+    use super::{ApiKeyRefreshTimestamp, LimitRateError, RateLimit};
+
+    struct MockRateLimit;
+
+    static WITHIN_LIMIT_API_KEY: LazyLock<ApiKey> = LazyLock::new(|| ApiKey::gen());
+    static OVER_LIMIT_API_KEY: LazyLock<ApiKey> = LazyLock::new(|| ApiKey::gen());
+    static NO_RATE_API_KEY: LazyLock<ApiKey> = LazyLock::new(|| ApiKey::gen());
+    static INVALID_API_KEY: LazyLock<ApiKey> = LazyLock::new(|| ApiKey::gen());
+
+    const LIMIT: u16 = 5;
+
+    impl RateLimit for MockRateLimit {
+        async fn get_rate(&self, api_key: &ApiKey) -> Fallible<Option<u16>, LimitRateError> {
+            if api_key == &*WITHIN_LIMIT_API_KEY {
+                Ok(Some(LIMIT - 1))
+            } else if api_key == &*OVER_LIMIT_API_KEY {
+                Ok(Some(LIMIT + 1))
+            } else {
+                Ok(None)
+            }
+        }
+
+        fn is_limit_over(&self, rate: u16) -> bool {
+            rate > LIMIT
+        }
+
+        async fn check_api_key_exists(&self, api_key: &ApiKey) -> Fallible<Option<ApiKeyRefreshTimestamp>, LimitRateError> {
+            if api_key == &*NO_RATE_API_KEY {
+                Ok(Some(ApiKeyRefreshTimestamp::new(UnixtimeMillis::now())))
+            } else {
+                Ok(None)
+            }
+        }
+
+        fn should_refresh_api_key(&self, _api_key_refresh_timestamp: &ApiKeyRefreshTimestamp) -> bool {
+            true
+        }
+
+        async fn refresh_api_key(&self, _api_key: &ApiKey) -> Fallible<(), LimitRateError> {
+            Ok(())
+        }
+    }
+
+    struct MockInnerService;
+
+    impl Service<Request<()>> for MockInnerService {
+        type Response = Response<()>;
+        type Error = Infallible;
+        type Future = Ready<Result<Self::Response, Self::Error>>;
+
+        fn poll_ready(&mut self, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+            Poll::Ready(Ok(()))
+        }
+
+        fn call(&mut self, _: Request<()>) -> Self::Future {
+            ready(Ok(Response::new(())))
+        }
+    }
+
+    async fn test_rate_limit(api_key: Option<&ApiKey>) -> Fallible<Response<()>, LimitRateError> {
+        let mut inner = MockInnerService;
+
+        let mut request = Request::new(());
+        if let Some(api_key) = api_key {
+            let header_value: HeaderValue = format!("Bearer {}", api_key.value().value())
+                .parse()
+                .unwrap();
+            request.headers_mut().insert("Authorization", header_value);
+        }
+
+        MockRateLimit.rate_limit(&mut inner, request).await
+    }
+
+    #[tokio::test]
+    async fn test_rate_limit_within_limit() {
+        let response = test_rate_limit(Some(&*WITHIN_LIMIT_API_KEY)).await;
+        assert!(response.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_rate_limit_over_limit() {
+        let response = test_rate_limit(Some(&*OVER_LIMIT_API_KEY)).await;
+        assert_eq!(response.unwrap_err(), LimitRateError::RateLimitOver);
+    }
+
+    #[tokio::test]
+    async fn test_rate_limit_no_rate() {
+        let response = test_rate_limit(Some(&*NO_RATE_API_KEY)).await;
+        assert!(response.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_rate_limit_invalid_api_key() {
+        let response = test_rate_limit(Some(&*INVALID_API_KEY)).await;
+        assert_eq!(response.unwrap_err(), LimitRateError::InvalidApiKey);
+    }
+
+    #[tokio::test]
+    async fn test_rate_limit_no_api_key() {
+        let response = test_rate_limit(None).await;
+        assert_eq!(response.unwrap_err(), LimitRateError::NoApiKey);
     }
 }
