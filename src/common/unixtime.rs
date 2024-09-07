@@ -19,3 +19,15 @@ impl UnixtimeMillis {
         self.0
     }
 }
+
+impl From<i64> for UnixtimeMillis {
+    fn from(unixtime: i64) -> Self {
+        Self(unixtime as u64)
+    }
+}
+
+impl From<UnixtimeMillis> for i64 {
+    fn from(unixtime: UnixtimeMillis) -> Self {
+        unixtime.0 as i64
+    }
+}
