@@ -44,9 +44,11 @@ impl ManageSessionImpl {
     }
 }
 
-const SESSION_MANAGEMENT_ID_CACHE_NAMESPACE: &str = "session_management_id";
-const LOGIN_SERIES_ID_CACHE_NAMESPACE: &str = "login_series_id";
+const SESSION_MANAGEMENT_ID_CACHE_NAMESPACE: &str = "smid";
+const LOGIN_SERIES_ID_CACHE_NAMESPACE: &str = "lsid";
 const LOGIN_SERIES_ID_CACHE_SEPARATOR: &str = "$";
+
+const SESSION_EXTENSION_THRESHOLD: u64 = 30 * 24 * 60 * 60 * 1000;
 
 const SECURITY_EMAIL_ADDRESS: LazyLock<NetmateEmail> = LazyLock::new(|| NetmateEmail::try_from(Email::from_str("security@account.netmate.app").unwrap()).unwrap());
 const SECURITY_NOTIFICATION_SUBJECT: LazyLock<Subject> = LazyLock::new(|| Subject::from_str(ja::session::SECURITY_NOTIFICATION_SUBJECT).unwrap());
@@ -132,6 +134,10 @@ impl ManageSession for ManageSessionImpl {
             .first_row_typed::<(i64, )>()
             .map_err(|e| ManageSessionError::GetLastSeriesIdExtensionTimeFailed(e.into()))
             .map(|(updated_at, )| SeriesIdRefreshTimestamp::new(UnixtimeMillis::new(updated_at as u64)))
+    }
+
+    fn should_extend_series_id_expiration(last_refreshed_at: &SeriesIdRefreshTimestamp) -> bool {
+        UnixtimeMillis::now().value() - last_refreshed_at.value().value() > SESSION_EXTENSION_THRESHOLD
     }
 
     async fn extend_series_id_expiration(&self, account_id: &AccountId, series_id: &LoginSeriesId) -> Fallible<(), ManageSessionError> {

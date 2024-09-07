@@ -2,17 +2,16 @@ use std::convert::Infallible;
 
 use extract_session_ids::extract_session_ids;
 use http::{HeaderMap, HeaderName, HeaderValue, Request, Response};
-use misc::{can_set_cookie_in_response_header, insert_account_id, is_same_token, should_extend_series_id_expiration};
+use misc::{can_set_cookie_in_response_header, insert_account_id, is_same_token};
 use set_cookie::{clear_session_ids_in_response_header, reset_session_timeout, set_new_login_token_in_header, set_new_session_management_id_in_header};
 use thiserror::Error;
 use tower::Service;
 use tracing::info;
 
-use crate::common::{email::address::Email, fallible::Fallible, id::AccountId, language::Language, session::value::{LoginSeriesId, LoginToken, SessionManagementId}};
+use crate::common::{email::address::Email, fallible::Fallible, id::AccountId, language::Language, session::value::{LoginSeriesId, LoginToken, SessionManagementId}, unixtime::UnixtimeMillis};
 
 mod extract_session_ids;
 mod misc;
-pub use misc::SeriesIdRefreshTimestamp;
 mod set_cookie;
 
 pub(crate) trait ManageSession {
@@ -132,7 +131,7 @@ pub(crate) trait ManageSession {
         // その点は`series_id_update_at`内でレートリミットを設け対策する
         let should_extend = self.get_last_series_id_extension_time(account_id, series_id)
             .await
-            .and_then(|t| should_extend_series_id_expiration(&t))?;
+            .map(|t| Self::should_extend_series_id_expiration(&t))?;
 
         if should_extend {
             // 既存のシリーズIDの有効期限を延長する
@@ -143,6 +142,8 @@ pub(crate) trait ManageSession {
     }
 
     async fn get_last_series_id_extension_time(&self, account_id: &AccountId, series_id: &LoginSeriesId) -> Fallible<SeriesIdRefreshTimestamp, ManageSessionError>;
+
+    fn should_extend_series_id_expiration(last_refreshed_at: &SeriesIdRefreshTimestamp) -> bool;
 
     async fn extend_series_id_expiration(&self, account_id: &AccountId, series_id: &LoginSeriesId) -> Fallible<(), ManageSessionError>;
 
@@ -181,6 +182,18 @@ pub enum ManageSessionError {
     InvalidSession([(HeaderName, HeaderValue); 2]),
 }
 
+pub struct SeriesIdRefreshTimestamp(UnixtimeMillis);
+
+impl SeriesIdRefreshTimestamp {
+    pub fn new(unixtime: UnixtimeMillis) -> Self {
+        Self(unixtime)
+    }
+
+    pub fn value(&self) -> &UnixtimeMillis {
+        &self.0
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::convert::Infallible;
@@ -199,8 +212,7 @@ mod tests {
     use crate::common::language::Language;
     use crate::common::session::value::{to_cookie_value, LoginId, LoginSeriesId, LoginToken, SessionManagementId, LOGIN_COOKIE_KEY, SESSION_MANAGEMENT_COOKIE_KEY};
     use crate::common::unixtime::UnixtimeMillis;
-    use super::misc::SeriesIdRefreshTimestamp;
-    use super::{ManageSession, ManageSessionError};
+    use super::{ManageSession, ManageSessionError, SeriesIdRefreshTimestamp};
 
     /*
         1. S (通常のセッション認証、これが最も多い)
@@ -213,6 +225,7 @@ mod tests {
 
     static AUTH_WITH_SESSION_MANAGEMENT_ID: LazyLock<SessionManagementId> = LazyLock::new(|| SessionManagementId::gen());
     static AUTH_WITH_LOGIN_ID: LazyLock<LoginId> = LazyLock::new(|| LoginId::new(LoginSeriesId::gen(), LoginToken::gen()));
+    static AUTH_WITH_LOGIN_ID_AND_REFRESH: LazyLock<LoginId> = LazyLock::new(|| LoginId::new(LoginSeriesId::gen(), LoginToken::gen()));
     static EXPIRED_SESSION: LazyLock<LoginId> = LazyLock::new(|| LoginId::new(LoginSeriesId::gen(), LoginToken::gen()));
     static POSSIBLE_SESSION_FORGERY: LazyLock<SessionManagementId> = LazyLock::new(|| SessionManagementId::gen());
     static POSSIBLE_SESSION_HIJACK: LazyLock<LoginId> = LazyLock::new(|| LoginId::new(LoginSeriesId::gen(), LoginToken::gen()));
@@ -229,13 +242,16 @@ mod tests {
         }
 
         async fn get_login_token_and_account_id(&self, series_id: &LoginSeriesId) -> Fallible<(Option<LoginToken>, Option<AccountId>), ManageSessionError> {
-            if series_id == &*AUTH_WITH_LOGIN_ID.series_id() {
-                Ok((Some(LoginToken::from_str(*&AUTH_WITH_LOGIN_ID.token().value().value()).unwrap()), Some(AccountId::new(Uuid7::now()))))
+            let res = if series_id == &*AUTH_WITH_LOGIN_ID.series_id() {
+                (Some(LoginToken::from_str(*&AUTH_WITH_LOGIN_ID.token().value().value()).unwrap()), Some(AccountId::new(Uuid7::now())))
+            } else if series_id == &*AUTH_WITH_LOGIN_ID_AND_REFRESH.series_id() {
+                (Some(LoginToken::from_str(*&AUTH_WITH_LOGIN_ID_AND_REFRESH.token().value().value()).unwrap()), Some(AccountId::new(Uuid7::now())))
             } else if series_id == &*POSSIBLE_SESSION_HIJACK.series_id() {
-                Ok((Some(LoginToken::gen()), Some(AccountId::new(Uuid7::now()))))
+                (Some(LoginToken::gen()), Some(AccountId::new(Uuid7::now())))
             } else {
-                Ok((None, None))
-            }
+                (None, None)
+            };
+            Ok(res)
         }
 
         async fn register_new_session_management_id_with_account_id(&self, _: &SessionManagementId, _: &AccountId) -> Fallible<(), ManageSessionError> {
@@ -246,10 +262,19 @@ mod tests {
             Ok(())
         }
 
-        async fn get_last_series_id_extension_time(&self, _: &AccountId, _: &LoginSeriesId) -> Fallible<SeriesIdRefreshTimestamp, ManageSessionError> {
-            Ok(SeriesIdRefreshTimestamp::new(UnixtimeMillis::new(0)))
+        async fn get_last_series_id_extension_time(&self, _: &AccountId, series_id: &LoginSeriesId) -> Fallible<SeriesIdRefreshTimestamp, ManageSessionError> {
+            let last_refreshed_at = if series_id == &*AUTH_WITH_LOGIN_ID_AND_REFRESH.series_id() {
+                UnixtimeMillis::new(0)
+            } else {
+                UnixtimeMillis::now()
+            };
+            Ok(SeriesIdRefreshTimestamp::new(last_refreshed_at))
         }
 
+        fn should_extend_series_id_expiration(last_refreshed_at: &SeriesIdRefreshTimestamp) -> bool {
+            last_refreshed_at.value().value() == 0
+        }
+        
         async fn extend_series_id_expiration(&self, _: &AccountId, _: &LoginSeriesId) -> Fallible<(), ManageSessionError> {
             Ok(())
         }
@@ -323,6 +348,13 @@ mod tests {
     #[tokio::test]
     async fn auth_with_login_id() {
         let login_id = &*AUTH_WITH_LOGIN_ID;
+        let result = test_case(None, Some(login_id)).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn auth_with_login_id_and_refresh() {
+        let login_id = &*AUTH_WITH_LOGIN_ID_AND_REFRESH;
         let result = test_case(None, Some(login_id)).await;
         assert!(result.is_ok());
     }
