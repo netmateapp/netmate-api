@@ -18,7 +18,7 @@ impl SignUpImpl {
     ) -> Result<Self, InitError<SignUpImpl>> {
         let exists_by_email = prepare::<InitError<SignUpImpl>>(
             &session,
-            "SELECT id FROM accounts_by_email WHERE email = ?"
+            "SELECT id FROM accounts_by_email WHERE email = ? LIMIT 1"
         ).await?;
 
         let insert_account_creation_application = prepare::<InitError<SignUpImpl>>(
@@ -37,7 +37,7 @@ static US_EN_AUTHENTICATION_EMAIL_SUBJECT: LazyLock<Subject> = LazyLock::new(|| 
 impl SignUp for SignUpImpl {
     async fn is_available_email(&self, email: &Email) -> Fallible<bool, SignUpError> {
         let res = self.session
-            .execute(&self.exists_by_email, (email.value(), ))
+            .execute_unpaged(&self.exists_by_email, (email.value(), ))
             .await;
 
         match res {
@@ -56,7 +56,7 @@ impl SignUp for SignUpImpl {
         let language = i8::from(*language);
 
         self.session
-            .execute(&self.insert_account_creation_application, (token.value(), email.value(), pw_hash.value(), birth_year, region, language))
+            .execute_unpaged(&self.insert_account_creation_application, (token.value(), email.value(), pw_hash.value(), birth_year, region, language))
             .await
             .map(|_| ())
             .map_err(|e| SignUpError::ApplicationFailed(e.into()))

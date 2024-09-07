@@ -17,7 +17,7 @@ impl VerifyEmailImpl {
     pub async fn try_new(session: Arc<Session>) -> Result<Self, InitError<VerifyEmailImpl>> {
         let select_account_creation_application = prepare::<InitError<VerifyEmailImpl>>(
             &session,
-            "SELECT email, password_hash, birth_year, region, language FROM account_creation_applications WHERE ottoken = ?"
+            "SELECT email, password_hash, birth_year, region, language FROM account_creation_applications WHERE ottoken = ? LIMIT 1"
         ).await?;
 
         let insert_account = prepare::<InitError<VerifyEmailImpl>>(
@@ -37,7 +37,7 @@ impl VerifyEmailImpl {
 impl VerifyEmail for VerifyEmailImpl {
     async fn retrieve_account_creation_application_by(&self, token: &OneTimeToken) -> Fallible<(Email, PasswordHash, BirthYear, Region, Language), VerifyEmailError> {
         let res = self.session
-            .execute(&self.select_account_creation_application, (token.value(), ))
+            .execute_unpaged(&self.select_account_creation_application, (token.value(), ))
             .await
             .map_dsl_error()?;
 
@@ -64,7 +64,7 @@ impl VerifyEmail for VerifyEmailImpl {
         let language = i8::from(*language);
         
         self.session
-            .execute(&self.insert_account, (account_id.value().value(), email.value(), password_hash.value(), birth_year, region, language))
+            .execute_unpaged(&self.insert_account, (account_id.value().value(), email.value(), password_hash.value(), birth_year, region, language))
             .await
             .map(|_| ())
             .map_err(|e| VerifyEmailError::CreateAccountFailed(e.into()))
@@ -72,7 +72,7 @@ impl VerifyEmail for VerifyEmailImpl {
 
     async fn delete_account_creation_application_by(&self, token: &OneTimeToken) -> Fallible<(), VerifyEmailError> {
         self.session
-            .execute(&self.delete_account_creation_application, (token.value(), ))
+            .execute_unpaged(&self.delete_account_creation_application, (token.value(), ))
             .await
             .map(|_| ())
             .map_err(|e| VerifyEmailError::DeleteAccountCreationApplicationFailed(e.into()))
