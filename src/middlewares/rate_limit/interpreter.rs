@@ -3,7 +3,7 @@ use std::{fs::{self}, sync::Arc};
 use redis::Script;
 use scylla::{frame::value::CqlTimestamp, prepared_statement::PreparedStatement, Session};
 
-use crate::{common::{api_key::ApiKey, fallible::Fallible, unixtime::UnixtimeMillis}, helper::{error::InitError, scylla::prepare, valkey::Pool}};
+use crate::{common::{api_key::ApiKey, fallible::Fallible, unixtime::UnixtimeMillis}, helper::{error::InitError, scylla::prepare, valkey::{conn, Pool}}};
 
 use super::{dsl::{ApiKeyRefreshTimestamp, RateLimitError, RateLimit}, value::{Interval, Limit, Namespace}};
 
@@ -16,6 +16,7 @@ pub struct RateLimitImpl {
     interval: Interval,
     db: Arc<Session>,
     select_last_api_key_refresh_timestamp: Arc<PreparedStatement>,
+    insert_api_key_and_refresh_timestamp: Arc<PreparedStatement>,
     cache: Arc<Pool>,
     incr_if_within_limit: Arc<Script>,
 }
@@ -24,14 +25,19 @@ impl RateLimitImpl {
     pub async fn try_new(namespace: Namespace, limit: Limit, interval: Interval, db: Arc<Session>, cache: Arc<Pool>) -> Result<Self, InitError<Self>> {
         let select_last_api_key_refresh_timestamp = prepare::<InitError<Self>>(
             &db,
-            "SELECT last_refreshed_ttl_at FROM api_keys WHERE key = ?"
+            "SELECT last_refreshed_ttl_at FROM api_keys WHERE api_key = ?"
+        ).await?;
+
+        let insert_api_key_and_refresh_timestamp = prepare::<InitError<Self>>(
+            &db,
+            "INSERT INTO api_kyes (api_key, last_refreshed_ttl_at) VALUES (?, ?) USING TTL 2592000"
         ).await?;
 
         let lua_script = fs::read_to_string("rate.lua")
             .map_err(|e| InitError::new(e.into()))?;
         let incr_if_within_limit = Arc::new(Script::new(lua_script.as_str()));
 
-        Ok(Self { namespace, limit, interval, db, select_last_api_key_refresh_timestamp, cache, incr_if_within_limit })
+        Ok(Self { namespace, limit, interval, db, select_last_api_key_refresh_timestamp, insert_api_key_and_refresh_timestamp, cache, incr_if_within_limit })
     }
 }
 
@@ -45,15 +51,12 @@ impl RateLimit for RateLimitImpl {
             .await
             .map_err(|e| RateLimitError::CheckApiKeyExistsFailed(e.into()))?
             .first_row_typed::<(CqlTimestamp, )>()
-            .map(|(last_refreshed_ttl_at, )| Some(ApiKeyRefreshTimestamp::new(UnixtimeMillis::new(last_refreshed_ttl_at.0 as u64))))
+            .map(|(last_refreshed_ttl_at, )| Some(ApiKeyRefreshTimestamp::new(UnixtimeMillis::from(last_refreshed_ttl_at.0))))
             .map_err(|e| RateLimitError::CheckApiKeyExistsFailed(e.into()))
     }
 
     async fn increment_rate(&self, api_key: &ApiKey) -> Fallible<u16, RateLimitError> {
-        let mut conn = self.cache
-            .get()
-            .await
-            .map_err(|e| RateLimitError::IncrementRateFailed(e.into()))?;
+        let mut conn = conn(&self.cache, |e| RateLimitError::IncrementRateFailed(e.into())).await?;
 
         self.incr_if_within_limit
                 .key(format!("{}:{}:{}", CACHE_NAMESPACE, self.namespace.value(), api_key.value().value()))
@@ -73,7 +76,7 @@ impl RateLimit for RateLimitImpl {
 
     async fn refresh_api_key(&self, api_key: &ApiKey) -> Fallible<(), RateLimitError> {
         self.db
-            .execute(&self.select_last_api_key_refresh_timestamp, (api_key.value().value(),))
+            .execute(&self.insert_api_key_and_refresh_timestamp, (api_key.value().value(), i64::from(UnixtimeMillis::now())))
             .await
             .map(|_| ())
             .map_err(|e| RateLimitError::RefreshApiKeyFailed(e.into()))
