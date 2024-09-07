@@ -4,7 +4,7 @@ use bb8_redis::redis::cmd;
 use scylla::{prepared_statement::PreparedStatement, Session};
 use uuid::Uuid;
 
-use crate::{common::{email::{address::Email, resend::ResendEmailSender, send::{Body, EmailSender, HtmlContent, NetmateEmail, PlainText, SenderName, Subject}}, fallible::Fallible, id::{uuid7::Uuid7, AccountId}, language::Language, session::value::{LoginSeriesId, LoginToken, SessionManagementId, LOGIN_ID_SEPARATOR}, unixtime::UnixtimeMillis}, helper::{error::InitError, garnet::Pool, scylla::prepare}, translation::ja};
+use crate::{common::{email::{address::Email, resend::ResendEmailSender, send::{Body, EmailSender, HtmlContent, NetmateEmail, PlainText, SenderName, Subject}}, fallible::Fallible, id::{uuid7::Uuid7, AccountId}, language::Language, session::value::{LoginSeriesId, LoginToken, SessionManagementId, LOGIN_ID_SEPARATOR}, unixtime::UnixtimeMillis}, helper::{error::InitError, valkey::Pool, scylla::prepare}, translation::ja};
 
 use super::dsl::{ManageSession, ManageSessionError, SeriesIdRefreshTimestamp};
 

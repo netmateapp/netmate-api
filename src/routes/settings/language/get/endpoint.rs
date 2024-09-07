@@ -7,7 +7,7 @@ use scylla::Session;
 use tower::ServiceBuilder;
 use tracing::{error, info};
 
-use crate::{common::{id::AccountId, language::Language}, helper::{error::InitError, garnet::Pool}, middlewares::session::middleware::LoginSessionLayer, routes::settings::language::get::dsl::GetLanguage};
+use crate::{common::{id::AccountId, language::Language}, helper::{error::InitError, valkey::Pool}, middlewares::session::middleware::LoginSessionLayer, routes::settings::language::get::dsl::GetLanguage};
 
 use super::interpreter::GetLanguageImpl;
 

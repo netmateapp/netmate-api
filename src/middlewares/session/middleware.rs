@@ -6,7 +6,7 @@ use scylla::Session;
 use tokio::pin;
 use tower::{Layer, Service};
 
-use crate::helper::{error::InitError, garnet::Pool};
+use crate::helper::{error::InitError, valkey::Pool};
 
 use super::{dsl::{ManageSession, ManageSessionError}, interpreter::ManageSessionImpl};
 

@@ -1,3 +1,3 @@
 pub mod error;
-pub mod garnet;
+pub mod valkey;
 pub mod scylla;
