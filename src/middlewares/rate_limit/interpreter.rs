@@ -5,7 +5,7 @@ use scylla::{frame::value::CqlTimestamp, prepared_statement::PreparedStatement, 
 
 use crate::{common::{api_key::ApiKey, fallible::Fallible, unixtime::UnixtimeMillis}, helper::{error::InitError, scylla::prepare, valkey::Pool}};
 
-use super::{dsl::{ApiKeyRefreshTimestamp, LimitRateError, RateLimit}, value::{Interval, Limit, Namespace}};
+use super::{dsl::{ApiKeyRefreshTimestamp, RateLimitError, RateLimit}, value::{Interval, Limit, Namespace}};
 
 const API_KEY_REFRESH_THERESHOLD: u64 = 10 * 24 * 60 * 60 * 1000;
 const CACHE_NAMESPACE: &str = "rtlim";
@@ -36,46 +36,46 @@ impl RateLimitImpl {
 }
 
 impl RateLimit for RateLimitImpl {
-    async fn increment_rate(&self, api_key: &ApiKey) -> Fallible<u16, LimitRateError> {
+    // ScyllaDBのキャッシュは高速であるため問題ないが、
+    // 複数のエンドポイントで同じ検証をするのは効率が悪いので、
+    // 30分～1時間程度の短時間キャッシュを行うべき(リフレッシュ時刻も併せてキャッシュするため、短時間にする必要がある)
+    async fn check_api_key_exists(&self, api_key: &ApiKey) -> Fallible<Option<ApiKeyRefreshTimestamp>, RateLimitError> {
+        self.db
+            .execute(&self.select_last_api_key_refresh_timestamp, (api_key.value().value(),))
+            .await
+            .map_err(|e| RateLimitError::CheckApiKeyExistsFailed(e.into()))?
+            .first_row_typed::<(CqlTimestamp, )>()
+            .map(|(last_refreshed_ttl_at, )| Some(ApiKeyRefreshTimestamp::new(UnixtimeMillis::new(last_refreshed_ttl_at.0 as u64))))
+            .map_err(|e| RateLimitError::CheckApiKeyExistsFailed(e.into()))
+    }
+
+    async fn increment_rate(&self, api_key: &ApiKey) -> Fallible<u16, RateLimitError> {
         let mut conn = self.cache
             .get()
             .await
-            .map_err(|e| LimitRateError::IncrementRateFailed(e.into()))?;
+            .map_err(|e| RateLimitError::IncrementRateFailed(e.into()))?;
 
         self.incr_if_within_limit
                 .key(format!("{}:{}:{}", CACHE_NAMESPACE, self.namespace.value(), api_key.value().value()))
                 .arg(self.interval.as_secs())
                 .invoke_async::<u16>(&mut *conn)
                 .await
-                .map_err(|e| LimitRateError::IncrementRateFailed(e.into()))
+                .map_err(|e| RateLimitError::IncrementRateFailed(e.into()))
     }
 
     fn limit(&self) -> u16 {
         self.limit.value()
     }
 
-    // ScyllaDBのキャッシュは高速であるため問題ないが、
-    // 複数のエンドポイントで同じ検証をするのは効率が悪いので、
-    // 30分～1時間程度の短時間キャッシュを行うべき(リフレッシュ時刻も併せてキャッシュするため、短時間にする必要がある)
-    async fn check_api_key_exists(&self, api_key: &ApiKey) -> Fallible<Option<ApiKeyRefreshTimestamp>, LimitRateError> {
-        self.db
-            .execute(&self.select_last_api_key_refresh_timestamp, (api_key.value().value(),))
-            .await
-            .map_err(|e| LimitRateError::CheckApiKeyExistsFailed(e.into()))?
-            .first_row_typed::<(CqlTimestamp, )>()
-            .map(|(last_refreshed_ttl_at, )| Some(ApiKeyRefreshTimestamp::new(UnixtimeMillis::new(last_refreshed_ttl_at.0 as u64))))
-            .map_err(|e| LimitRateError::CheckApiKeyExistsFailed(e.into()))
-    }
-
     fn should_refresh_api_key(&self, api_key_refresh_timestamp: &ApiKeyRefreshTimestamp) -> bool {
         UnixtimeMillis::now().value() - api_key_refresh_timestamp.value().value() > API_KEY_REFRESH_THERESHOLD
     }
 
-    async fn refresh_api_key(&self, api_key: &ApiKey) -> Fallible<(), LimitRateError> {
+    async fn refresh_api_key(&self, api_key: &ApiKey) -> Fallible<(), RateLimitError> {
         self.db
             .execute(&self.select_last_api_key_refresh_timestamp, (api_key.value().value(),))
             .await
             .map(|_| ())
-            .map_err(|e| LimitRateError::RefreshApiKeyFailed(e.into()))
+            .map_err(|e| RateLimitError::RefreshApiKeyFailed(e.into()))
     }
 }
