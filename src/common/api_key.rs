@@ -8,6 +8,7 @@ const API_KEY_ENTROPY_BITS: usize = 196;
 
 type AK = Token<{calc_entropy_bytes(API_KEY_ENTROPY_BITS)}>;
 
+#[derive(Debug, PartialEq)]
 pub struct ApiKey(AK);
 
 impl ApiKey {
