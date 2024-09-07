@@ -1,19 +1,19 @@
 use std::{fs::{self}, sync::Arc};
 
-use redis::{cmd, Script};
+use redis::Script;
 use scylla::{frame::value::CqlTimestamp, prepared_statement::PreparedStatement, Session};
 
 use crate::{common::{api_key::ApiKey, fallible::Fallible, unixtime::UnixtimeMillis}, helper::{error::InitError, scylla::prepare, valkey::Pool}};
 
-use super::dsl::{ApiKeyRefreshTimestamp, LimitRateError, RateLimit};
+use super::{dsl::{ApiKeyRefreshTimestamp, LimitRateError, RateLimit}, value::{Interval, Limit, Namespace}};
 
 const API_KEY_REFRESH_THERESHOLD: u64 = 10 * 24 * 60 * 60 * 1000;
-const CACHE_NAMESPACE: &str = "ratelim";
+const CACHE_NAMESPACE: &str = "rtlim";
 
 pub struct RateLimitImpl {
-    namespace: &'static str,
-    limit: u16,
-    interval: u32,
+    namespace: Namespace,
+    limit: Limit,
+    interval: Interval,
     db: Arc<Session>,
     select_last_api_key_refresh_timestamp: Arc<PreparedStatement>,
     cache: Arc<Pool>,
@@ -21,7 +21,7 @@ pub struct RateLimitImpl {
 }
 
 impl RateLimitImpl {
-    pub async fn try_new(namespace: &'static str, limit: u16, interval: u32, db: Arc<Session>, cache: Arc<Pool>) -> Result<Self, InitError<Self>> {
+    pub async fn try_new(namespace: Namespace, limit: Limit, interval: Interval, db: Arc<Session>, cache: Arc<Pool>) -> Result<Self, InitError<Self>> {
         let select_last_api_key_refresh_timestamp = prepare::<InitError<Self>>(
             &db,
             "SELECT last_refreshed_ttl_at FROM api_keys WHERE key = ?"
@@ -43,15 +43,15 @@ impl RateLimit for RateLimitImpl {
             .map_err(|e| LimitRateError::IncrementRateFailed(e.into()))?;
 
         self.incr_if_within_limit
-                .key(format!("{}:{}:{}", CACHE_NAMESPACE, self.namespace, api_key.value().value()))
-                .arg(self.interval)
+                .key(format!("{}:{}:{}", CACHE_NAMESPACE, self.namespace.value(), api_key.value().value()))
+                .arg(self.interval.as_secs())
                 .invoke_async::<u16>(&mut *conn)
                 .await
                 .map_err(|e| LimitRateError::IncrementRateFailed(e.into()))
     }
 
     fn limit(&self) -> u16 {
-        self.limit
+        self.limit.value()
     }
 
     // ScyllaDBのキャッシュは高速であるため問題ないが、
