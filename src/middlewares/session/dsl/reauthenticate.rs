@@ -1,3 +1,5 @@
+use thiserror::Error;
+
 use crate::common::{fallible::Fallible, id::AccountId, session::value::{RefreshToken, SessionSeries}};
 
 pub(crate) trait ReAuthenticateSession {
@@ -7,7 +9,7 @@ pub(crate) trait ReAuthenticateSession {
                 if refresh_token == &stored_refresh_token {
                     Ok(account_id)
                 } else {
-                    Err(ReAuthenticateUserError::PotentialSessionTheft)
+                    Err(ReAuthenticateUserError::PotentialSessionTheft(account_id))
                 }
             },
             None => Err(ReAuthenticateUserError::InvalidRefreshToken)
@@ -17,10 +19,14 @@ pub(crate) trait ReAuthenticateSession {
     async fn fetch_refresh_token_and_account_id(&self, session_series: &SessionSeries) -> Fallible<Option<(RefreshToken, AccountId)>, ReAuthenticateUserError>;
 }
 
+#[derive(Debug, Error)]
 pub enum ReAuthenticateUserError {
-    UpdateSessionFailed,
+    #[error("リフレッシュトークンとアカウントIDの取得に失敗しました")]
+    FetchRefreshTokenAndAccountId,
+    #[error("無効なリフレッシュトークンです")]
     InvalidRefreshToken,
-    PotentialSessionTheft,
+    #[error("セッションの盗用の可能性があります")]
+    PotentialSessionTheft(AccountId),
 }
 
 #[cfg(test)]
@@ -41,7 +47,7 @@ mod tests {
             if session_series == &*REAUTHENTICATED {
                 Ok(Some((RefreshToken::gen(), AccountId::new(Uuid7::now()))))
             } else if session_series == &*POTENTIAL_SESSION_THEFT {
-                Err(ReAuthenticateUserError::PotentialSessionTheft)
+                Err(ReAuthenticateUserError::PotentialSessionTheft(AccountId::new(Uuid7::now())))
             } else {
                 Err(ReAuthenticateUserError::InvalidRefreshToken)
             }
@@ -58,7 +64,7 @@ mod tests {
     async fn potential_session_theft() {
         let result = MockReauthenticateSession.fetch_refresh_token_and_account_id(&*POTENTIAL_SESSION_THEFT).await;
         match result.err() {
-            Some(ReAuthenticateUserError::PotentialSessionTheft) => (),
+            Some(ReAuthenticateUserError::PotentialSessionTheft(_)) => (),
             _ => panic!()
         }
     }
