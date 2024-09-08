@@ -3,10 +3,10 @@ use thiserror::Error;
 use crate::common::{fallible::Fallible, id::AccountId, session::value::{RefreshToken, SessionSeries}};
 
 pub(crate) trait ReAuthenticateSession {
-    async fn reauthenticate_session(&self, session_series: &SessionSeries, refresh_token: &RefreshToken) -> Fallible<AccountId, ReAuthenticateUserError> {
+    async fn reauthenticate_session(&self, session_series: &SessionSeries, refresh_token: RefreshToken) -> Fallible<AccountId, ReAuthenticateUserError> {
         match self.fetch_refresh_token_and_account_id(&session_series).await? {
             Some((stored_refresh_token, account_id)) => {
-                if refresh_token == &stored_refresh_token {
+                if refresh_token == stored_refresh_token {
                     Ok(account_id)
                 } else {
                     Err(ReAuthenticateUserError::PotentialSessionTheft(account_id))
