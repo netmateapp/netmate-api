@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{fmt::{self, Display, Formatter}, str::FromStr};
 
 use cookie::{Cookie, CookieBuilder, SameSite};
 use thiserror::Error;
@@ -20,6 +20,12 @@ impl SessionId {
 
     pub fn value(&self) -> &SId {
         &self.0
+    }
+}
+
+impl Display for SessionId {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 

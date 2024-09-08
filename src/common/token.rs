@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{fmt::{self, Display, Formatter}, str::FromStr};
 
 use rand::{RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
@@ -17,6 +17,12 @@ const BASE64_URL: [char; 1 << ENTROPY_BITS_PER_CHAR] = [
 
 #[derive(Debug, PartialEq)]
 pub struct Token<const ENTROPY_BYTES: usize>(String);
+
+impl<const ENTROPY_BYTES: usize> Display for Token<ENTROPY_BYTES> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 const OCTET: usize = 8;
 
