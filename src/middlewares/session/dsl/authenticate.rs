@@ -1,14 +1,11 @@
-use http::Request;
 use thiserror::Error;
 
 use crate::common::{fallible::Fallible, id::AccountId, session::value::SessionId};
 
 pub(crate) trait AuthenticateUser {
-    async fn authenticate_user<B>(&self, request: &mut Request<B>, session_id: &SessionId) -> Fallible<(), AuthenticateUserError> {
+    async fn authenticate(&self, session_id: &SessionId) -> Fallible<AccountId, AuthenticateUserError> {
         self.resolve_session_id_to_account_id(&session_id)
             .await?
-            .map(|account_id| request.extensions_mut().insert(account_id))
-            .map(|_| ())
             .ok_or_else(|| AuthenticateUserError::InvalidSessionId)
     }
 
@@ -26,8 +23,6 @@ pub enum AuthenticateUserError {
 #[cfg(test)]
 mod tests {
     use std::sync::LazyLock;
-
-    use http::Request;
 
     use crate::common::{fallible::Fallible, id::{uuid7::Uuid7, AccountId}, session::value::SessionId};
 
@@ -49,17 +44,13 @@ mod tests {
 
     #[tokio::test]
     async fn valid_session_id() {
-        let mut request = Request::new(());
-        let result = MockAuthenticateUser.authenticate_user(&mut request, &*VALID_SESSION_ID).await;
-        let is_resolved = request.extensions().get::<AccountId>().is_some();
-        assert!(result.is_ok() && is_resolved);
+        let result = MockAuthenticateUser.authenticate(&*VALID_SESSION_ID).await;
+        assert!(result.is_ok());
     }
 
     #[tokio::test]
     async fn invalid_session_id() {
-        let mut request = Request::new(());
-        let result = MockAuthenticateUser.authenticate_user(&mut request, &SessionId::gen()).await;
-        let is_resolved = request.extensions().get::<AccountId>().is_some();
-        assert!(result.is_err() && !is_resolved);
+        let result = MockAuthenticateUser.authenticate(&SessionId::gen()).await;
+        assert!(result.is_err());
     }
 }
