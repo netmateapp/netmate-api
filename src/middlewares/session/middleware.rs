@@ -91,29 +91,17 @@ where
         // エラーもレスポンスに変換して返す
         match ready!(response_future.poll(cx)) {
             Ok(response) => Poll::Ready(Ok(response)),
-            Err(e) => match e {
-                // セッションが無効な場合は、セッションを削除するヘッダーを含める
-                ManageSessionError::InvalidSession(headers) => {
-                    let response = Response::builder()
-                        .status(StatusCode::UNAUTHORIZED)
-                        .header(&headers[0].0, &headers[0].1)
-                        .header(&headers[1].0, &headers[1].1)
-                        .body(B::default())
-                        .unwrap();
-                    Poll::Ready(Ok(response))
-                },
-                _ => {
-                    let status_code = match e {
-                        ManageSessionError::NoSession => StatusCode::UNAUTHORIZED,
-                        _ => StatusCode::INTERNAL_SERVER_ERROR,
-                    };
+            Err(e) => {
+                let status_code = match e {
+                    ManageSessionError::NoSession => StatusCode::UNAUTHORIZED,
+                    _ => StatusCode::INTERNAL_SERVER_ERROR,
+                };
 
-                    let response = Response::builder()
-                        .status(status_code)
-                        .body(B::default())
-                        .unwrap();
-                    Poll::Ready(Ok(response))
-                }
+                let response = Response::builder()
+                    .status(status_code)
+                    .body(B::default())
+                    .unwrap();
+                Poll::Ready(Ok(response))
             }
         }
     }

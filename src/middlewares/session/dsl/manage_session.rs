@@ -1,6 +1,6 @@
 use std::convert::Infallible;
 
-use http::{header::SET_COOKIE, HeaderName, HeaderValue, Request, Response};
+use http::{header::SET_COOKIE, Request, Response};
 use thiserror::Error;
 use tower::Service;
 
@@ -73,7 +73,7 @@ pub(crate) trait ManageSession {
             }
         }
 
-        Err(ManageSessionError::InvalidSession(Self::clear_session_related_cookie_headers()))
+        Err(ManageSessionError::AuthenticationFailed)
     }
 
     fn session_expiration() -> &'static SessionExpirationSeconds;
@@ -85,8 +85,8 @@ pub(crate) trait ManageSession {
 pub enum ManageSessionError {
     #[error("セッションが存在しません")]
     NoSession,
-    #[error("無効なセッションです")]
-    InvalidSession([(HeaderName, HeaderValue); 2]),
+    #[error("認証に失敗しました")]
+    AuthenticationFailed,
 }
 
 pub struct SessionExpirationSeconds(u32);
