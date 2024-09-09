@@ -4,11 +4,61 @@ use bb8_redis::redis::cmd;
 use scylla::{prepared_statement::PreparedStatement, Session};
 use uuid::Uuid;
 
-use crate::{common::{email::{address::Email, resend::ResendEmailSender, send::{Body, EmailSender, HtmlContent, NetmateEmail, PlainText, SenderName, Subject}}, fallible::Fallible, id::{uuid7::Uuid7, AccountId}, language::Language, session::value::{LoginSeriesId, LoginToken, SessionManagementId, LOGIN_ID_SEPARATOR}, unixtime::UnixtimeMillis}, helper::{error::InitError, valkey::Pool, scylla::prepare}, translation::ja};
+use crate::{common::{email::{address::Email, resend::ResendEmailSender, send::{Body, EmailSender, HtmlContent, NetmateEmail, PlainText, SenderName, Subject}}, fallible::Fallible, id::{uuid7::Uuid7, AccountId}, language::Language, session::value::{RefreshToken, SessionId, SessionSeries, REFRESH_PAIR_SEPARATOR}, unixtime::UnixtimeMillis}, helper::{error::InitError, scylla::prepare, valkey::{conn, Pool}}, translation::ja};
 
-use super::dsl::{ManageSession, ManageSessionError, SeriesIdRefreshTimestamp};
+use super::dsl::{authenticate::{AuthenticateSession, AuthenticateSessionError}, extract_session_info::ExtractSessionInformation, manage_session::ManageSession, update_refresh_token::RefreshTokenExpirationSeconds, update_session::SessionExpirationSeconds};
 
-#[derive(Debug, Clone)]
+
+pub struct ManageSessionInterpreter {
+    db: Arc<Session>,
+    cache: Arc<Pool>,
+    select_email_and_language: Arc<PreparedStatement>,
+    select_last_series_id_extension_time: Arc<PreparedStatement>,
+    update_series_id_expiration: Arc<PreparedStatement>,
+    delete_all_sessions: Arc<PreparedStatement>
+}
+
+const SESSION_EXPIRATION: SessionExpirationSeconds = SessionExpirationSeconds::new(30 * 60);
+const REFRESH_TOKEN_EXPIRATION: RefreshTokenExpirationSeconds = RefreshTokenExpirationSeconds::new(30 * 24 * 60 * 60);
+
+impl ManageSession for ManageSessionInterpreter {
+    fn session_expiration() -> &'static SessionExpirationSeconds {
+        &SESSION_EXPIRATION
+    }
+
+    fn refresh_token_expiration() -> &'static RefreshTokenExpirationSeconds {
+        &REFRESH_TOKEN_EXPIRATION
+    }
+}
+
+impl ExtractSessionInformation for ManageSessionInterpreter {}
+
+const SESSION_ID_NAMESPACE: &str = "sid";
+
+impl AuthenticateSession for ManageSessionInterpreter {
+    async fn resolve_session_id_to_account_id(&self, session_id: &SessionId) -> Fallible<Option<AccountId>, AuthenticateSessionError> {
+        fn handle_error<E: Into<anyhow::Error>>(e: E) -> AuthenticateSessionError {
+            AuthenticateSessionError::ResolveSessionIdFailed(e.into())
+        }
+        
+        let mut conn = conn(&self.cache, handle_error)
+            .await?;
+
+        let key = format!("{}:{}", SESSION_ID_NAMESPACE, session_id.to_string());
+
+        cmd("GET")
+            .arg(key)
+            .query_async::<Option<Uuid>>(&mut *conn)
+            .await
+            .map_err(handle_error)?
+            .map(|uuid| Uuid7::try_from(uuid))
+            .transpose()
+            .map_or_else(|e| Err(handle_error(e)), |o| Ok(o.map(AccountId::new)))
+    }
+}
+
+
+/*#[derive(Debug, Clone)]
 pub struct ManageSessionImpl {
     db: Arc<Session>,
     cache: Arc<Pool>,
@@ -54,7 +104,7 @@ const SECURITY_EMAIL_ADDRESS: LazyLock<NetmateEmail> = LazyLock::new(|| NetmateE
 const SECURITY_NOTIFICATION_SUBJECT: LazyLock<Subject> = LazyLock::new(|| Subject::from_str(ja::session::SECURITY_NOTIFICATION_SUBJECT).unwrap());
 
 impl ManageSession for ManageSessionImpl {
-    async fn resolve(&self, session_management_id: &SessionManagementId) -> Fallible<Option<AccountId>, ManageSessionError> {
+    async fn resolve(&self, session_management_id: &SessionId) -> Fallible<Option<AccountId>, ManageSessionError> {
         let mut conn = self.cache
             .get()
             .await
@@ -71,7 +121,7 @@ impl ManageSession for ManageSessionImpl {
             .map_err(|e| ManageSessionError::ResolveFailed(e.into()))
     }
 
-    async fn get_login_token_and_account_id(&self, series_id: &LoginSeriesId) -> Fallible<(Option<LoginToken>, Option<AccountId>), ManageSessionError> {
+    async fn get_login_token_and_account_id(&self, series_id: &SessionSeries) -> Fallible<(Option<RefreshToken>, Option<AccountId>), ManageSessionError> {
         let mut conn = self.cache
             .get()
             .await
@@ -87,7 +137,7 @@ impl ManageSession for ManageSessionImpl {
             Some(s) => {
                 let mut parts = s.splitn(2, LOGIN_SERIES_ID_CACHE_SEPARATOR);
                 let token = parts.next()
-                    .and_then(|s| LoginToken::from_str(s).ok());
+                    .and_then(|s| RefreshToken::from_str(s).ok());
                 let account_id = parts.next()
                     .and_then(|s| Uuid::from_str(s).ok())
                     .and_then(|u| Uuid7::try_from(u).ok())
@@ -98,7 +148,7 @@ impl ManageSession for ManageSessionImpl {
         }
     }
 
-    async fn register_new_session_management_id_with_account_id(&self, new_session_management_id: &SessionManagementId, account_id: &AccountId) -> Fallible<(), ManageSessionError> {
+    async fn register_new_session_management_id_with_account_id(&self, new_session_management_id: &SessionId, account_id: &AccountId) -> Fallible<(), ManageSessionError> {
         let mut conn = self.cache
             .get()
             .await
@@ -112,7 +162,7 @@ impl ManageSession for ManageSessionImpl {
             .map_err(|e| ManageSessionError::RegisteredNewSessionManagementIdFailed(e.into()))
     }
 
-    async fn register_new_login_id_with_account_id(&self, login_series_id: &LoginSeriesId, new_login_token: &LoginToken, account_id: &AccountId) -> Fallible<(), ManageSessionError> {
+    async fn register_new_login_id_with_account_id(&self, login_series_id: &SessionSeries, new_login_token: &RefreshToken, account_id: &AccountId) -> Fallible<(), ManageSessionError> {
         let mut conn = self.cache
             .get()
             .await
@@ -120,13 +170,13 @@ impl ManageSession for ManageSessionImpl {
 
         cmd("SET")
             .arg(format!("{}:{}", LOGIN_SERIES_ID_CACHE_NAMESPACE, login_series_id.value().value()))
-            .arg(format!("{}{}{}", new_login_token.value().value(), LOGIN_ID_SEPARATOR, account_id.value().value()))
+            .arg(format!("{}{}{}", new_login_token.value().value(), REFRESH_PAIR_SEPARATOR, account_id.value().value()))
             .exec_async(&mut *conn)
             .await
             .map_err(|e| ManageSessionError::RegisteredNewLoginIdFailed(e.into()))
     }
 
-    async fn get_last_series_id_extension_time(&self, account_id: &AccountId, series_id: &LoginSeriesId) -> Fallible<SeriesIdRefreshTimestamp, ManageSessionError> {
+    async fn get_last_series_id_extension_time(&self, account_id: &AccountId, series_id: &SessionSeries) -> Fallible<SeriesIdRefreshTimestamp, ManageSessionError> {
         self.db
             .execute(&self.select_last_series_id_extension_time, (account_id.value().value(), series_id.value().value()))
             .await
@@ -140,7 +190,7 @@ impl ManageSession for ManageSessionImpl {
         UnixtimeMillis::now().value() - last_refreshed_at.value().value() > SESSION_EXTENSION_THRESHOLD
     }
 
-    async fn extend_series_id_expiration(&self, account_id: &AccountId, series_id: &LoginSeriesId) -> Fallible<(), ManageSessionError> {
+    async fn extend_series_id_expiration(&self, account_id: &AccountId, series_id: &SessionSeries) -> Fallible<(), ManageSessionError> {
         let now = UnixtimeMillis::now()
             .value() as i64;
 
@@ -186,4 +236,4 @@ impl ManageSession for ManageSessionImpl {
             .await
             .map_err(|e| ManageSessionError::SendSecurityNotificationEmailFailed(e.into()))
     }
-}
+}*/
