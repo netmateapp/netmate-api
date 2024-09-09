@@ -25,12 +25,12 @@ impl RateLimitImpl {
     pub async fn try_new(namespace: Namespace, limit: Limit, interval: Interval, db: Arc<Session>, cache: Arc<Pool>) -> Result<Self, InitError<Self>> {
         let select_last_api_key_refresh_timestamp = prepare::<InitError<Self>>(
             &db,
-            "SELECT last_refreshed_ttl_at FROM api_keys WHERE api_key = ?"
+            "SELECT refreshed_at FROM api_keys WHERE api_key = ?"
         ).await?;
 
         let insert_api_key_and_refresh_timestamp = prepare::<InitError<Self>>(
             &db,
-            "INSERT INTO api_kyes (api_key, last_refreshed_ttl_at) VALUES (?, ?) USING TTL 2592000"
+            "INSERT INTO api_kyes (api_key, refreshed_at) VALUES (?, ?) USING TTL 2592000"
         ).await?;
 
         let lua_script = fs::read_to_string("rate.lua")
@@ -47,7 +47,7 @@ impl RateLimit for RateLimitImpl {
     // 30分～1時間程度の短時間キャッシュを行うべき(リフレッシュ時刻も併せてキャッシュするため、短時間にする必要がある)
     async fn check_api_key_exists(&self, api_key: &ApiKey) -> Fallible<Option<ApiKeyRefreshTimestamp>, RateLimitError> {
         self.db
-            .execute(&self.select_last_api_key_refresh_timestamp, (api_key.value().value(),))
+            .execute_unpaged(&self.select_last_api_key_refresh_timestamp, (api_key.value().value(),))
             .await
             .map_err(|e| RateLimitError::CheckApiKeyExistsFailed(e.into()))?
             .first_row_typed::<(CqlTimestamp, )>()
@@ -76,7 +76,7 @@ impl RateLimit for RateLimitImpl {
 
     async fn refresh_api_key(&self, api_key: &ApiKey) -> Fallible<(), RateLimitError> {
         self.db
-            .execute(&self.insert_api_key_and_refresh_timestamp, (api_key.value().value(), i64::from(UnixtimeMillis::now())))
+            .execute_unpaged(&self.insert_api_key_and_refresh_timestamp, (api_key.value().value(), i64::from(UnixtimeMillis::now())))
             .await
             .map(|_| ())
             .map_err(|e| RateLimitError::RefreshApiKeyFailed(e.into()))

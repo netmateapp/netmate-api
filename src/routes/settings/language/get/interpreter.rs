@@ -15,7 +15,7 @@ impl GetLanguageImpl {
     pub async fn try_new(session: Arc<Session>) -> Result<GetLanguageImpl, InitError<GetLanguageImpl>> {
         let select_language = prepare::<InitError<GetLanguageImpl>>(
             &session,
-            "SELECT language FROM accounts WHERE id = ?"
+            "SELECT language FROM accounts WHERE id = ? LIMIT 1"
         ).await?;
 
         Ok(Self { session, select_language })
@@ -25,7 +25,7 @@ impl GetLanguageImpl {
 impl GetLanguage for GetLanguageImpl {
     async fn get_language(&self, account_id: &AccountId) -> Fallible<Language, GetLanguageError> {
         let language: Language = self.session
-            .execute(&self.select_language, (account_id.value().value(), ))
+            .execute_unpaged(&self.select_language, (account_id.value().value(), ))
             .await
             .map_dsl_error()?
             .first_row_typed::<(i8, )>()
