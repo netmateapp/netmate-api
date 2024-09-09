@@ -32,10 +32,6 @@ mod tests {
 
     static VALID_SESSION_ID: LazyLock<SessionId> = LazyLock::new(|| SessionId::gen());
 
-    #[derive(Debug, Error)]
-    #[error("疑似エラー")]
-    struct MockError;
-
     struct MockAuthenticateUser;
 
     impl AuthenticateSession for MockAuthenticateUser {
@@ -43,7 +39,7 @@ mod tests {
             if session_id == &*VALID_SESSION_ID {
                 Ok(Some(AccountId::new(Uuid7::now())))
             } else {
-                Err(AuthenticateSessionError::ResolveSessionIdFailed(MockError.into()))
+                Ok(None)
             }
         }
     }
