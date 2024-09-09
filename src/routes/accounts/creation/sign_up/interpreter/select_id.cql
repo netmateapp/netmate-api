@@ -1,0 +1,1 @@
+SELECT id FROM accounts_by_email WHERE email = ? LIMIT 1

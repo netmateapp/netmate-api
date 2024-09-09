@@ -8,7 +8,7 @@ use super::{dsl::{SignUp, SignUpError}, value::OneTimeToken};
 
 pub struct SignUpImpl {
     session: Arc<Session>,
-    exists_by_email: Arc<PreparedStatement>,
+    select_id: Arc<PreparedStatement>,
     insert_account_creation_application: Arc<PreparedStatement>,
 }
 
@@ -16,17 +16,17 @@ impl SignUpImpl {
     pub async fn try_new(
         session: Arc<Session>,
     ) -> Result<Self, InitError<SignUpImpl>> {
-        let exists_by_email = prepare::<InitError<SignUpImpl>>(
+        let select_id = prepare::<InitError<SignUpImpl>>(
             &session,
-            "SELECT id FROM accounts_by_email WHERE email = ? LIMIT 1"
+            include_str!("select_id.cql")
         ).await?;
 
         let insert_account_creation_application = prepare::<InitError<SignUpImpl>>(
             &session,
-            "INSERT INTO account_creation_applications (ottoken, email, password_hash, birth_year, region, language) VALUES (?, ?, ?, ?, ?, ?) USING TTL 86400"
+            include_str!("insert_account_creation_application.cql")
         ).await?;
 
-        Ok(Self { session, exists_by_email, insert_account_creation_application })
+        Ok(Self { session, select_id, insert_account_creation_application })
     }
 }
 
@@ -37,7 +37,7 @@ static US_EN_AUTHENTICATION_EMAIL_SUBJECT: LazyLock<Subject> = LazyLock::new(|| 
 impl SignUp for SignUpImpl {
     async fn is_available_email(&self, email: &Email) -> Fallible<bool, SignUpError> {
         let res = self.session
-            .execute_unpaged(&self.exists_by_email, (email.value(), ))
+            .execute_unpaged(&self.select_id, (email.value(), ))
             .await;
 
         match res {
