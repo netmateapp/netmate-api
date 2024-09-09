@@ -1,0 +1,1 @@
+SELECT email, password_hash, birth_year, region, language FROM account_creation_applications WHERE ottoken = ? LIMIT 1

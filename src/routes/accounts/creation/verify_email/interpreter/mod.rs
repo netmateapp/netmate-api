@@ -17,17 +17,17 @@ impl VerifyEmailImpl {
     pub async fn try_new(session: Arc<Session>) -> Result<Self, InitError<VerifyEmailImpl>> {
         let select_account_creation_application = prepare::<InitError<VerifyEmailImpl>>(
             &session,
-            "SELECT email, password_hash, birth_year, region, language FROM account_creation_applications WHERE ottoken = ? LIMIT 1"
+            include_str!("select_account_creation_application.cql")
         ).await?;
 
         let insert_account = prepare::<InitError<VerifyEmailImpl>>(
             &session,
-            "INSERT INTO accounts (id, email, password_hash, birth_year, region, language) VALUES (?, ?, ?, ?, ?, ?) IF NOT EXISTS"
+            include_str!("insert_account.cql")
         ).await?;
 
         let delete_account_creation_application = prepare::<InitError<VerifyEmailImpl>>(
             &session,
-            "DELETE FROM account_creation_applications WHERE code = ?"
+            include_str!("delete_account_creation_application.cql")
         ).await?;
 
         Ok(Self { session, select_account_creation_application, insert_account, delete_account_creation_application })
