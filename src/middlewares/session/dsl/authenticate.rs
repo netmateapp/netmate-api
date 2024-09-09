@@ -24,8 +24,6 @@ pub enum AuthenticateSessionError {
 mod tests {
     use std::sync::LazyLock;
 
-    use thiserror::Error;
-
     use crate::common::{fallible::Fallible, id::{uuid7::Uuid7, AccountId}, session::value::SessionId};
 
     use super::{AuthenticateSession, AuthenticateSessionError};
