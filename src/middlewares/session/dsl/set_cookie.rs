@@ -1,19 +1,19 @@
 use http::{header::SET_COOKIE, HeaderName, HeaderValue, Response};
 use time::Duration;
 
-use crate::common::session::value::{secure_cookie_builder, to_cookie_value, SessionSeries, RefreshToken, SessionId, REFRESH_PAIR_COOKIE_KEY, LOGIN_ID_EXPIRY_DAYS, SESSION_COOKIE_KEY, SESSION_TIMEOUT_MINUTES};
+use crate::common::session::value::{secure_cookie_builder, to_cookie_value, SessionSeries, RefreshToken, SessionId, REFRESH_PAIR_COOKIE_KEY, REFRESH_PAIR_EXPIRATION_DAYS, SESSION_COOKIE_KEY, SESSION_TIMEOUT_MINUTES};
 
 pub(crate) trait SetSessionCookie {
-    fn refresh_session_cookie_expiry<B>(response: &mut Response<B>, session_id: &SessionId) {
-        Self::set_session_cookie_with_expiry(response, session_id);
+    fn refresh_session_cookie_expiration<B>(response: &mut Response<B>, session_id: &SessionId) {
+        Self::set_session_cookie_with_expiration(response, session_id);
     }
 
-    fn set_session_cookie_with_expiry<B>(response: &mut Response<B>, session_id: &SessionId) {
+    fn set_session_cookie_with_expiration<B>(response: &mut Response<B>, session_id: &SessionId) {
         Self::set_cookie(response, &SESSION_COOKIE_KEY, String::from(session_id.value().value()), SESSION_TIMEOUT_MINUTES)
     }
 
-    fn set_refresh_pair_cookie_with_expiry<B>(response: &mut Response<B>, session_series: &SessionSeries, refresh_token: &RefreshToken) {
-        Self::set_cookie(response, &REFRESH_PAIR_COOKIE_KEY, to_cookie_value(session_series, refresh_token), LOGIN_ID_EXPIRY_DAYS)
+    fn set_refresh_pair_cookie_with_expiration<B>(response: &mut Response<B>, session_series: &SessionSeries, refresh_token: &RefreshToken) {
+        Self::set_cookie(response, &REFRESH_PAIR_COOKIE_KEY, to_cookie_value(session_series, refresh_token), REFRESH_PAIR_EXPIRATION_DAYS)
     }
 
     fn clear_session_related_cookie_headers(&self) -> [(HeaderName, HeaderValue); 2] {
@@ -70,7 +70,7 @@ mod tests {
     fn set_session_cookie() {
         let mut response = Response::new(());
         let session_id = SessionId::gen();
-        MockSetSessionCookie::set_session_cookie_with_expiry(&mut response, &session_id);
+        MockSetSessionCookie::set_session_cookie_with_expiration(&mut response, &session_id);
         test_set_cookie(response, &SESSION_COOKIE_KEY, session_id.to_string(), SESSION_TIMEOUT_MINUTES);
     }
 
@@ -79,7 +79,7 @@ mod tests {
         let mut response = Response::new(());
         let session_series = SessionSeries::gen();
         let refresh_token = RefreshToken::gen();
-        MockSetSessionCookie::set_refresh_pair_cookie_with_expiry(&mut response, &session_series, &refresh_token);
+        MockSetSessionCookie::set_refresh_pair_cookie_with_expiration(&mut response, &session_series, &refresh_token);
         test_set_cookie(response, &REFRESH_PAIR_COOKIE_KEY, to_cookie_value(&session_series, &refresh_token), SESSION_TIMEOUT_MINUTES);
     }
 

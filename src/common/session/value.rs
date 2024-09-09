@@ -145,7 +145,7 @@ pub const REFRESH_PAIR_COOKIE_KEY: &str = "__Host-id2";
 pub const REFRESH_PAIR_SEPARATOR: char = '$';
 
 pub const SESSION_TIMEOUT_MINUTES: Duration = Duration::minutes(30);
-pub const LOGIN_ID_EXPIRY_DAYS: Duration = Duration::days(400);
+pub const REFRESH_PAIR_EXPIRATION_DAYS: Duration = Duration::days(400);
 
 // 全てのクッキーはこの関数を使用して生成されなければならない
 pub fn secure_cookie_builder(key: &'static str, value: String) -> CookieBuilder<'static> {
