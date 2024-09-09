@@ -23,7 +23,7 @@ pub(crate) trait RefreshSessionSeries {
         now.value() - last_refreshed_at.value() >= Self::refresh_thereshold().as_millis()
     }
 
-    fn refresh_thereshold() -> &'static RefreshSessionSeriesThereshold;
+    fn refresh_thereshold() -> &'static SessionSeriesRefreshThereshold;
 
     async fn refresh_session_series(&self, session_series: &SessionSeries, session_account_id: &AccountId, new_expiration: &RefreshPairExpirationSeconds) -> Fallible<(), RefreshSessionSeriesError>;
 }
@@ -48,9 +48,9 @@ impl LastSessionSeriesRefreshedTime {
     }
 }
 
-pub struct RefreshSessionSeriesThereshold(u64);
+pub struct SessionSeriesRefreshThereshold(u64);
 
-impl RefreshSessionSeriesThereshold {
+impl SessionSeriesRefreshThereshold {
     pub const fn days(days: u64) -> Self {
         Self(days)
     }
@@ -66,10 +66,10 @@ mod tests {
 
     use crate::{common::{fallible::Fallible, id::{uuid7::Uuid7, AccountId}, session::value::SessionSeries, unixtime::UnixtimeMillis}, middlewares::session::dsl::manage_session::RefreshPairExpirationSeconds};
 
-    use super::{LastSessionSeriesRefreshedTime, RefreshSessionSeries, RefreshSessionSeriesError, RefreshSessionSeriesThereshold};
+    use super::{LastSessionSeriesRefreshedTime, RefreshSessionSeries, RefreshSessionSeriesError, SessionSeriesRefreshThereshold};
 
     const SESSION_SERIES_TO_BE_REFRESHED: LazyLock<SessionSeries> = LazyLock::new(|| SessionSeries::gen());
-    const REFRESH_THERESHOLD: RefreshSessionSeriesThereshold = RefreshSessionSeriesThereshold::days(1);
+    const REFRESH_THERESHOLD: SessionSeriesRefreshThereshold = SessionSeriesRefreshThereshold::days(1);
 
     struct MockRefreshSessionSeries;
 
@@ -83,7 +83,7 @@ mod tests {
             }
         }
 
-        fn refresh_thereshold() -> &'static RefreshSessionSeriesThereshold {
+        fn refresh_thereshold() -> &'static SessionSeriesRefreshThereshold {
             &REFRESH_THERESHOLD
         }
 
