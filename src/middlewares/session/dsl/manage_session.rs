@@ -5,12 +5,12 @@ use tower::Service;
 
 use crate::common::fallible::Fallible;
 
-use super::{authenticate::AuthenticateSession, extract_session_info::ExtractSessionInformation, mitigate::MitigateSessionTheft, reauthenticate::{ReAuthenticateSession, ReAuthenticateSessionError}, set_cookie::SetSessionCookie, update_refresh_token::{RefreshPairExpirationSeconds, UpdateRefreshToken}, update_session::{SessionExpirationSeconds, UpdateSession}};
+use super::{authenticate::AuthenticateSession, extract_session_info::ExtractSessionInformation, mitigate::MitigateSessionTheft, reauthenticate::{ReAuthenticateSession, ReAuthenticateSessionError}, refresh_session_series_expiration::RefreshSessionSeriesExpiration, set_cookie::SetSessionCookie, update_refresh_token::{RefreshPairExpirationSeconds, UpdateRefreshToken}, update_session::{SessionExpirationSeconds, UpdateSession}};
 
 pub(crate) trait ManageSession {
     async fn manage_session<S, B>(&self, inner: &mut S, mut request: Request<B>) -> Fallible<S::Response, ManageSessionError>
     where
-        Self: ExtractSessionInformation + SetSessionCookie + AuthenticateSession + ReAuthenticateSession + UpdateSession + UpdateRefreshToken + MitigateSessionTheft,
+        Self: ExtractSessionInformation + SetSessionCookie + AuthenticateSession + ReAuthenticateSession + UpdateSession + UpdateRefreshToken + RefreshSessionSeriesExpiration + MitigateSessionTheft,
         S: Service<Request<B>, Error = Infallible, Response = Response<B>>,
     {
         let (session_id, pair) = Self::extract_session_information(&request);
@@ -44,16 +44,20 @@ pub(crate) trait ManageSession {
             
                     // パスワード変更やログアウトによるSet-Cookieヘッダが無い場合のみセッションを延長
                     if !response.headers().contains_key(SET_COOKIE) {
-                        match self.update_session(&account_id, Self::session_expiration()).await {
-                            Ok(new_session_id) => Self::set_session_cookie_with_expiration(&mut response, &new_session_id),
-                            _ => (),
-                        }
+                        // セッションIDの更新に成功した場合のみに限定することで、
+                        // 基本的に最低30分は間隔を空けて更新処理を行うようにし負荷を抑える
+                        // ※セッションIDを破棄して送信されるリクエストへの耐性は無い
+                        if let Ok(new_session_id) = self.update_session(&account_id, Self::session_expiration()).await {
+                            Self::set_session_cookie_with_expiration(&mut response, &new_session_id);
 
-                        // リフレッシュトークンの発行が失敗した場合は、現在のトークンを使用し続ける
-                        // これはセキュリティリスクを多少増加させるが許容の範囲内である
-                        match self.update_refresh_token(&session_series, &account_id, Self::refresh_token_expiration()).await {
-                            Ok(new_refresh_token) => Self::set_refresh_pair_cookie_with_expiration(&mut response, &session_series, &new_refresh_token),
-                            _ => (),
+                            // リフレッシュトークンの発行が失敗した場合は、現在のトークンを使用し続ける
+                            // これはセキュリティリスクを多少増加させるが許容の範囲内である
+                            match self.update_refresh_token(&session_series, &account_id, Self::refresh_pair_expiration()).await {
+                                Ok(new_refresh_token) => Self::set_refresh_pair_cookie_with_expiration(&mut response, &session_series, &new_refresh_token),
+                                _ => (),
+                            }
+
+                            Self::refresh_session_series_expiration(&session_series, &account_id, Self::refresh_pair_expiration()).await;
                         }
                     }
 
@@ -69,7 +73,7 @@ pub(crate) trait ManageSession {
 
     fn session_expiration() -> &'static SessionExpirationSeconds;
 
-    fn refresh_token_expiration() -> &'static RefreshPairExpirationSeconds;
+    fn refresh_pair_expiration() -> &'static RefreshPairExpirationSeconds;
 }
 
 pub enum ManageSessionError {
