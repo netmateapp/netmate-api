@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{fmt::Display, str::FromStr};
 
 use thiserror::Error;
 
@@ -18,6 +18,12 @@ impl ApiKey {
 
     pub fn value(&self) -> &AK {
         &self.0
+    }
+}
+
+impl Display for ApiKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 
