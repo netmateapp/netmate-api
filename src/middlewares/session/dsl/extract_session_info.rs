@@ -3,7 +3,7 @@ use std::str::FromStr;
 use cookie::{Cookie, SplitCookies};
 use http::{header::COOKIE, HeaderMap, Request};
 
-use crate::common::session::value::{SessionSeries, RefreshToken, SessionId, LOGIN_COOKIE_KEY, SESSION_MANAGEMENT_COOKIE_KEY};
+use crate::common::session::value::{SessionSeries, RefreshToken, SessionId, REFRESH_PAIR_COOKIE_KEY, SESSION_COOKIE_KEY};
 
 pub(crate) trait ExtractSessionInformation {
     fn extract_session_information<B>(request: &Request<B>) -> (Option<SessionId>, Option<(SessionSeries, RefreshToken)>) {
@@ -35,8 +35,8 @@ pub(crate) trait ExtractSessionInformation {
         for cookie in cookies {
             match cookie {
                 Ok(cookie) => match cookie.name() {
-                    SESSION_MANAGEMENT_COOKIE_KEY => session_id_cookie = Some(cookie),
-                    LOGIN_COOKIE_KEY => refresh_pair_cookie = Some(cookie),
+                    SESSION_COOKIE_KEY => session_id_cookie = Some(cookie),
+                    REFRESH_PAIR_COOKIE_KEY => refresh_pair_cookie = Some(cookie),
                     _ => ()
                 },
                 _ => ()
@@ -70,7 +70,7 @@ pub(crate) trait ExtractSessionInformation {
 mod tests {
     use http::{header::COOKIE, HeaderValue};
 
-    use crate::common::session::value::{to_cookie_value, SessionSeries, RefreshToken, SessionId, LOGIN_COOKIE_KEY, SESSION_MANAGEMENT_COOKIE_KEY};
+    use crate::common::session::value::{to_cookie_value, SessionSeries, RefreshToken, SessionId, REFRESH_PAIR_COOKIE_KEY, SESSION_COOKIE_KEY};
 
     use super::ExtractSessionInformation;
 
@@ -82,11 +82,11 @@ mod tests {
         let mut cookie_header_value = String::new();
 
         if let Some(session_id) = &session_id {
-            cookie_header_value.push_str(&format!("{}={}; ", SESSION_MANAGEMENT_COOKIE_KEY, session_id.value().value()));
+            cookie_header_value.push_str(&format!("{}={}; ", SESSION_COOKIE_KEY, session_id.value().value()));
         }
 
         if let Some((series_id, token)) = &refresh_pair {
-            cookie_header_value.push_str(&format!("{}={}", LOGIN_COOKIE_KEY, to_cookie_value(&series_id, &token)));
+            cookie_header_value.push_str(&format!("{}={}", REFRESH_PAIR_COOKIE_KEY, to_cookie_value(&series_id, &token)));
         }
 
         let value = cookie_header_value
