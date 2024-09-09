@@ -199,7 +199,7 @@ impl RefreshSessionSeries for ManageSessionInterpreter {
         &REFRESH_SESSION_SERIES_THERESHOLD
     }
 
-    async fn refresh_session_series(&self, session_series: &SessionSeries, session_account_id: &AccountId, new_expiration: RefreshPairExpirationSeconds) -> Fallible<(), RefreshSessionSeriesError> {
+    async fn refresh_session_series(&self, session_series: &SessionSeries, session_account_id: &AccountId, new_expiration: &RefreshPairExpirationSeconds) -> Fallible<(), RefreshSessionSeriesError> {
         fn handle_error<E: Into<anyhow::Error>>(e: E) -> RefreshSessionSeriesError {
             RefreshSessionSeriesError::RefreshSessionSeriesFailed(e.into())
         }
@@ -208,7 +208,7 @@ impl RefreshSessionSeries for ManageSessionInterpreter {
             session_account_id.to_string(),
             session_series.to_string(),
             i64::from(UnixtimeMillis::now()),
-            i32::from(new_expiration)
+            i32::from(new_expiration.clone())
         );
 
         self.db
@@ -219,63 +219,13 @@ impl RefreshSessionSeries for ManageSessionInterpreter {
     }
 }
 
-/*#[derive(Debug, Clone)]
-pub struct ManageSessionImpl {
-    db: Arc<Session>,
-    cache: Arc<Pool>,
-    select_email_and_language: Arc<PreparedStatement>,
-    select_last_series_id_extension_time: Arc<PreparedStatement>,
-    update_series_id_expiration: Arc<PreparedStatement>,
-    delete_all_sessions: Arc<PreparedStatement>
-}
 
 
-
-const SESSION_EXTENSION_THRESHOLD: u64 = 30 * 24 * 60 * 60 * 1000;
-
+/*
 const SECURITY_EMAIL_ADDRESS: LazyLock<NetmateEmail> = LazyLock::new(|| NetmateEmail::try_from(Email::from_str("security@account.netmate.app").unwrap()).unwrap());
 const SECURITY_NOTIFICATION_SUBJECT: LazyLock<Subject> = LazyLock::new(|| Subject::from_str(ja::session::SECURITY_NOTIFICATION_SUBJECT).unwrap());
 
 impl ManageSession for ManageSessionImpl {
-    async fn register_new_login_id_with_account_id(&self, login_series_id: &SessionSeries, new_login_token: &RefreshToken, account_id: &AccountId) -> Fallible<(), ManageSessionError> {
-        let mut conn = self.cache
-            .get()
-            .await
-            .map_err(|e| ManageSessionError::RegisteredNewLoginIdFailed(e.into()))?;
-
-        cmd("SET")
-            .arg(format!("{}:{}", LOGIN_SERIES_ID_CACHE_NAMESPACE, login_series_id.value().value()))
-            .arg(format!("{}{}{}", new_login_token.value().value(), REFRESH_PAIR_SEPARATOR, account_id.value().value()))
-            .exec_async(&mut *conn)
-            .await
-            .map_err(|e| ManageSessionError::RegisteredNewLoginIdFailed(e.into()))
-    }
-
-    async fn get_last_series_id_extension_time(&self, account_id: &AccountId, series_id: &SessionSeries) -> Fallible<SeriesIdRefreshTimestamp, ManageSessionError> {
-        self.db
-            .execute(&self.select_last_series_id_extension_time, (account_id.value().value(), series_id.value().value()))
-            .await
-            .map_err(|e| ManageSessionError::GetLastSeriesIdExtensionTimeFailed(e.into()))?
-            .first_row_typed::<(i64, )>()
-            .map_err(|e| ManageSessionError::GetLastSeriesIdExtensionTimeFailed(e.into()))
-            .map(|(updated_at, )| SeriesIdRefreshTimestamp::new(UnixtimeMillis::new(updated_at as u64)))
-    }
-
-    fn should_extend_series_id_expiration(last_refreshed_at: &SeriesIdRefreshTimestamp) -> bool {
-        UnixtimeMillis::now().value() - last_refreshed_at.value().value() > SESSION_EXTENSION_THRESHOLD
-    }
-
-    async fn extend_series_id_expiration(&self, account_id: &AccountId, series_id: &SessionSeries) -> Fallible<(), ManageSessionError> {
-        let now = UnixtimeMillis::now()
-            .value() as i64;
-
-        self.db
-            .execute(&self.update_series_id_expiration, (now, account_id.value().value(), series_id.value().value()))
-            .await
-            .map(|_| ())
-            .map_err(|e| ManageSessionError::ExtendSeriesIdExpirationFailed(e.into()))
-    }
-
     async fn delete_all_sessions(&self, account_id: &AccountId) -> Fallible<(), ManageSessionError> {
         self.db
             .execute(&self.delete_all_sessions, (account_id.value().value(),))

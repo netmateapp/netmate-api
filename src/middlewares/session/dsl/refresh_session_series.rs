@@ -22,15 +22,17 @@ pub(crate) trait RefreshSessionSeries {
         now.value() - last_refreshed_at.value() >= Self::refresh_thereshold().as_millis()
     }
 
-    fn refresh_thereshold() -> RefreshSessionSeriesThereshold;
+    fn refresh_thereshold() -> &'static RefreshSessionSeriesThereshold;
 
     async fn refresh_session_series(&self, session_series: &SessionSeries, session_account_id: &AccountId, new_expiration: &RefreshPairExpirationSeconds) -> Fallible<(), RefreshSessionSeriesError>;
 }
 
 #[derive(Debug, Error)]
 pub enum RefreshSessionSeriesError {
+    #[error("セッションシリーズの最終更新時刻の取得に失敗しました")]
+    FetchLastSessionSeriesRefreshedAtFailed(#[source] anyhow::Error),
     #[error("セッションシリーズの更新に失敗しました")]
-    UpdateSessionSeriesFailed(#[source] anyhow::Error),
+    RefreshSessionSeriesFailed(#[source] anyhow::Error),
 }
 
 pub struct LastSessionSeriesRefreshedTime(UnixtimeMillis);

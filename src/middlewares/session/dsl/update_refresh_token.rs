@@ -2,6 +2,7 @@ use thiserror::Error;
 
 use crate::common::{fallible::Fallible, id::AccountId, session::value::{RefreshToken, SessionSeries}};
 
+#[derive(Debug, Clone, Copy)]
 pub struct RefreshPairExpirationSeconds(u32);
 
 impl RefreshPairExpirationSeconds {
@@ -11,6 +12,12 @@ impl RefreshPairExpirationSeconds {
 
     pub fn as_secs(&self) -> u32 {
         self.0
+    }
+}
+
+impl From<RefreshPairExpirationSeconds> for i32 {
+    fn from(expiration: RefreshPairExpirationSeconds) -> Self {
+        expiration.0 as i32
     }
 }
 
