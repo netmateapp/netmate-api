@@ -3,26 +3,26 @@ use thiserror::Error;
 use crate::common::{fallible::Fallible, id::AccountId, session::value::{RefreshToken, SessionSeries}};
 
 pub(crate) trait ReAuthenticateSession {
-    async fn reauthenticate_session(&self, session_series: &SessionSeries, refresh_token: RefreshToken) -> Fallible<AccountId, ReAuthenticateUserError> {
+    async fn reauthenticate_session(&self, session_series: &SessionSeries, refresh_token: RefreshToken) -> Fallible<AccountId, ReAuthenticateSessionError> {
         match self.fetch_refresh_token_and_account_id(&session_series).await? {
             Some((stored_refresh_token, account_id)) => {
                 if refresh_token == stored_refresh_token {
                     Ok(account_id)
                 } else {
-                    Err(ReAuthenticateUserError::PotentialSessionTheft(account_id))
+                    Err(ReAuthenticateSessionError::PotentialSessionTheft(account_id))
                 }
             },
-            None => Err(ReAuthenticateUserError::InvalidRefreshToken)
+            None => Err(ReAuthenticateSessionError::InvalidRefreshToken)
         }
     }
 
-    async fn fetch_refresh_token_and_account_id(&self, session_series: &SessionSeries) -> Fallible<Option<(RefreshToken, AccountId)>, ReAuthenticateUserError>;
+    async fn fetch_refresh_token_and_account_id(&self, session_series: &SessionSeries) -> Fallible<Option<(RefreshToken, AccountId)>, ReAuthenticateSessionError>;
 }
 
 #[derive(Debug, Error)]
-pub enum ReAuthenticateUserError {
+pub enum ReAuthenticateSessionError {
     #[error("リフレッシュトークンとアカウントIDの取得に失敗しました")]
-    FetchRefreshTokenAndAccountId,
+    FetchRefreshTokenAndAccountIdFailed(#[source] anyhow::Error),
     #[error("無効なリフレッシュトークンです")]
     InvalidRefreshToken,
     #[error("セッションの盗用の可能性があります")]
@@ -35,7 +35,7 @@ mod tests {
 
     use crate::common::{fallible::Fallible, id::{uuid7::Uuid7, AccountId}, session::value::{RefreshToken, SessionSeries}};
 
-    use super::{ReAuthenticateSession, ReAuthenticateUserError};
+    use super::{ReAuthenticateSession, ReAuthenticateSessionError};
 
     static REAUTHENTICATED: LazyLock<SessionSeries> = LazyLock::new(|| SessionSeries::gen());
     static POTENTIAL_SESSION_THEFT: LazyLock<SessionSeries> = LazyLock::new(|| SessionSeries::gen());
@@ -43,13 +43,13 @@ mod tests {
     struct MockReauthenticateSession;
 
     impl ReAuthenticateSession for MockReauthenticateSession {
-        async fn fetch_refresh_token_and_account_id(&self, session_series: &SessionSeries) -> Fallible<Option<(RefreshToken, AccountId)>, ReAuthenticateUserError> {
+        async fn fetch_refresh_token_and_account_id(&self, session_series: &SessionSeries) -> Fallible<Option<(RefreshToken, AccountId)>, ReAuthenticateSessionError> {
             if session_series == &*REAUTHENTICATED {
                 Ok(Some((RefreshToken::gen(), AccountId::new(Uuid7::now()))))
             } else if session_series == &*POTENTIAL_SESSION_THEFT {
-                Err(ReAuthenticateUserError::PotentialSessionTheft(AccountId::new(Uuid7::now())))
+                Err(ReAuthenticateSessionError::PotentialSessionTheft(AccountId::new(Uuid7::now())))
             } else {
-                Err(ReAuthenticateUserError::InvalidRefreshToken)
+                Err(ReAuthenticateSessionError::InvalidRefreshToken)
             }
         }
     }
@@ -64,7 +64,7 @@ mod tests {
     async fn potential_session_theft() {
         let result = MockReauthenticateSession.fetch_refresh_token_and_account_id(&*POTENTIAL_SESSION_THEFT).await;
         match result.err() {
-            Some(ReAuthenticateUserError::PotentialSessionTheft(_)) => (),
+            Some(ReAuthenticateSessionError::PotentialSessionTheft(_)) => (),
             _ => panic!()
         }
     }
@@ -73,7 +73,7 @@ mod tests {
     async fn invalid_refresh_token() {
         let result = MockReauthenticateSession.fetch_refresh_token_and_account_id(&SessionSeries::gen()).await;
         match result.err() {
-            Some(ReAuthenticateUserError::InvalidRefreshToken) => (),
+            Some(ReAuthenticateSessionError::InvalidRefreshToken) => (),
             _ => panic!()
         }
     }
