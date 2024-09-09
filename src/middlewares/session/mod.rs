@@ -1,3 +1,3 @@
-pub mod dsl;
-pub mod interpreter;
+mod dsl;
+mod interpreter;
 pub mod middleware;
