@@ -2,9 +2,9 @@ use std::{str::FromStr, sync::{Arc, LazyLock}};
 
 use scylla::{prepared_statement::PreparedStatement, Session};
 
-use crate::{common::{birth_year::BirthYear, email::{address::Email, resend::ResendEmailSender, send::{Body, EmailSender, HtmlContent, NetmateEmail, PlainText, SenderName, Subject}}, fallible::Fallible, language::Language, password::PasswordHash, region::Region}, helper::{error::InitError, scylla::prepare}, translation::{ja, us_en}};
+use crate::{common::{birth_year::BirthYear, email::{address::Email, resend::ResendEmailSender, send::{Body, EmailSender, HtmlContent, NetmateEmail, PlainText, SenderName, Subject}}, fallible::Fallible, language::Language, password::PasswordHash, region::Region}, helper::{error::InitError, scylla::prepare}, routes::accounts::creation::value::OneTimeToken, translation::{ja, us_en}};
 
-use super::{dsl::{SignUp, SignUpError}, value::OneTimeToken};
+use super::dsl::{SignUp, SignUpError};
 
 pub struct SignUpImpl {
     session: Arc<Session>,

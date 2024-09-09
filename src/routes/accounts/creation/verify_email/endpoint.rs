@@ -5,7 +5,7 @@ use axum_macros::debug_handler;
 use scylla::Session;
 use tracing::info;
 
-use crate::{helper::error::InitError, routes::accounts::creation::sign_up::value::OneTimeToken};
+use crate::{helper::error::InitError, routes::accounts::creation::value::OneTimeToken};
 
 use super::{dsl::{VerifyEmail, VerifyEmailError}, interpreter::VerifyEmailImpl};
 

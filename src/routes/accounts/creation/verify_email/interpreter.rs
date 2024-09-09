@@ -2,7 +2,7 @@ use std::{str::FromStr, sync::Arc};
 
 use scylla::{prepared_statement::PreparedStatement, Session};
 
-use crate::{common::{birth_year::BirthYear, email::address::Email, fallible::Fallible, id::AccountId, language::Language, password::PasswordHash, region::Region}, helper::{error::{DslErrorMapper, InitError}, scylla::prepare}, routes::accounts::creation::sign_up::value::OneTimeToken};
+use crate::{common::{birth_year::BirthYear, email::address::Email, fallible::Fallible, id::AccountId, language::Language, password::PasswordHash, region::Region}, helper::{error::{DslErrorMapper, InitError}, scylla::prepare}, routes::accounts::creation::value::OneTimeToken};
 
 use super::dsl::{VerifyEmail, VerifyEmailError};
 

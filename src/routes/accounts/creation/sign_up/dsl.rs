@@ -1,8 +1,6 @@
 use thiserror::Error;
 
-use crate::common::{birth_year::BirthYear, email::address::Email, fallible::Fallible, language::Language, password::{Password, PasswordHash}, region::Region};
-
-use super::value::OneTimeToken;
+use crate::{common::{birth_year::BirthYear, email::address::Email, fallible::Fallible, language::Language, password::{Password, PasswordHash}, region::Region}, routes::accounts::creation::value::OneTimeToken};
 
 pub(crate) trait SignUp: Send {
     async fn sign_up(&self, email: &Email, password: &Password, birth_year: &BirthYear, region: &Region, language: &Language) -> Fallible<(), SignUpError> {
@@ -43,7 +41,7 @@ mod tests {
 
     use thiserror::Error;
 
-    use crate::{common::{birth_year::BirthYear, email::address::Email, language::Language, password::{Password, PasswordHash}, region::Region}, routes::accounts::creation::sign_up::value::OneTimeToken};
+    use crate::{common::{birth_year::BirthYear, email::address::Email, language::Language, password::{Password, PasswordHash}, region::Region}, routes::accounts::creation::value::OneTimeToken};
 
     use super::{Fallible, SignUp, SignUpError};
 
