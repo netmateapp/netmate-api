@@ -6,9 +6,9 @@ use scylla::Session;
 use tokio::pin;
 use tower::{Layer, Service};
 
-use crate::{helper::{error::InitError, valkey::Pool}, middlewares::rate_limit::dsl::{RateLimit, RateLimitError}};
+use crate::{helper::{error::InitError, valkey::Pool}, middlewares::rate_limit::dsl::rate_limit::{RateLimit, RateLimitError}};
 
-use super::{interpreter::RateLimitImpl, value::{Interval, Limit, Namespace}};
+use super::{dsl::increment_rate::{InculsiveLimit, TimeWindow}, interpreter::{EndpointName, RateLimitImpl}};
 
 #[derive(Clone)]
 pub struct LoginSessionLayer {
@@ -16,8 +16,8 @@ pub struct LoginSessionLayer {
 }
 
 impl LoginSessionLayer {
-    pub async fn try_new(namespace: Namespace, limit: Limit, interval: Interval, db: Arc<Session>, cache: Arc<Pool>) -> Result<Self, InitError<RateLimitImpl>> {
-        let rate_limit = RateLimitImpl::try_new(namespace, limit, interval, db, cache).await?;
+    pub async fn try_new(endpoint_name: EndpointName, limit: InculsiveLimit, time_window: TimeWindow, db: Arc<Session>, cache: Arc<Pool>) -> Result<Self, InitError<RateLimitImpl>> {
+        let rate_limit = RateLimitImpl::try_new(endpoint_name, limit, time_window, db, cache).await?;
         Ok(Self { rate_limit: Arc::new(rate_limit) })
     }
 }
