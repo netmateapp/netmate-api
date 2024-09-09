@@ -44,8 +44,6 @@ pub(crate) trait ManageSession {
             
                     // パスワード変更やログアウトによるSet-Cookieヘッダが無い場合のみセッションを延長
                     if !response.headers().contains_key(SET_COOKIE) {
-                        // 新規セッションIDの発行に失敗した場合は、再認証が通常認証の代わりとなり、
-                        // 本来インメモリキャッシュが負担すべき負荷がデータベースに流れる
                         match self.update_session(&account_id, Self::session_expiration()).await {
                             Ok(new_session_id) => Self::set_session_cookie_with_expiration(&mut response, &new_session_id),
                             _ => (),
