@@ -62,7 +62,7 @@ pub(crate) trait ManageSession {
                                 _ => (),
                             }
 
-                            self.try_refresh_session_series(&session_series, &account_id, Self::refresh_pair_expiration()).await;
+                            let _ = self.try_refresh_session_series(&session_series, &account_id, Self::refresh_pair_expiration()).await;
                         }
                     }
 
