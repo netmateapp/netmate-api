@@ -118,23 +118,6 @@ impl FromStr for RefreshToken {
 }
 
 
-/*#[derive(Debug, PartialEq)]
-pub struct LoginId(SessionSeries, RefreshToken);
-
-impl LoginId {
-    pub fn new(series_id: SessionSeries, token: RefreshToken) -> Self {
-        Self(series_id, token)
-    }
-
-    pub fn series_id(&self) -> &SessionSeries {
-        &self.0
-    }
-
-    pub fn token(&self) -> &RefreshToken {
-        &self.1
-    }
-}*/
-
 pub fn to_cookie_value(series_id: &SessionSeries, token: &RefreshToken) -> String {
     format!("{}{}{}", series_id.value().value(), REFRESH_PAIR_SEPARATOR, token.value().value())
 }
