@@ -23,22 +23,22 @@ impl ManageSessionImpl {
     pub async fn try_new(db: Arc<Session>, cache: Arc<Pool>) -> Result<Self, InitError<Self>> {
         let select_email_and_language = prepare::<InitError<Self>>(
             &db,
-            "SELECT email, language FROM accounts WHERE id = ? LIMIT 1"
+            include_str!("select_email_and_language.cql")
         ).await?;
 
         let select_last_session_series_refreshed_at = prepare::<InitError<Self>>(
             &db,
-            "SELECT refreshed_at FROM session_series WHERE account_id = ? AND series = ? LIMIT 1"
+            include_str!("select_last_session_series_refreshed_at.cql")
         ).await?;
 
         let update_session_series_ttl = prepare::<InitError<Self>>(
             &db,
-            "UPDATE session_series SET refreshed_at = ? WHERE account_id = ? AND series = ? USING TTL ?"
+            include_str!("update_session_series_ttl.cql")
         ).await?;
 
         let delete_all_session_series = prepare::<InitError<Self>>(
             &db,
-            "DELETE FROM login_ids WHERE account_id = ?"
+            include_str!("delete_all_session_series.cql")
         ).await?;
 
         Ok(Self { db, cache, select_email_and_language, select_last_session_series_refreshed_at, update_session_series_ttl, delete_all_session_series })

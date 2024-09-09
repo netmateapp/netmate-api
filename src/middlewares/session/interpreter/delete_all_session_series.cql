@@ -1,0 +1,1 @@
+DELETE FROM login_ids WHERE account_id = ?
