@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use thiserror::Error;
 use uuid::Uuid;
 
@@ -11,6 +13,12 @@ impl Uuid7 {
 
     pub fn value(&self) -> &Uuid {
         &self.0
+    }
+}
+
+impl Display for Uuid7 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 

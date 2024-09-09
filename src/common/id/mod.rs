@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use uuid4::Uuid4;
 use uuid7::Uuid7;
 
@@ -16,6 +18,12 @@ impl AccountId {
 impl AccountId {
     pub const fn new(value: Uuid7) -> Self {
         AccountId(value)
+    }
+}
+
+impl Display for AccountId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 
