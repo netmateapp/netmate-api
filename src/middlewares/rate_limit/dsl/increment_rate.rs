@@ -87,7 +87,7 @@ mod tests {
             if api_key == &*WITHIN_LIMIT {
                 Ok(Rate::new(INCLUSIVE_LIMIT.value().value()))
             } else {
-                Ok(Rate::new(INCLUSIVE_LIMIT.value().value() - 1))
+                Ok(Rate::new(INCLUSIVE_LIMIT.value().value() + 1))
             }
         }
 
