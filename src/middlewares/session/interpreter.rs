@@ -2,11 +2,12 @@ use std::{str::FromStr, sync::{Arc, LazyLock}};
 
 use bb8_redis::redis::cmd;
 use scylla::{prepared_statement::PreparedStatement, Session};
+use thiserror::Error;
 use uuid::Uuid;
 
 use crate::{common::{email::{address::Email, resend::ResendEmailSender, send::{Body, EmailSender, HtmlContent, NetmateEmail, PlainText, SenderName, Subject}}, fallible::Fallible, id::{uuid7::Uuid7, AccountId}, language::Language, session::value::{RefreshToken, SessionId, SessionSeries, REFRESH_PAIR_SEPARATOR}, unixtime::UnixtimeMillis}, helper::{error::InitError, scylla::prepare, valkey::{conn, Pool}}, translation::ja};
 
-use super::dsl::{authenticate::{AuthenticateSession, AuthenticateSessionError}, extract_session_info::ExtractSessionInformation, manage_session::ManageSession, update_refresh_token::RefreshTokenExpirationSeconds, update_session::SessionExpirationSeconds};
+use super::dsl::{authenticate::{AuthenticateSession, AuthenticateSessionError}, extract_session_info::ExtractSessionInformation, manage_session::ManageSession, reauthenticate::{ReAuthenticateSession, ReAuthenticateSessionError}, update_refresh_token::RefreshTokenExpirationSeconds, update_session::SessionExpirationSeconds};
 
 
 pub struct ManageSessionInterpreter {
@@ -57,6 +58,52 @@ impl AuthenticateSession for ManageSessionInterpreter {
     }
 }
 
+const REFRESH_PAIR_NAMESPACE: &str = "rfp";
+const REFRESH_PAIR_VALUE_SEPARATOR: &str = "$";
+
+impl ReAuthenticateSession for ManageSessionInterpreter {
+    async fn fetch_refresh_token_and_account_id(&self, session_series: &SessionSeries) -> Fallible<Option<(RefreshToken, AccountId)>, ReAuthenticateSessionError> {
+        fn handle_error<E: Into<anyhow::Error>>(e: E) -> ReAuthenticateSessionError {
+            ReAuthenticateSessionError::FetchRefreshTokenAndAccountIdFailed(e.into())
+        }
+
+        #[derive(Debug, Error)]
+        #[error("リフレッシュペア値の解析に失敗しました")]
+        struct ParseRefreshPairValueError;
+
+        let mut conn = conn(&self.cache, handle_error)
+            .await?;
+
+        let key = format!("{}:{}", REFRESH_PAIR_NAMESPACE, session_series.to_string());
+
+        cmd("GET")
+            .arg(key)
+            .query_async::<Option<String>>(&mut *conn)
+            .await
+            .map_err(handle_error)
+            .transpose()
+            .map(|o| o.and_then(|s| {
+                let mut parts = s.splitn(2, REFRESH_PAIR_VALUE_SEPARATOR);
+
+                let token = parts.next()
+                    .ok_or_else(|| handle_error(ParseRefreshPairValueError))
+                    .map(|s| RefreshToken::from_str(s))?
+                    .map_err(handle_error)?;
+
+                let account_id = parts.next()
+                    .ok_or_else(|| handle_error(ParseRefreshPairValueError))
+                    .map(|s| Uuid::from_str(s))?
+                    .map_err(handle_error)
+                    .map(|u| Uuid7::try_from(u))?
+                    .map_err(handle_error)
+                    .map(|u| AccountId::new(u))?;
+
+                Ok((token, account_id))
+            }))
+            .transpose()
+    }
+}
+
 
 /*#[derive(Debug, Clone)]
 pub struct ManageSessionImpl {
@@ -104,23 +151,6 @@ const SECURITY_EMAIL_ADDRESS: LazyLock<NetmateEmail> = LazyLock::new(|| NetmateE
 const SECURITY_NOTIFICATION_SUBJECT: LazyLock<Subject> = LazyLock::new(|| Subject::from_str(ja::session::SECURITY_NOTIFICATION_SUBJECT).unwrap());
 
 impl ManageSession for ManageSessionImpl {
-    async fn resolve(&self, session_management_id: &SessionId) -> Fallible<Option<AccountId>, ManageSessionError> {
-        let mut conn = self.cache
-            .get()
-            .await
-            .map_err(|e| ManageSessionError::ResolveFailed(e.into()))?;
-
-        cmd("GET")
-            .arg(format!("{}:{}", SESSION_MANAGEMENT_ID_CACHE_NAMESPACE, session_management_id.value().value()))
-            .query_async::<Option<Uuid>>(&mut *conn)
-            .await
-            .map_err(|e| ManageSessionError::ResolveFailed(e.into()))?
-            .map(|u| Uuid7::try_from(u))
-            .transpose()
-            .map(|o| o.and_then(|u| Some(AccountId::new(u))))
-            .map_err(|e| ManageSessionError::ResolveFailed(e.into()))
-    }
-
     async fn get_login_token_and_account_id(&self, series_id: &SessionSeries) -> Fallible<(Option<RefreshToken>, Option<AccountId>), ManageSessionError> {
         let mut conn = self.cache
             .get()
