@@ -3,12 +3,12 @@ use thiserror::Error;
 use crate::common::{fallible::Fallible, id::AccountId, session::value::SessionId};
 
 pub(crate) trait UpdateSession {
-    async fn update_session(&self, session_account_id: &AccountId, new_expiration: &SessionExpirationTime) -> Fallible<SessionId, UpdateSessionError> {
+    async fn update_session(&self, session_account_id: &AccountId, new_expiration: &SessionExpirationSeconds) -> Fallible<SessionId, UpdateSessionError> {
         let mut new_session_id = SessionId::gen();
         
         // このループは奇跡が起きない限りO(1)となる
         loop {
-            match self.try_assign_new_session_id_with_expiration_to_account(&new_session_id, session_account_id, new_expiration).await {
+            match self.try_assign_new_session_id_with_expiration_if_unused(&new_session_id, session_account_id, new_expiration).await {
                 Ok(()) => return Ok(new_session_id),
                 Err(UpdateSessionError::SessionIdAlreadyUsed) => new_session_id = SessionId::gen(),
                 _ => return Err(UpdateSessionError::AssignNewSessionIdFailed)
@@ -16,12 +16,12 @@ pub(crate) trait UpdateSession {
         }
     }
 
-    async fn try_assign_new_session_id_with_expiration_to_account(&self, new_session_id: &SessionId, session_account_id: &AccountId, new_expiration: &SessionExpirationTime) -> Fallible<(), UpdateSessionError>;
+    async fn try_assign_new_session_id_with_expiration_if_unused(&self, new_session_id: &SessionId, session_account_id: &AccountId, new_expiration: &SessionExpirationSeconds) -> Fallible<(), UpdateSessionError>;
 }
 
-pub struct SessionExpirationTime(u32);
+pub struct SessionExpirationSeconds(u32);
 
-impl SessionExpirationTime {
+impl SessionExpirationSeconds {
     pub const fn new(seconds: u32) -> Self {
         Self(seconds)
     }
