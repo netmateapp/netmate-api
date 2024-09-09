@@ -7,7 +7,7 @@ use uuid::Uuid;
 
 use crate::{common::{email::{address::Email, resend::ResendEmailSender, send::{Body, EmailSender, HtmlContent, NetmateEmail, PlainText, SenderName, Subject}}, fallible::Fallible, id::{uuid7::Uuid7, AccountId}, language::Language, session::value::{RefreshToken, SessionId, SessionSeries, REFRESH_PAIR_SEPARATOR}, unixtime::UnixtimeMillis}, helper::{error::InitError, scylla::prepare, valkey::{conn, Pool}}, translation::ja};
 
-use super::dsl::{authenticate::{AuthenticateSession, AuthenticateSessionError}, extract_session_info::ExtractSessionInformation, manage_session::ManageSession, reauthenticate::{ReAuthenticateSession, ReAuthenticateSessionError}, update_refresh_token::RefreshTokenExpirationSeconds, update_session::SessionExpirationSeconds};
+use super::dsl::{authenticate::{AuthenticateSession, AuthenticateSessionError}, extract_session_info::ExtractSessionInformation, manage_session::ManageSession, reauthenticate::{ReAuthenticateSession, ReAuthenticateSessionError}, update_refresh_token::RefreshTokenExpirationSeconds, update_session::{SessionExpirationSeconds, UpdateSession, UpdateSessionError}};
 
 
 pub struct ManageSessionInterpreter {
@@ -19,8 +19,12 @@ pub struct ManageSessionInterpreter {
     delete_all_sessions: Arc<PreparedStatement>
 }
 
+const SESSION_ID_NAMESPACE: &str = "sid";
 const SESSION_EXPIRATION: SessionExpirationSeconds = SessionExpirationSeconds::new(30 * 60);
+
+const REFRESH_PAIR_NAMESPACE: &str = "rfp";
 const REFRESH_TOKEN_EXPIRATION: RefreshTokenExpirationSeconds = RefreshTokenExpirationSeconds::new(30 * 24 * 60 * 60);
+const REFRESH_PAIR_VALUE_SEPARATOR: &str = "$";
 
 impl ManageSession for ManageSessionInterpreter {
     fn session_expiration() -> &'static SessionExpirationSeconds {
@@ -33,8 +37,6 @@ impl ManageSession for ManageSessionInterpreter {
 }
 
 impl ExtractSessionInformation for ManageSessionInterpreter {}
-
-const SESSION_ID_NAMESPACE: &str = "sid";
 
 impl AuthenticateSession for ManageSessionInterpreter {
     async fn resolve_session_id_to_account_id(&self, session_id: &SessionId) -> Fallible<Option<AccountId>, AuthenticateSessionError> {
@@ -57,9 +59,6 @@ impl AuthenticateSession for ManageSessionInterpreter {
             .map_or_else(|e| Err(handle_error(e)), |o| Ok(o.map(AccountId::new)))
     }
 }
-
-const REFRESH_PAIR_NAMESPACE: &str = "rfp";
-const REFRESH_PAIR_VALUE_SEPARATOR: &str = "$";
 
 impl ReAuthenticateSession for ManageSessionInterpreter {
     async fn fetch_refresh_token_and_account_id(&self, session_series: &SessionSeries) -> Fallible<Option<(RefreshToken, AccountId)>, ReAuthenticateSessionError> {
@@ -104,6 +103,30 @@ impl ReAuthenticateSession for ManageSessionInterpreter {
     }
 }
 
+
+impl UpdateSession for ManageSessionInterpreter {
+    async fn try_assign_new_session_id_with_expiration_if_unused(&self, new_session_id: &SessionId, session_account_id: &AccountId, new_expiration: &SessionExpirationSeconds) -> Fallible<(), UpdateSessionError> {
+        fn handle_error<E: Into<anyhow::Error>>(e: E) -> UpdateSessionError {
+            UpdateSessionError::AssignNewSessionIdFailed(e.into())
+        }
+
+        let mut conn = conn(&self.cache, handle_error)
+            .await?;
+
+        let key = format!("{}:{}", SESSION_ID_NAMESPACE, new_session_id.to_string());
+
+        cmd("SET")
+            .arg(key)
+            .arg(session_account_id.to_string())
+            .arg("EX")
+            .arg(new_expiration.as_secs())
+            .arg("NX")
+            .query_async::<Option<()>>(&mut *conn)
+            .await
+            .map_err(handle_error)?
+            .map_or_else(|| Err(UpdateSessionError::SessionIdAlreadyUsed), |_| Ok(()))
+    }
+}
 
 /*#[derive(Debug, Clone)]
 pub struct ManageSessionImpl {
