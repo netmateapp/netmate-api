@@ -7,7 +7,7 @@ use uuid::Uuid;
 
 use crate::{common::{email::{address::Email, resend::ResendEmailSender, send::{Body, EmailSender, HtmlContent, NetmateEmail, PlainText, SenderName, Subject}}, fallible::Fallible, id::{uuid7::Uuid7, AccountId}, language::Language, session::value::{RefreshToken, SessionId, SessionSeries, REFRESH_PAIR_SEPARATOR}, unixtime::UnixtimeMillis}, helper::{error::InitError, scylla::prepare, valkey::{conn, Pool}}, translation::ja};
 
-use super::dsl::{authenticate::{AuthenticateSession, AuthenticateSessionError}, extract_session_info::ExtractSessionInformation, manage_session::ManageSession, reauthenticate::{ReAuthenticateSession, ReAuthenticateSessionError}, update_refresh_token::RefreshTokenExpirationSeconds, update_session::{SessionExpirationSeconds, UpdateSession, UpdateSessionError}};
+use super::dsl::{authenticate::{AuthenticateSession, AuthenticateSessionError}, extract_session_info::ExtractSessionInformation, manage_session::ManageSession, reauthenticate::{ReAuthenticateSession, ReAuthenticateSessionError}, set_cookie::SetSessionCookie, update_refresh_token::RefreshTokenExpirationSeconds, update_session::{SessionExpirationSeconds, UpdateSession, UpdateSessionError}};
 
 
 pub struct ManageSessionInterpreter {
@@ -37,6 +37,8 @@ impl ManageSession for ManageSessionInterpreter {
 }
 
 impl ExtractSessionInformation for ManageSessionInterpreter {}
+
+impl SetSessionCookie for ManageSessionInterpreter {}
 
 impl AuthenticateSession for ManageSessionInterpreter {
     async fn resolve_session_id_to_account_id(&self, session_id: &SessionId) -> Fallible<Option<AccountId>, AuthenticateSessionError> {
@@ -102,7 +104,6 @@ impl ReAuthenticateSession for ManageSessionInterpreter {
             .transpose()
     }
 }
-
 
 impl UpdateSession for ManageSessionInterpreter {
     async fn try_assign_new_session_id_with_expiration_if_unused(&self, new_session_id: &SessionId, session_account_id: &AccountId, new_expiration: &SessionExpirationSeconds) -> Fallible<(), UpdateSessionError> {
