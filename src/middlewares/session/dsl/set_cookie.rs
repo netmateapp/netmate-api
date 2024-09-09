@@ -43,7 +43,7 @@ mod tests {
     use http::{header::SET_COOKIE, Response};
     use time::Duration;
 
-    use crate::common::session::value::{to_cookie_value, SessionSeries, RefreshToken, SessionId, REFRESH_PAIR_COOKIE_KEY, SESSION_COOKIE_KEY, SESSION_TIMEOUT_MINUTES};
+    use crate::common::session::value::{to_cookie_value, RefreshToken, SessionId, SessionSeries, REFRESH_PAIR_COOKIE_KEY, REFRESH_PAIR_EXPIRATION_DAYS, SESSION_COOKIE_KEY, SESSION_TIMEOUT_MINUTES};
 
     use super::SetSessionCookie;
 
@@ -80,7 +80,7 @@ mod tests {
         let session_series = SessionSeries::gen();
         let refresh_token = RefreshToken::gen();
         MockSetSessionCookie::set_refresh_pair_cookie_with_expiration(&mut response, &session_series, &refresh_token);
-        test_set_cookie(response, &REFRESH_PAIR_COOKIE_KEY, to_cookie_value(&session_series, &refresh_token), SESSION_TIMEOUT_MINUTES);
+        test_set_cookie(response, &REFRESH_PAIR_COOKIE_KEY, to_cookie_value(&session_series, &refresh_token), REFRESH_PAIR_EXPIRATION_DAYS);
     }
 
     #[test]
