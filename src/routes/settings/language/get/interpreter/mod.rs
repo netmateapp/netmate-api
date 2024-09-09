@@ -15,7 +15,7 @@ impl GetLanguageImpl {
     pub async fn try_new(session: Arc<Session>) -> Result<GetLanguageImpl, InitError<GetLanguageImpl>> {
         let select_language = prepare::<InitError<GetLanguageImpl>>(
             &session,
-            "SELECT language FROM accounts WHERE id = ? LIMIT 1"
+            include_str!("select_language.cql")
         ).await?;
 
         Ok(Self { session, select_language })
