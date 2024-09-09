@@ -60,6 +60,12 @@ impl SessionSeries {
     }
 }
 
+impl Display for SessionSeries {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 #[derive(Debug, Error)]
 #[error("ログイン系列識別子への変換に失敗しました")]
 pub struct ParseSessionSeriesError(#[source] pub anyhow::Error);
