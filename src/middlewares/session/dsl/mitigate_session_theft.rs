@@ -32,9 +32,9 @@ pub(crate) trait MitigateSessionTheft {
 #[derive(Debug, Error)]
 pub enum MitigateSessionTheftError {
     #[error("メールアドレスと言語の取得に失敗しました")]
-    FetchEmailAndLanguageFailed,
+    FetchEmailAndLanguageFailed(#[source] anyhow::Error),
     #[error("セキュリティ通知に失敗しました")]
-    SendSecurityNotificationFailed,
+    SendSecurityNotificationFailed(#[source] anyhow::Error),
     #[error("全セッション系列の削除に失敗しました")]
-    DeleteAllSessionSeriesFailed,
+    DeleteAllSessionSeriesFailed(#[source] anyhow::Error),
 }
