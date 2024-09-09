@@ -16,7 +16,7 @@ pub(crate) trait SetSessionCookie {
         Self::set_cookie(response, &REFRESH_PAIR_COOKIE_KEY, to_cookie_value(session_series, refresh_token), REFRESH_PAIR_EXPIRATION_DAYS)
     }
 
-    fn clear_session_related_cookie_headers(&self) -> [(HeaderName, HeaderValue); 2] {
+    fn clear_session_related_cookie_headers() -> [(HeaderName, HeaderValue); 2] {
         [
             (SET_COOKIE, Self::create_cookie_value(&SESSION_COOKIE_KEY, String::from(""), Duration::seconds(0))),
             (SET_COOKIE, Self::create_cookie_value(&REFRESH_PAIR_COOKIE_KEY, String::from(""), Duration::seconds(0)))
