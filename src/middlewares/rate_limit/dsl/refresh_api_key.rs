@@ -16,10 +16,10 @@ pub(crate) trait RefreshApiKey {
     fn should_refresh_api_key(&self, last_api_key_refreshed_at: &LastApiKeyRefreshedAt) -> bool {
         let now = UnixtimeMillis::now();
         let last_refreshed_at = last_api_key_refreshed_at.value();
-        now.value() - last_refreshed_at.value() >= Self::refresh_thereshold().as_millis()
+        now.value() - last_refreshed_at.value() >= self.api_key_refresh_thereshold().as_millis()
     }
 
-    fn refresh_thereshold() -> RefreshApiKeyThereshold;
+    fn api_key_refresh_thereshold(&self) -> &ApiKeyRefreshThereshold;
 
     async fn refresh_api_key(&self, api_key: &ApiKey) -> Fallible<(), RefreshApiKeyError>;
 }
@@ -32,9 +32,9 @@ pub enum RefreshApiKeyError {
     RefreshApiKeyFailed(#[source] anyhow::Error),
 }
 
-pub struct RefreshApiKeyThereshold(u64);
+pub struct ApiKeyRefreshThereshold(u64);
 
-impl RefreshApiKeyThereshold {
+impl ApiKeyRefreshThereshold {
     pub const fn days(days: u64) -> Self {
         Self(days)
     }
@@ -48,15 +48,15 @@ impl RefreshApiKeyThereshold {
 mod tests {
     use crate::{common::{api_key::ApiKey, fallible::Fallible, unixtime::UnixtimeMillis}, middlewares::rate_limit::dsl::rate_limit::LastApiKeyRefreshedAt};
 
-    use super::{RefreshApiKey, RefreshApiKeyError, RefreshApiKeyThereshold};
+    use super::{RefreshApiKey, RefreshApiKeyError, ApiKeyRefreshThereshold};
 
-    const REFRESH_API_KEY_THERESHOLD: RefreshApiKeyThereshold = RefreshApiKeyThereshold::days(1);
+    const REFRESH_API_KEY_THERESHOLD: ApiKeyRefreshThereshold = ApiKeyRefreshThereshold::days(1);
 
     struct MockRefreshApiKey;
 
     impl RefreshApiKey for MockRefreshApiKey {
-        fn refresh_thereshold() -> RefreshApiKeyThereshold {
-            REFRESH_API_KEY_THERESHOLD
+        fn api_key_refresh_thereshold(&self) -> &ApiKeyRefreshThereshold {
+            &REFRESH_API_KEY_THERESHOLD
         }
 
         async fn refresh_api_key(&self, _api_key: &super::ApiKey) -> Fallible<(), RefreshApiKeyError> {
