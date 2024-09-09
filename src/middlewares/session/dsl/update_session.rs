@@ -11,7 +11,7 @@ pub(crate) trait UpdateSession {
             match self.try_assign_new_session_id_with_expiration_if_unused(&new_session_id, session_account_id, new_expiration).await {
                 Ok(()) => return Ok(new_session_id),
                 Err(UpdateSessionError::SessionIdAlreadyUsed) => new_session_id = SessionId::gen(),
-                _ => return Err(UpdateSessionError::AssignNewSessionIdFailed)
+                Err(e) => return Err(e),
             }
         }
     }
@@ -36,5 +36,5 @@ pub enum UpdateSessionError {
     #[error("セッションIDが既に使用されています")]
     SessionIdAlreadyUsed,
     #[error("新規セッションIDの割り当てに失敗しました")]
-    AssignNewSessionIdFailed,
+    AssignNewSessionIdFailed(#[source] anyhow::Error),
 }
