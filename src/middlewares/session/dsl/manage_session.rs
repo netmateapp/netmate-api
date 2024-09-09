@@ -1,19 +1,24 @@
 use std::convert::Infallible;
 
-use http::{header::SET_COOKIE, Request, Response};
+use http::{header::SET_COOKIE, HeaderName, HeaderValue, Request, Response};
+use thiserror::Error;
 use tower::Service;
 
 use crate::common::fallible::Fallible;
 
-use super::{authenticate::AuthenticateSession, extract_session_info::ExtractSessionInformation, mitigate::MitigateSessionTheft, reauthenticate::{ReAuthenticateSession, ReAuthenticateSessionError}, refresh_session_series_expiration::RefreshSessionSeriesExpiration, set_cookie::SetSessionCookie, update_refresh_token::{RefreshPairExpirationSeconds, UpdateRefreshToken}, update_session::{SessionExpirationSeconds, UpdateSession}};
+use super::{authenticate::AuthenticateSession, extract_session_info::ExtractSessionInformation, mitigate_session_theft::MitigateSessionTheft, reauthenticate::{ReAuthenticateSession, ReAuthenticateSessionError}, refresh_session_series::RefreshSessionSeries, set_cookie::SetSessionCookie, update_refresh_token::{RefreshPairExpirationSeconds, UpdateRefreshToken}, update_session::{SessionExpirationSeconds, UpdateSession}};
 
 pub(crate) trait ManageSession {
     async fn manage_session<S, B>(&self, inner: &mut S, mut request: Request<B>) -> Fallible<S::Response, ManageSessionError>
     where
-        Self: ExtractSessionInformation + SetSessionCookie + AuthenticateSession + ReAuthenticateSession + UpdateSession + UpdateRefreshToken + RefreshSessionSeriesExpiration + MitigateSessionTheft,
+        Self: ExtractSessionInformation + SetSessionCookie + AuthenticateSession + ReAuthenticateSession + UpdateSession + UpdateRefreshToken + RefreshSessionSeries + MitigateSessionTheft,
         S: Service<Request<B>, Error = Infallible, Response = Response<B>>,
     {
         let (session_id, pair) = Self::extract_session_information(&request);
+
+        if session_id.is_none() && pair.is_none() {
+            return Err(ManageSessionError::NoSession);
+        }
 
         if let Some(session_id) = session_id {
             match self.authenticate_session(&session_id).await {
@@ -57,7 +62,7 @@ pub(crate) trait ManageSession {
                                 _ => (),
                             }
 
-                            Self::refresh_session_series_expiration(&session_series, &account_id, Self::refresh_pair_expiration()).await;
+                            self.try_refresh_session_series(&session_series, &account_id, Self::refresh_pair_expiration()).await;
                         }
                     }
 
@@ -68,7 +73,7 @@ pub(crate) trait ManageSession {
             }
         }
 
-        Err(ManageSessionError::InvalidRequest)
+        Err(ManageSessionError::InvalidSession(Self::clear_session_related_cookie_headers()))
     }
 
     fn session_expiration() -> &'static SessionExpirationSeconds;
@@ -76,6 +81,10 @@ pub(crate) trait ManageSession {
     fn refresh_pair_expiration() -> &'static RefreshPairExpirationSeconds;
 }
 
+#[derive(Debug, Error)]
 pub enum ManageSessionError {
-    InvalidRequest,
+    #[error("セッションが存在しません")]
+    NoSession,
+    #[error("無効なセッションです")]
+    InvalidSession([(HeaderName, HeaderValue); 2]),
 }
