@@ -5,10 +5,9 @@ use scylla::{frame::value::CqlTimestamp, prepared_statement::PreparedStatement, 
 use thiserror::Error;
 use uuid::Uuid;
 
-use crate::{common::{email::{address::Email, resend::ResendEmailSender, send::{Body, EmailSender, HtmlContent, NetmateEmail, PlainText, SenderName, Subject}}, fallible::Fallible, id::{uuid7::Uuid7, AccountId}, language::Language, session::value::{RefreshToken, SessionId, SessionSeries, REFRESH_PAIR_SEPARATOR}, unixtime::UnixtimeMillis}, helper::{error::InitError, scylla::prepare, valkey::{conn, Pool}}, translation::ja};
+use crate::{common::{email::{address::Email, resend::ResendEmailSender, send::{Body, EmailSender, HtmlContent, NetmateEmail, PlainText, SenderName, Subject}}, fallible::Fallible, id::{uuid7::Uuid7, AccountId}, language::Language, session::value::{RefreshToken, SessionId, SessionSeries}, unixtime::UnixtimeMillis}, helper::{error::InitError, scylla::prepare, valkey::{conn, Pool}}, translation::ja};
 
-use super::dsl::{authenticate::{AuthenticateSession, AuthenticateSessionError}, extract_session_info::ExtractSessionInformation, manage_session::ManageSession, reauthenticate::{ReAuthenticateSession, ReAuthenticateSessionError}, refresh_session_series::{LastSessionSeriesRefreshedTime, RefreshSessionSeries, RefreshSessionSeriesError, RefreshSessionSeriesThereshold}, set_cookie::SetSessionCookie, update_refresh_token::{RefreshPairExpirationSeconds, UpdateRefreshToken, UpdateRefreshTokenError}, update_session::{SessionExpirationSeconds, UpdateSession, UpdateSessionError}};
-
+use super::dsl::{authenticate::{AuthenticateSession, AuthenticateSessionError}, extract_session_info::ExtractSessionInformation, manage_session::ManageSession, mitigate_session_theft::{MitigateSessionTheft, MitigateSessionTheftError}, reauthenticate::{ReAuthenticateSession, ReAuthenticateSessionError}, refresh_session_series::{LastSessionSeriesRefreshedTime, RefreshSessionSeries, RefreshSessionSeriesError, RefreshSessionSeriesThereshold}, set_cookie::SetSessionCookie, update_refresh_token::{RefreshPairExpirationSeconds, UpdateRefreshToken, UpdateRefreshTokenError}, update_session::{SessionExpirationSeconds, UpdateSession, UpdateSessionError}};
 
 pub struct ManageSessionInterpreter {
     db: Arc<Session>,
@@ -219,38 +218,31 @@ impl RefreshSessionSeries for ManageSessionInterpreter {
     }
 }
 
-
-
-/*
 const SECURITY_EMAIL_ADDRESS: LazyLock<NetmateEmail> = LazyLock::new(|| NetmateEmail::try_from(Email::from_str("security@account.netmate.app").unwrap()).unwrap());
 const SECURITY_NOTIFICATION_SUBJECT: LazyLock<Subject> = LazyLock::new(|| Subject::from_str(ja::session::SECURITY_NOTIFICATION_SUBJECT).unwrap());
 
-impl ManageSession for ManageSessionImpl {
-    async fn delete_all_sessions(&self, account_id: &AccountId) -> Fallible<(), ManageSessionError> {
-        self.db
-            .execute(&self.delete_all_sessions, (account_id.value().value(),))
-            .await
-            .map(|_| ())
-            .map_err(|e| ManageSessionError::DeleteAllSessionsFailed(e.into()))
-    }
+impl MitigateSessionTheft for ManageSessionInterpreter {
+    async fn fetch_email_and_language(&self, account_id: &AccountId) -> Fallible<(Email, Language), MitigateSessionTheftError> {
+        fn handle_error<E: Into<anyhow::Error>>(e: E) -> MitigateSessionTheftError {
+            MitigateSessionTheftError::FetchEmailAndLanguageFailed(e.into())
+        }
 
-    async fn get_email_and_language(&self, account_id: &AccountId) -> Fallible<(Email, Language), ManageSessionError> {
         self.db
-            .execute(&self.select_email_and_language, (account_id.value().value(),))
+            .execute_unpaged(&self.select_email_and_language, (account_id.to_string(),))
             .await
-            .map_err(|e| ManageSessionError::GetEmailAndLanguageFailed(e.into()))?
+            .map_err(handle_error)?
             .first_row_typed::<(String, i8)>()
-            .map_err(|e| ManageSessionError::GetEmailAndLanguageFailed(e.into()))
+            .map_err(handle_error)
             .and_then(|(email, language)| {
-                let email = Email::from_str(&email)
-                    .map_err(|e| ManageSessionError::GetEmailAndLanguageFailed(e.into()))?;
+                let email = Email::from_str(email.as_str())
+                    .map_err(handle_error)?;
                 let language = Language::try_from(language)
-                    .map_err(|e| ManageSessionError::GetEmailAndLanguageFailed(e.into()))?;
+                    .map_err(handle_error)?;
                 Ok((email, language))
             })
     }
 
-    async fn send_security_notification_email(&self, email: &Email, language: &Language) -> Fallible<(), ManageSessionError> {
+    async fn send_security_notification(&self, email: &Email, language: &Language) -> Fallible<(), MitigateSessionTheftError> {
         let (subject, html_content, plain_text) = match language {
             _ => (&*SECURITY_NOTIFICATION_SUBJECT, ja::session::SECURITY_NOTIFICATION_BODY_HTML, ja::session::SECURITY_NOTIFICATION_BODY_PLAIN)
         };
@@ -259,6 +251,14 @@ impl ManageSession for ManageSessionImpl {
 
         ResendEmailSender::send(&*SECURITY_EMAIL_ADDRESS, email, &SenderName::by(language), subject, &body)
             .await
-            .map_err(|e| ManageSessionError::SendSecurityNotificationEmailFailed(e.into()))
+            .map_err(|e| MitigateSessionTheftError::SendSecurityNotificationFailed(e.into()))
     }
-}*/
+
+    async fn purge_all_session_series(&self, account_id: &AccountId) -> Fallible<(), MitigateSessionTheftError> {
+        self.db
+            .execute_unpaged(&self.delete_all_session_series, (account_id.value().value(),))
+            .await
+            .map(|_| ())
+            .map_err(|e| MitigateSessionTheftError::DeleteAllSessionSeriesFailed(e.into()))
+    }
+}
