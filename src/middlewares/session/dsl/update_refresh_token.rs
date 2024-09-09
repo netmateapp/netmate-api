@@ -27,5 +27,5 @@ pub(crate) trait UpdateRefreshToken {
 #[derive(Debug, Error)]
 pub enum UpdateRefreshTokenError {
     #[error("リフレッシュトークの更新に失敗しました")]
-    AssignNewRefreshTokenFailed,
+    AssignNewRefreshTokenFailed(#[source] anyhow::Error),
 }
