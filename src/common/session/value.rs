@@ -84,7 +84,7 @@ const REFRESH_TOKEN_ENTROPY_BITS: usize = 120;
 
 type RT = Token<{calc_entropy_bytes(REFRESH_TOKEN_ENTROPY_BITS)}>;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct RefreshToken(RT);
 
 impl RefreshToken {

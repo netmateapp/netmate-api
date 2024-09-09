@@ -15,7 +15,7 @@ const BASE64_URL: [char; 1 << ENTROPY_BITS_PER_CHAR] = [
 ];
 
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Token<const ENTROPY_BYTES: usize>(String);
 
 impl<const ENTROPY_BYTES: usize> Display for Token<ENTROPY_BYTES> {
