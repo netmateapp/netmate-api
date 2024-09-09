@@ -19,7 +19,7 @@ pub(crate) trait RefreshApiKey {
         now.value() - last_refreshed_at.value() >= Self::refresh_thereshold().as_millis()
     }
 
-    fn refresh_thereshold() -> &'static RefreshApiKeyThereshold;
+    fn refresh_thereshold() -> RefreshApiKeyThereshold;
 
     async fn refresh_api_key(&self, api_key: &ApiKey) -> Fallible<(), RefreshApiKeyError>;
 }
@@ -55,8 +55,8 @@ mod tests {
     struct MockRefreshApiKey;
 
     impl RefreshApiKey for MockRefreshApiKey {
-        fn refresh_thereshold() -> &'static RefreshApiKeyThereshold {
-            &REFRESH_API_KEY_THERESHOLD
+        fn refresh_thereshold() -> RefreshApiKeyThereshold {
+            REFRESH_API_KEY_THERESHOLD
         }
 
         async fn refresh_api_key(&self, _api_key: &super::ApiKey) -> Fallible<(), RefreshApiKeyError> {
