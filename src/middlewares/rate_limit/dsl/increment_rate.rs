@@ -11,15 +11,15 @@ pub(crate) trait IncrementRate {
         Ok(())
     }
 
-    async fn increment_rate_within_window(&self, api_key: &ApiKey, window: &TimeWindow) -> Fallible<Rate, IncrementRateError>;
+    async fn increment_rate_within_window(&self, api_key: &ApiKey, time_window: &TimeWindow) -> Fallible<Rate, IncrementRateError>;
 
-    fn time_window(&self) -> TimeWindow;
+    fn time_window(&self) -> &TimeWindow;
 
     fn is_limit_over(&self, rate: &Rate) -> bool {
         rate > self.inclusive_limit().value()
     }
 
-    fn inclusive_limit(&self) -> InculsiveLimit;
+    fn inclusive_limit(&self) -> &InculsiveLimit;
 }
 
 #[derive(Debug, Error)]
@@ -91,12 +91,12 @@ mod tests {
             }
         }
 
-        fn time_window(&self) -> TimeWindow {
-            TIME_WINDOW
+        fn time_window(&self) -> &TimeWindow {
+            &TIME_WINDOW
         }
     
-        fn inclusive_limit(&self) -> InculsiveLimit {
-            INCLUSIVE_LIMIT
+        fn inclusive_limit(&self) -> &InculsiveLimit {
+            &INCLUSIVE_LIMIT
         }
     }
 
