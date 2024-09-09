@@ -1,0 +1,1 @@
+SELECT refreshed_at FROM api_keys WHERE api_key = ?

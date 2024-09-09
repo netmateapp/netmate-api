@@ -1,0 +1,1 @@
+INSERT INTO api_keys (api_key, refreshed_at) VALUES (?, ?) USING TTL ?

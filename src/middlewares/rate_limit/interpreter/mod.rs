@@ -1,12 +1,10 @@
-use std::{fs::{self}, sync::Arc};
+use std::sync::Arc;
 
 use redis::Script;
 use scylla::{frame::value::CqlTimestamp, prepared_statement::PreparedStatement, Session};
 use thiserror::Error;
 
-use crate::{common::{api_key::ApiKey, fallible::Fallible, unixtime::UnixtimeMillis}, helper::{error::InitError, scylla::prepare, valkey::{conn, Pool}}, middlewares::rate_limit::dsl::{increment_rate::Rate, rate_limit::RateLimitError}};
-
-use super::dsl::{increment_rate::{IncrementRate, IncrementRateError, InculsiveLimit, TimeWindow}, rate_limit::{LastApiKeyRefreshedAt, RateLimit}, refresh_api_key::{ApiKeyExpirationSeconds, ApiKeyRefreshThereshold, RefreshApiKey, RefreshApiKeyError}};
+use crate::{common::{api_key::ApiKey, fallible::Fallible, unixtime::UnixtimeMillis}, helper::{error::InitError, scylla::prepare, valkey::{conn, Pool}}, middlewares::rate_limit::dsl::{increment_rate::{IncrementRate, IncrementRateError, InculsiveLimit, Rate, TimeWindow}, rate_limit::{LastApiKeyRefreshedAt, RateLimit, RateLimitError}, refresh_api_key::{ApiKeyExpirationSeconds, ApiKeyRefreshThereshold, RefreshApiKey, RefreshApiKeyError}}};
 
 const BASE_NAMESPACE: &str = "rtlim";
 
@@ -25,17 +23,17 @@ impl RateLimitImpl {
     pub async fn try_new(namespace: EndpointName, limit: InculsiveLimit, time_window: TimeWindow, db: Arc<Session>, cache: Arc<Pool>) -> Result<Self, InitError<Self>> {
         let select_last_api_key_refreshed_at = prepare::<InitError<Self>>(
             &db,
-            "SELECT refreshed_at FROM api_keys WHERE api_key = ?"
+            include_str!("select_last_api_key_refreshed_at.cql")
         ).await?;
 
         let insert_api_key_with_ttl_refresh = prepare::<InitError<Self>>(
             &db,
-            "INSERT INTO api_kyes (api_key, refreshed_at) VALUES (?, ?) USING TTL 2592000"
+            include_str!("insert_api_key_with_ttl_refresh.cql")
         ).await?;
 
-        let lua_script = fs::read_to_string("incr_and_expire_if_first.lua")
-            .map_err(|e| InitError::new(e.into()))?;
-        let incr_and_expire_if_first = Arc::new(Script::new(lua_script.as_str()));
+        let incr_and_expire_if_first = Arc::new(
+            Script::new(include_str!("incr_and_expire_if_first.lua"))
+        );
 
         Ok(Self { endpoint_name: namespace, limit, time_window, db, select_last_api_key_refreshed_at, insert_api_key_with_ttl_refresh, cache, incr_and_expire_if_first })
     }
