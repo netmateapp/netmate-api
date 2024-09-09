@@ -9,7 +9,7 @@ use crate::{common::{email::{address::Email, resend::ResendEmailSender, send::{B
 
 use super::dsl::{authenticate::{AuthenticateSession, AuthenticateSessionError}, extract_session_info::ExtractSessionInformation, manage_session::{ManageSession, RefreshPairExpirationSeconds, SessionExpirationSeconds}, mitigate_session_theft::{MitigateSessionTheft, MitigateSessionTheftError}, reauthenticate::{ReAuthenticateSession, ReAuthenticateSessionError}, refresh_session_series::{LastSessionSeriesRefreshedTime, RefreshSessionSeries, RefreshSessionSeriesError, RefreshSessionSeriesThereshold}, set_cookie::SetSessionCookie, update_refresh_token::{UpdateRefreshToken, UpdateRefreshTokenError}, update_session::{UpdateSession, UpdateSessionError}};
 
-pub struct ManageSessionInterpreter {
+pub struct ManageSessionImpl {
     db: Arc<Session>,
     cache: Arc<Pool>,
     select_email_and_language: Arc<PreparedStatement>,
@@ -18,7 +18,7 @@ pub struct ManageSessionInterpreter {
     delete_all_session_series: Arc<PreparedStatement>
 }
 
-impl ManageSessionInterpreter {
+impl ManageSessionImpl {
     pub async fn try_new(db: Arc<Session>, cache: Arc<Pool>) -> Result<Self, InitError<Self>> {
         let select_email_and_language = prepare::<InitError<Self>>(
             &db,
@@ -51,7 +51,7 @@ const REFRESH_PAIR_NAMESPACE: &str = "rfp";
 const REFRESH_PAIR_EXPIRATION: RefreshPairExpirationSeconds = RefreshPairExpirationSeconds::new(400 * 24 * 60 * 60);
 const REFRESH_PAIR_VALUE_SEPARATOR: &str = "$";
 
-impl ManageSession for ManageSessionInterpreter {
+impl ManageSession for ManageSessionImpl {
     fn session_expiration() -> &'static SessionExpirationSeconds {
         &SESSION_EXPIRATION
     }
@@ -61,11 +61,11 @@ impl ManageSession for ManageSessionInterpreter {
     }
 }
 
-impl ExtractSessionInformation for ManageSessionInterpreter {}
+impl ExtractSessionInformation for ManageSessionImpl {}
 
-impl SetSessionCookie for ManageSessionInterpreter {}
+impl SetSessionCookie for ManageSessionImpl {}
 
-impl AuthenticateSession for ManageSessionInterpreter {
+impl AuthenticateSession for ManageSessionImpl {
     async fn resolve_session_id_to_account_id(&self, session_id: &SessionId) -> Fallible<Option<AccountId>, AuthenticateSessionError> {
         fn handle_error<E: Into<anyhow::Error>>(e: E) -> AuthenticateSessionError {
             AuthenticateSessionError::ResolveSessionIdFailed(e.into())
@@ -87,7 +87,7 @@ impl AuthenticateSession for ManageSessionInterpreter {
     }
 }
 
-impl ReAuthenticateSession for ManageSessionInterpreter {
+impl ReAuthenticateSession for ManageSessionImpl {
     async fn fetch_refresh_token_and_account_id(&self, session_series: &SessionSeries) -> Fallible<Option<(RefreshToken, AccountId)>, ReAuthenticateSessionError> {
         fn handle_error<E: Into<anyhow::Error>>(e: E) -> ReAuthenticateSessionError {
             ReAuthenticateSessionError::FetchRefreshTokenAndAccountIdFailed(e.into())
@@ -130,7 +130,7 @@ impl ReAuthenticateSession for ManageSessionInterpreter {
     }
 }
 
-impl UpdateSession for ManageSessionInterpreter {
+impl UpdateSession for ManageSessionImpl {
     async fn try_assign_new_session_id_with_expiration_if_unused(&self, new_session_id: &SessionId, session_account_id: &AccountId, new_expiration: &SessionExpirationSeconds) -> Fallible<(), UpdateSessionError> {
         fn handle_error<E: Into<anyhow::Error>>(e: E) -> UpdateSessionError {
             UpdateSessionError::AssignNewSessionIdFailed(e.into())
@@ -154,7 +154,7 @@ impl UpdateSession for ManageSessionInterpreter {
     }
 }
 
-impl UpdateRefreshToken for ManageSessionInterpreter {
+impl UpdateRefreshToken for ManageSessionImpl {
     async fn assign_new_refresh_token_with_expiration(&self, new_refresh_token: &RefreshToken, session_series: &SessionSeries, session_account_id: &AccountId, expiration: &RefreshPairExpirationSeconds) -> Fallible<(), UpdateRefreshTokenError> {
         fn handle_error<E: Into<anyhow::Error>>(e: E) -> UpdateRefreshTokenError {
             UpdateRefreshTokenError::AssignNewRefreshTokenFailed(e.into())
@@ -179,7 +179,7 @@ impl UpdateRefreshToken for ManageSessionInterpreter {
 
 const REFRESH_SESSION_SERIES_THERESHOLD: RefreshSessionSeriesThereshold = RefreshSessionSeriesThereshold::days(30);
 
-impl RefreshSessionSeries for ManageSessionInterpreter {
+impl RefreshSessionSeries for ManageSessionImpl {
     async fn fetch_last_session_series_refreshed_at(&self, session_series: &SessionSeries, session_account_id: &AccountId) -> Fallible<LastSessionSeriesRefreshedTime, RefreshSessionSeriesError> {
         fn handle_error<E: Into<anyhow::Error>>(e: E) -> RefreshSessionSeriesError {
             RefreshSessionSeriesError::FetchLastSessionSeriesRefreshedAtFailed(e.into())
@@ -221,7 +221,7 @@ impl RefreshSessionSeries for ManageSessionInterpreter {
 const SECURITY_EMAIL_ADDRESS: LazyLock<NetmateEmail> = LazyLock::new(|| NetmateEmail::try_from(Email::from_str("security@account.netmate.app").unwrap()).unwrap());
 const SECURITY_NOTIFICATION_SUBJECT: LazyLock<Subject> = LazyLock::new(|| Subject::from_str(ja::session::SECURITY_NOTIFICATION_SUBJECT).unwrap());
 
-impl MitigateSessionTheft for ManageSessionInterpreter {
+impl MitigateSessionTheft for ManageSessionImpl {
     async fn fetch_email_and_language(&self, account_id: &AccountId) -> Fallible<(Email, Language), MitigateSessionTheftError> {
         fn handle_error<E: Into<anyhow::Error>>(e: E) -> MitigateSessionTheftError {
             MitigateSessionTheftError::FetchEmailAndLanguageFailed(e.into())

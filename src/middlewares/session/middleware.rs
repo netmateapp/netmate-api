@@ -6,9 +6,9 @@ use scylla::Session;
 use tokio::pin;
 use tower::{Layer, Service};
 
-use crate::helper::{error::InitError, valkey::Pool};
+use crate::{helper::{error::InitError, valkey::Pool}, middlewares::session::dsl::manage_session::{ManageSession, ManageSessionError}};
 
-use super::{dsl::{ManageSession, ManageSessionError}, interpreter::ManageSessionImpl};
+use super::interpreter::ManageSessionImpl;
 
 #[derive(Clone)]
 pub struct LoginSessionLayer {
