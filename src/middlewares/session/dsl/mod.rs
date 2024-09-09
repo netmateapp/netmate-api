@@ -6,3 +6,4 @@ pub mod reauthenticate;
 pub mod set_cookie;
 pub mod update_refresh_token;
 pub mod update_session;
+pub mod refresh_session_series_expiration;
