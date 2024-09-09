@@ -5,7 +5,7 @@ use tower::Service;
 
 use crate::common::fallible::Fallible;
 
-use super::{authenticate::AuthenticateSession, extract_session_info::ExtractSessionInformation, mitigate::MitigateSessionTheft, reauthenticate::{ReAuthenticateSession, ReAuthenticateUserError}, set_cookie::SetSessionCookie, update_refresh_token::{RefreshTokenExpirationTime, UpdateRefreshToken}, update_session::{SessionExpirationTime, UpdateSession}};
+use super::{authenticate::AuthenticateSession, extract_session_info::ExtractSessionInformation, mitigate::MitigateSessionTheft, reauthenticate::{ReAuthenticateSession, ReAuthenticateSessionError}, set_cookie::SetSessionCookie, update_refresh_token::{RefreshTokenExpirationSeconds, UpdateRefreshToken}, update_session::{SessionExpirationSeconds, UpdateSession}};
 
 pub(crate) trait ManageSession {
     async fn manage_session<S, B>(&self, inner: &mut S, mut request: Request<B>) -> Fallible<S::Response, ManageSessionError>
@@ -61,7 +61,7 @@ pub(crate) trait ManageSession {
 
                     return Ok(response);
                 },
-                Err(ReAuthenticateUserError::PotentialSessionTheft(account_id)) => self.mitigate_session_theft(&account_id).await,
+                Err(ReAuthenticateSessionError::PotentialSessionTheft(account_id)) => self.mitigate_session_theft(&account_id).await,
                 _ => (),
             }
         }
@@ -69,9 +69,9 @@ pub(crate) trait ManageSession {
         Err(ManageSessionError::InvalidRequest)
     }
 
-    fn session_expiration() -> &'static SessionExpirationTime;
+    fn session_expiration() -> &'static SessionExpirationSeconds;
 
-    fn refresh_token_expiration() -> &'static RefreshTokenExpirationTime;
+    fn refresh_token_expiration() -> &'static RefreshTokenExpirationSeconds;
 }
 
 pub enum ManageSessionError {
