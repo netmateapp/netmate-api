@@ -97,6 +97,12 @@ impl RefreshToken {
     }
 }
 
+impl Display for RefreshToken {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 #[derive(Debug, Error)]
 #[error("ログイントークンへの変換に失敗しました")]
 pub struct ParseRefreshTokenError(#[source] pub anyhow::Error);
