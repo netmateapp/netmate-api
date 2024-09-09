@@ -7,7 +7,7 @@ use uuid::Uuid;
 
 use crate::{common::{email::{address::Email, resend::ResendEmailSender, send::{Body, EmailSender, HtmlContent, NetmateEmail, PlainText, SenderName, Subject}}, fallible::Fallible, id::{uuid7::Uuid7, AccountId}, language::Language, session::value::{RefreshToken, SessionId, SessionSeries}, unixtime::UnixtimeMillis}, helper::{error::InitError, scylla::prepare, valkey::{conn, Pool}}, translation::ja};
 
-use super::dsl::{authenticate::{AuthenticateSession, AuthenticateSessionError}, extract_session_info::ExtractSessionInformation, manage_session::ManageSession, mitigate_session_theft::{MitigateSessionTheft, MitigateSessionTheftError}, reauthenticate::{ReAuthenticateSession, ReAuthenticateSessionError}, refresh_session_series::{LastSessionSeriesRefreshedTime, RefreshSessionSeries, RefreshSessionSeriesError, RefreshSessionSeriesThereshold}, set_cookie::SetSessionCookie, update_refresh_token::{RefreshPairExpirationSeconds, UpdateRefreshToken, UpdateRefreshTokenError}, update_session::{SessionExpirationSeconds, UpdateSession, UpdateSessionError}};
+use super::dsl::{authenticate::{AuthenticateSession, AuthenticateSessionError}, extract_session_info::ExtractSessionInformation, manage_session::{ManageSession, RefreshPairExpirationSeconds, SessionExpirationSeconds}, mitigate_session_theft::{MitigateSessionTheft, MitigateSessionTheftError}, reauthenticate::{ReAuthenticateSession, ReAuthenticateSessionError}, refresh_session_series::{LastSessionSeriesRefreshedTime, RefreshSessionSeries, RefreshSessionSeriesError, RefreshSessionSeriesThereshold}, set_cookie::SetSessionCookie, update_refresh_token::{UpdateRefreshToken, UpdateRefreshTokenError}, update_session::{UpdateSession, UpdateSessionError}};
 
 pub struct ManageSessionInterpreter {
     db: Arc<Session>,
@@ -48,7 +48,7 @@ const SESSION_ID_NAMESPACE: &str = "sid";
 const SESSION_EXPIRATION: SessionExpirationSeconds = SessionExpirationSeconds::new(30 * 60);
 
 const REFRESH_PAIR_NAMESPACE: &str = "rfp";
-const REFRESH_TOKEN_EXPIRATION: RefreshPairExpirationSeconds = RefreshPairExpirationSeconds::new(400 * 24 * 60 * 60);
+const REFRESH_PAIR_EXPIRATION: RefreshPairExpirationSeconds = RefreshPairExpirationSeconds::new(400 * 24 * 60 * 60);
 const REFRESH_PAIR_VALUE_SEPARATOR: &str = "$";
 
 impl ManageSession for ManageSessionInterpreter {
@@ -57,7 +57,7 @@ impl ManageSession for ManageSessionInterpreter {
     }
 
     fn refresh_pair_expiration() -> &'static RefreshPairExpirationSeconds {
-        &REFRESH_TOKEN_EXPIRATION
+        &REFRESH_PAIR_EXPIRATION
     }
 }
 

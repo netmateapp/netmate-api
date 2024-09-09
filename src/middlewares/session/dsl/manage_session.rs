@@ -6,7 +6,7 @@ use tower::Service;
 
 use crate::common::fallible::Fallible;
 
-use super::{authenticate::AuthenticateSession, extract_session_info::ExtractSessionInformation, mitigate_session_theft::MitigateSessionTheft, reauthenticate::{ReAuthenticateSession, ReAuthenticateSessionError}, refresh_session_series::RefreshSessionSeries, set_cookie::SetSessionCookie, update_refresh_token::{RefreshPairExpirationSeconds, UpdateRefreshToken}, update_session::{SessionExpirationSeconds, UpdateSession}};
+use super::{authenticate::AuthenticateSession, extract_session_info::ExtractSessionInformation, mitigate_session_theft::MitigateSessionTheft, reauthenticate::{ReAuthenticateSession, ReAuthenticateSessionError}, refresh_session_series::RefreshSessionSeries, set_cookie::SetSessionCookie, update_refresh_token::UpdateRefreshToken, update_session::UpdateSession};
 
 pub(crate) trait ManageSession {
     async fn manage_session<S, B>(&self, inner: &mut S, mut request: Request<B>) -> Fallible<S::Response, ManageSessionError>
@@ -87,4 +87,35 @@ pub enum ManageSessionError {
     NoSession,
     #[error("無効なセッションです")]
     InvalidSession([(HeaderName, HeaderValue); 2]),
+}
+
+pub struct SessionExpirationSeconds(u32);
+
+impl SessionExpirationSeconds {
+    pub const fn new(seconds: u32) -> Self {
+        Self(seconds)
+    }
+
+    pub fn as_secs(&self) -> u32 {
+        self.0
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct RefreshPairExpirationSeconds(u32);
+
+impl RefreshPairExpirationSeconds {
+    pub const fn new(seconds: u32) -> Self {
+        Self(seconds)
+    }
+
+    pub fn as_secs(&self) -> u32 {
+        self.0
+    }
+}
+
+impl From<RefreshPairExpirationSeconds> for i32 {
+    fn from(expiration: RefreshPairExpirationSeconds) -> Self {
+        expiration.0 as i32
+    }
 }

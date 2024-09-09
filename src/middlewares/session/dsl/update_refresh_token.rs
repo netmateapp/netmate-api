@@ -2,24 +2,7 @@ use thiserror::Error;
 
 use crate::common::{fallible::Fallible, id::AccountId, session::value::{RefreshToken, SessionSeries}};
 
-#[derive(Debug, Clone, Copy)]
-pub struct RefreshPairExpirationSeconds(u32);
-
-impl RefreshPairExpirationSeconds {
-    pub const fn new(seconds: u32) -> Self {
-        Self(seconds)
-    }
-
-    pub fn as_secs(&self) -> u32 {
-        self.0
-    }
-}
-
-impl From<RefreshPairExpirationSeconds> for i32 {
-    fn from(expiration: RefreshPairExpirationSeconds) -> Self {
-        expiration.0 as i32
-    }
-}
+use super::manage_session::RefreshPairExpirationSeconds;
 
 pub(crate) trait UpdateRefreshToken {
     async fn update_refresh_token(&self, session_series: &SessionSeries, account_id: &AccountId, expiration: &RefreshPairExpirationSeconds) -> Fallible<RefreshToken, UpdateRefreshTokenError> {
