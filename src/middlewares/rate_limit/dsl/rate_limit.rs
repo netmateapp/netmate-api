@@ -82,7 +82,7 @@ mod tests {
     use thiserror::Error;
     use tower::Service;
 
-    use crate::{common::{api_key::ApiKey, fallible::Fallible, unixtime::UnixtimeMillis}, middlewares::rate_limit::dsl::{increment_rate::{IncrementRate, IncrementRateError, InculsiveLimit, Rate, TimeWindow}, refresh_api_key::{RefreshApiKey, RefreshApiKeyError, RefreshApiKeyThereshold}}};
+    use crate::{common::{api_key::ApiKey, fallible::Fallible, unixtime::UnixtimeMillis}, middlewares::rate_limit::dsl::{increment_rate::{IncrementRate, IncrementRateError, InculsiveLimit, Rate, TimeWindow}, refresh_api_key::{RefreshApiKey, RefreshApiKeyError, ApiKeyRefreshThereshold}}};
 
     use super::{LastApiKeyRefreshedAt, RateLimit, RateLimitError};
 
@@ -100,6 +100,9 @@ mod tests {
         }
     }
 
+    const TIME_WINDOW: TimeWindow = TimeWindow::secs(60);
+    const INCLUSIVE_LIMIT: InculsiveLimit = InculsiveLimit::new(100);
+
     impl IncrementRate for MockRateLimit {
         async fn increment_rate_within_window(&self, api_key: &ApiKey, _: &TimeWindow) -> Fallible<Rate, IncrementRateError> {
             if api_key == &*VALID_API_KEY {
@@ -109,12 +112,12 @@ mod tests {
             }
         }
 
-        fn time_window(&self) -> TimeWindow {
-            TimeWindow::secs(60)
+        fn time_window(&self) -> &TimeWindow {
+            &TIME_WINDOW
         }
     
-        fn inclusive_limit(&self) -> InculsiveLimit {
-            InculsiveLimit::new(100)
+        fn inclusive_limit(&self) -> &InculsiveLimit {
+            &INCLUSIVE_LIMIT
         }
     }
 
@@ -122,9 +125,11 @@ mod tests {
     #[error("疑似エラー")]
     struct MockError;
 
+    const API_KEY_REFRESH_THERESHOLD: ApiKeyRefreshThereshold = ApiKeyRefreshThereshold::days(10);
+
     impl RefreshApiKey for MockRateLimit {
-        fn refresh_thereshold() -> RefreshApiKeyThereshold {
-            RefreshApiKeyThereshold::secs(60)
+        fn api_key_refresh_thereshold(&self) -> &ApiKeyRefreshThereshold {
+            &API_KEY_REFRESH_THERESHOLD
         }
 
         async fn refresh_api_key(&self, api_key: &ApiKey) -> Fallible<(), RefreshApiKeyError> {
@@ -148,7 +153,7 @@ mod tests {
         }
 
         fn call(&mut self, _: Request<()>) -> Self::Future {
-            ready(Ok(()))
+            ready(Ok(Response::new(())))
         }
     }
 
