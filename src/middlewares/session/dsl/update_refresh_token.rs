@@ -1,8 +1,8 @@
 use crate::common::{fallible::Fallible, id::AccountId, session::value::{RefreshToken, SessionSeries}};
 
-pub struct RefreshTokenExpirationTime(u32);
+pub struct RefreshTokenExpirationSeconds(u32);
 
-impl RefreshTokenExpirationTime {
+impl RefreshTokenExpirationSeconds {
     pub const fn new(seconds: u32) -> Self {
         Self(seconds)
     }
@@ -13,13 +13,13 @@ impl RefreshTokenExpirationTime {
 }
 
 pub(crate) trait UpdateRefreshToken {
-    async fn update_refresh_token(&self, session_series: &SessionSeries, account_id: &AccountId, expiration: &RefreshTokenExpirationTime) -> Fallible<RefreshToken, UpdateRefreshTokenError> {
+    async fn update_refresh_token(&self, session_series: &SessionSeries, account_id: &AccountId, expiration: &RefreshTokenExpirationSeconds) -> Fallible<RefreshToken, UpdateRefreshTokenError> {
         let new_refresh_token = RefreshToken::gen();
         self.active_new_refresh_token_with_expiration(&new_refresh_token, &session_series, &account_id, expiration).await?;
         Ok(new_refresh_token)
     }
 
-    async fn active_new_refresh_token_with_expiration(&self, new_refresh_token: &RefreshToken, session_series: &SessionSeries, session_account_id: &AccountId, expiration: &RefreshTokenExpirationTime) -> Fallible<(), UpdateRefreshTokenError>;
+    async fn active_new_refresh_token_with_expiration(&self, new_refresh_token: &RefreshToken, session_series: &SessionSeries, session_account_id: &AccountId, expiration: &RefreshTokenExpirationSeconds) -> Fallible<(), UpdateRefreshTokenError>;
     /*
             // `series_id_update_at`は実際にはDBアクセスとなるため、
         // 正常にセッション管理識別子が発行されている時 = 次のアクセスが最短でも30分後である高い保証がある場合のみ処理する
