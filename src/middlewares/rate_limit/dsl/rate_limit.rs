@@ -82,7 +82,7 @@ mod tests {
     use thiserror::Error;
     use tower::Service;
 
-    use crate::{common::{api_key::ApiKey, fallible::Fallible, unixtime::UnixtimeMillis}, middlewares::rate_limit::dsl::{increment_rate::{IncrementRate, IncrementRateError, InculsiveLimit, Rate, TimeWindow}, refresh_api_key::{RefreshApiKey, RefreshApiKeyError, ApiKeyRefreshThereshold}}};
+    use crate::{common::{api_key::ApiKey, fallible::Fallible, unixtime::UnixtimeMillis}, middlewares::rate_limit::dsl::{increment_rate::{IncrementRate, IncrementRateError, InculsiveLimit, Rate, TimeWindow}, refresh_api_key::{ApiKeyExpirationSeconds, ApiKeyRefreshThereshold, RefreshApiKey, RefreshApiKeyError}}};
 
     use super::{LastApiKeyRefreshedAt, RateLimit, RateLimitError};
 
@@ -126,13 +126,18 @@ mod tests {
     struct MockError;
 
     const API_KEY_REFRESH_THERESHOLD: ApiKeyRefreshThereshold = ApiKeyRefreshThereshold::days(10);
+    const API_KEY_EXPIRATION: ApiKeyExpirationSeconds = ApiKeyExpirationSeconds::secs(60);
 
     impl RefreshApiKey for MockRateLimit {
         fn api_key_refresh_thereshold(&self) -> &ApiKeyRefreshThereshold {
             &API_KEY_REFRESH_THERESHOLD
         }
 
-        async fn refresh_api_key(&self, api_key: &ApiKey) -> Fallible<(), RefreshApiKeyError> {
+        fn api_key_expiration(&self) -> &ApiKeyExpirationSeconds {
+            &API_KEY_EXPIRATION
+        }
+
+        async fn refresh_api_key(&self, api_key: &ApiKey, _expiration: &ApiKeyExpirationSeconds) -> Fallible<(), RefreshApiKeyError> {
             if api_key == &*VALID_API_KEY {
                 Ok(())
             } else {

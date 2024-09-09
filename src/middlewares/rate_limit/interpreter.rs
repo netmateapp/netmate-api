@@ -6,7 +6,7 @@ use thiserror::Error;
 
 use crate::{common::{api_key::ApiKey, fallible::Fallible, unixtime::UnixtimeMillis}, helper::{error::InitError, scylla::prepare, valkey::{conn, Pool}}, middlewares::rate_limit::dsl::{increment_rate::Rate, rate_limit::RateLimitError}};
 
-use super::dsl::{increment_rate::{IncrementRate, IncrementRateError, InculsiveLimit, TimeWindow}, rate_limit::{LastApiKeyRefreshedAt, RateLimit}, refresh_api_key::{RefreshApiKey, RefreshApiKeyError, ApiKeyRefreshThereshold}};
+use super::dsl::{increment_rate::{IncrementRate, IncrementRateError, InculsiveLimit, TimeWindow}, rate_limit::{LastApiKeyRefreshedAt, RateLimit}, refresh_api_key::{ApiKeyExpirationSeconds, ApiKeyRefreshThereshold, RefreshApiKey, RefreshApiKeyError}};
 
 const BASE_NAMESPACE: &str = "rtlim";
 
@@ -15,29 +15,29 @@ pub struct RateLimitImpl {
     limit: InculsiveLimit,
     time_window: TimeWindow,
     db: Arc<Session>,
-    select_last_api_key_refresh_timestamp: Arc<PreparedStatement>,
-    insert_api_key_and_refresh_timestamp: Arc<PreparedStatement>,
+    select_last_api_key_refreshed_at: Arc<PreparedStatement>,
+    insert_api_key_with_ttl_refresh: Arc<PreparedStatement>,
     cache: Arc<Pool>,
-    incr_with_first_expiration: Arc<Script>,
+    incr_and_expire_if_first: Arc<Script>,
 }
 
 impl RateLimitImpl {
     pub async fn try_new(namespace: EndpointName, limit: InculsiveLimit, time_window: TimeWindow, db: Arc<Session>, cache: Arc<Pool>) -> Result<Self, InitError<Self>> {
-        let select_last_api_key_refresh_timestamp = prepare::<InitError<Self>>(
+        let select_last_api_key_refreshed_at = prepare::<InitError<Self>>(
             &db,
             "SELECT refreshed_at FROM api_keys WHERE api_key = ?"
         ).await?;
 
-        let insert_api_key_and_refresh_timestamp = prepare::<InitError<Self>>(
+        let insert_api_key_with_ttl_refresh = prepare::<InitError<Self>>(
             &db,
             "INSERT INTO api_kyes (api_key, refreshed_at) VALUES (?, ?) USING TTL 2592000"
         ).await?;
 
-        let lua_script = fs::read_to_string("rate.lua")
+        let lua_script = fs::read_to_string("incr_and_expire_if_first.lua")
             .map_err(|e| InitError::new(e.into()))?;
-        let incr_with_first_expiration = Arc::new(Script::new(lua_script.as_str()));
+        let incr_and_expire_if_first = Arc::new(Script::new(lua_script.as_str()));
 
-        Ok(Self { endpoint_name: namespace, limit, time_window, db, select_last_api_key_refresh_timestamp, insert_api_key_and_refresh_timestamp, cache, incr_with_first_expiration })
+        Ok(Self { endpoint_name: namespace, limit, time_window, db, select_last_api_key_refreshed_at, insert_api_key_with_ttl_refresh, cache, incr_and_expire_if_first })
     }
 }
 
@@ -51,7 +51,7 @@ impl RateLimit for RateLimitImpl {
         }
         
         self.db
-            .execute_unpaged(&self.select_last_api_key_refresh_timestamp, (api_key.to_string(),))
+            .execute_unpaged(&self.select_last_api_key_refreshed_at, (api_key.to_string(),))
             .await
             .map_err(handle_error)?
             .first_row_typed::<(CqlTimestamp, )>()
@@ -70,7 +70,7 @@ impl IncrementRate for RateLimitImpl {
 
         let key = format!("{}:{}:{}", BASE_NAMESPACE, self.endpoint_name.value(), api_key.value().value());
 
-        self.incr_with_first_expiration
+        self.incr_and_expire_if_first
                 .key(key)
                 .arg(time_window.as_secs())
                 .invoke_async::<u32>(&mut *conn)
@@ -89,15 +89,22 @@ impl IncrementRate for RateLimitImpl {
 }
 
 const API_KEY_REFRESH_THERESHOLD: ApiKeyRefreshThereshold = ApiKeyRefreshThereshold::days(10);
+const API_KEY_EXPIRATION: ApiKeyExpirationSeconds = ApiKeyExpirationSeconds::secs(2592000);
 
 impl RefreshApiKey for RateLimitImpl {
     fn api_key_refresh_thereshold(&self) -> &ApiKeyRefreshThereshold {
         &API_KEY_REFRESH_THERESHOLD
     }
 
-    async fn refresh_api_key(&self, api_key: &ApiKey) -> Fallible<(), RefreshApiKeyError> {
+    fn api_key_expiration(&self) -> &ApiKeyExpirationSeconds {
+        &API_KEY_EXPIRATION
+    }
+
+    async fn refresh_api_key(&self, api_key: &ApiKey, expiration: &ApiKeyExpirationSeconds) -> Fallible<(), RefreshApiKeyError> {
+        let values = (api_key.to_string(), i64::from(UnixtimeMillis::now()), i64::from(expiration.clone()));
+
         self.db
-            .execute_unpaged(&self.insert_api_key_and_refresh_timestamp, (api_key.to_string(), i64::from(UnixtimeMillis::now())))
+            .execute_unpaged(&self.insert_api_key_with_ttl_refresh, values)
             .await
             .map(|_| ())
             .map_err(|e| RefreshApiKeyError::RefreshApiKeyFailed(e.into()))
