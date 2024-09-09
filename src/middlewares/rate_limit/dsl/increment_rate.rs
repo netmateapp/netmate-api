@@ -33,7 +33,7 @@ pub enum IncrementRateError {
 pub struct TimeWindow(u32);
 
 impl TimeWindow {
-    pub fn secs(seconds: u32) -> Self {
+    pub const fn secs(seconds: u32) -> Self {
         Self(seconds)
     }
 
@@ -46,7 +46,7 @@ impl TimeWindow {
 pub struct Rate(u32);
 
 impl Rate {
-    pub fn new(rate: u32) -> Self {
+    pub const fn new(rate: u32) -> Self {
         Self(rate)
     }
 
@@ -58,11 +58,62 @@ impl Rate {
 pub struct InculsiveLimit(Rate);
 
 impl InculsiveLimit {
-    pub fn new(limit: u32) -> Self {
-        Self(Rate(limit))
+    pub const fn new(limit: u32) -> Self {
+        Self(Rate::new(limit))
     }
 
     pub fn value(&self) -> &Rate {
         &self.0
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::LazyLock;
+
+    use crate::common::{api_key::ApiKey, fallible::Fallible};
+
+    use super::{IncrementRate, IncrementRateError, InculsiveLimit, Rate, TimeWindow};
+
+    static WITHIN_LIMIT: LazyLock<ApiKey> = LazyLock::new(|| ApiKey::gen());
+
+    const TIME_WINDOW: TimeWindow = TimeWindow::secs(60);
+    const INCLUSIVE_LIMIT: InculsiveLimit = InculsiveLimit::new(100);
+
+    struct MockIncrementRate;
+
+    impl IncrementRate for MockIncrementRate {
+        async fn increment_rate_within_window(&self, api_key: &ApiKey, _: &TimeWindow) -> Fallible<Rate, IncrementRateError> {
+            if api_key == &*WITHIN_LIMIT {
+                Ok(Rate::new(INCLUSIVE_LIMIT.value().value()))
+            } else {
+                Ok(Rate::new(INCLUSIVE_LIMIT.value().value() - 1))
+            }
+        }
+
+        fn time_window(&self) -> TimeWindow {
+            TIME_WINDOW
+        }
+    
+        fn inclusive_limit(&self) -> InculsiveLimit {
+            INCLUSIVE_LIMIT
+        }
+    }
+
+    #[tokio::test]
+    async fn within_limit() {
+        let api_key = &*WITHIN_LIMIT;
+        let result = MockIncrementRate.try_increment_rate(api_key).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn over_limit() {
+        let api_key = ApiKey::gen();
+        let result = MockIncrementRate.try_increment_rate(&api_key).await;
+        match result {
+            Err(IncrementRateError::RateLimitOver) => (),
+            _ => panic!(),
+        }
     }
 }
