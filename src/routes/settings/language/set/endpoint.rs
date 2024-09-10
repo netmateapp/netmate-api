@@ -1,35 +1,35 @@
 use std::sync::Arc;
 
-use axum::{extract::State, Extension, Json};
+use axum::{extract::State, routing::post, Extension, Json, Router};
 use axum_macros::debug_handler;
 use http::StatusCode;
+use scylla::Session;
 use serde::Deserialize;
+use tower::ServiceBuilder;
 use tracing::info;
 
-use crate::common::{id::AccountId, language::Language};
+use crate::{common::{id::AccountId, language::Language}, helper::{error::InitError, middleware::{rate_limiter, session_manager}, valkey::Pool}, middlewares::rate_limit::dsl::increment_rate::{InculsiveLimit, TimeWindow}};
 
 use super::{dsl::SetLanaguage, interpreter::SetLanguageImpl};
 
+const ENDPOINT_NAME: &str = "setln";
+const LIMIT: InculsiveLimit = InculsiveLimit::new(30);
+const TIME_WINDOW: TimeWindow = TimeWindow::hours(1);
 
-/*
-pub async fn endpoint(db: Arc<Session>, cache: Arc<Pool>) -> Result<Router, InitError<GetLanguageImpl>> {
-    let get_language = GetLanguageImpl::try_new(db.clone()).await?;
-
-    let login_session = LoginSessionLayer::try_new(db.clone(), cache.clone())
-        .await
-        .map_err(|e| InitError::<GetLanguageImpl>::new(e.into()))?;
+pub async fn endpoint(db: Arc<Session>, cache: Arc<Pool>) -> Result<Router, InitError<SetLanguageImpl>> {
+    let set_language = SetLanguageImpl::try_new(db.clone()).await?;
 
     let services = ServiceBuilder::new()
-        .layer(login_session);
+        .layer(rate_limiter(db.clone(), cache.clone(), ENDPOINT_NAME, LIMIT, TIME_WINDOW).await?)
+        .layer(session_manager(db, cache).await?);
 
     let router = Router::new()
-        .route("/language", get(handler))
+        .route("/language", post(handler))
         .layer(services)
-        .with_state(Arc::new(get_language));
+        .with_state(Arc::new(set_language));
 
     Ok(router)
-} */
-
+}
 
 #[debug_handler]
 pub async fn handler(
