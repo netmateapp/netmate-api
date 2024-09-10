@@ -1,0 +1,1 @@
+UPDATE accounts SET language = ? WHERE id = ?
