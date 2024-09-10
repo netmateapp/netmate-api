@@ -4,7 +4,7 @@ use scylla::{prepared_statement::PreparedStatement, Session};
 
 use super::dsl::{GetLanguage, GetLanguageError};
 
-use crate::{common::{fallible::Fallible, id::AccountId, language::Language}, helper::{error::{DslErrorMapper, InitError}, scylla::prepare}};
+use crate::{common::{fallible::Fallible, id::AccountId, language::Language}, helper::{error::InitError, scylla::prepare}};
 
 pub struct GetLanguageImpl {
     session: Arc<Session>,
@@ -24,22 +24,18 @@ impl GetLanguageImpl {
 
 impl GetLanguage for GetLanguageImpl {
     async fn get_language(&self, account_id: &AccountId) -> Fallible<Language, GetLanguageError> {
-        let language: Language = self.session
+        fn handle_error<E: Into<anyhow::Error>>(e: E) -> GetLanguageError {
+            GetLanguageError::GetLanguageFailed(e.into())
+        }
+
+        self.session
             .execute_unpaged(&self.select_language, (account_id.value().value(), ))
             .await
-            .map_dsl_error()?
+            .map_err(handle_error)?
             .first_row_typed::<(i8, )>()
-            .map_dsl_error()?
+            .map_err(handle_error)?
             .0
             .try_into()
-            .map_dsl_error()?;
-        
-        Ok(language)
-    }
-}
-
-impl <T, U: Into<anyhow::Error>> DslErrorMapper<T, GetLanguageError> for Result<T, U> {
-    fn map_dsl_error(self) -> Result<T, GetLanguageError> {
-        self.map_err(|e| GetLanguageError::GetLanguageFailed(e.into()))
+            .map_err(handle_error)
     }
 }
