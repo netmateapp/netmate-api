@@ -8,19 +8,20 @@ use crate::{common::{api_key::ApiKey, fallible::Fallible, unixtime::UnixtimeMill
 
 const BASE_NAMESPACE: &str = "rtlim";
 
+#[derive(Debug)]
 pub struct RateLimitImpl {
+    db: Arc<Session>,
+    cache: Arc<Pool>,
     endpoint_name: EndpointName,
     limit: InculsiveLimit,
     time_window: TimeWindow,
-    db: Arc<Session>,
     select_last_api_key_refreshed_at: Arc<PreparedStatement>,
     insert_api_key_with_ttl_refresh: Arc<PreparedStatement>,
-    cache: Arc<Pool>,
     incr_and_expire_if_first: Arc<Script>,
 }
 
 impl RateLimitImpl {
-    pub async fn try_new(namespace: EndpointName, limit: InculsiveLimit, time_window: TimeWindow, db: Arc<Session>, cache: Arc<Pool>) -> Result<Self, InitError<Self>> {
+    pub async fn try_new(db: Arc<Session>, cache: Arc<Pool>, namespace: EndpointName, limit: InculsiveLimit, time_window: TimeWindow) -> Result<Self, InitError<Self>> {
         let select_last_api_key_refreshed_at = prepare::<InitError<Self>>(
             &db,
             include_str!("select_last_api_key_refreshed_at.cql")
@@ -112,18 +113,19 @@ impl RefreshApiKey for RateLimitImpl {
 const MIN_NAMESPACE_LENGTH: usize = 3;
 const MAX_NAMESPACE_LENGTH: usize = 9;
 
+#[derive(Debug)]
 pub struct EndpointName(&'static str);
 
 impl EndpointName {
-    pub fn new(endpoint_name: &'static str) -> Result<Self, InvalidNamespaceError> {
+    pub fn new(endpoint_name: &'static str) -> Result<Self, ParseEndpointNameError> {
         if endpoint_name.contains(':') {
-            Err(InvalidNamespaceError::ContainsColon)
+            Err(ParseEndpointNameError::ContainsColon)
         } else if !endpoint_name.is_ascii() {
-            Err(InvalidNamespaceError::NotAscii)
+            Err(ParseEndpointNameError::NotAscii)
         } else if endpoint_name.len() < MIN_NAMESPACE_LENGTH {
-            Err(InvalidNamespaceError::TooShort)
+            Err(ParseEndpointNameError::TooShort)
         } else if endpoint_name.len() > MAX_NAMESPACE_LENGTH {
-            Err(InvalidNamespaceError::TooLong)
+            Err(ParseEndpointNameError::TooLong)
         } else {
             Ok(Self(endpoint_name))
         }
@@ -135,7 +137,7 @@ impl EndpointName {
 }
 
 #[derive(Debug, Error)]
-pub enum InvalidNamespaceError {
+pub enum ParseEndpointNameError {
     #[error("コロンは許可されていません")]
     ContainsColon,
     #[error("ASCII文字列である必要があります")]

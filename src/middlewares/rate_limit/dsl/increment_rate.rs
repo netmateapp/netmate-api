@@ -30,11 +30,20 @@ pub enum IncrementRateError {
     RateLimitOver,
 }
 
+#[derive(Debug)]
 pub struct TimeWindow(u32);
 
 impl TimeWindow {
     pub const fn secs(seconds: u32) -> Self {
         Self(seconds)
+    }
+
+    pub const fn minutes(minutes: u32) -> Self {
+        Self::secs(minutes * 60)
+    }
+
+    pub const fn hours(hours: u32) -> Self {
+        Self::minutes(hours * 60)
     }
 
     pub fn as_secs(&self) -> u32 {
@@ -55,6 +64,7 @@ impl Rate {
     }
 }
 
+#[derive(Debug)]
 pub struct InculsiveLimit(Rate);
 
 impl InculsiveLimit {

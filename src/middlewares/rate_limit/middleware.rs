@@ -16,8 +16,8 @@ pub struct RateLimitLayer {
 }
 
 impl RateLimitLayer {
-    pub async fn try_new(endpoint_name: EndpointName, limit: InculsiveLimit, time_window: TimeWindow, db: Arc<Session>, cache: Arc<Pool>) -> Result<Self, InitError<RateLimitImpl>> {
-        let rate_limit = RateLimitImpl::try_new(endpoint_name, limit, time_window, db, cache).await?;
+    pub async fn try_new(db: Arc<Session>, cache: Arc<Pool>, endpoint_name: EndpointName, limit: InculsiveLimit, time_window: TimeWindow) -> Result<Self, InitError<RateLimitImpl>> {
+        let rate_limit = RateLimitImpl::try_new(db, cache, endpoint_name, limit, time_window).await?;
         Ok(Self { rate_limit: Arc::new(rate_limit) })
     }
 }
