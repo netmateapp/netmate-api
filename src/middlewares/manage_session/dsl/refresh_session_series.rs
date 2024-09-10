@@ -64,7 +64,7 @@ impl SessionSeriesRefreshThereshold {
 mod tests {
     use std::sync::LazyLock;
 
-    use crate::{common::{fallible::Fallible, id::{uuid7::Uuid7, AccountId}, session::value::SessionSeries, unixtime::UnixtimeMillis}, middlewares::session::dsl::manage_session::RefreshPairExpirationSeconds};
+    use crate::{common::{fallible::Fallible, id::{uuid7::Uuid7, AccountId}, session::value::SessionSeries, unixtime::UnixtimeMillis}, middlewares::manage_session::dsl::manage_session::RefreshPairExpirationSeconds};
 
     use super::{LastSessionSeriesRefreshedTime, RefreshSessionSeries, RefreshSessionSeriesError, SessionSeriesRefreshThereshold};
 

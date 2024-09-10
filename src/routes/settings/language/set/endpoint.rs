@@ -11,6 +11,25 @@ use crate::common::{id::AccountId, language::Language};
 use super::{dsl::SetLanaguage, interpreter::SetLanguageImpl};
 
 
+/*
+pub async fn endpoint(db: Arc<Session>, cache: Arc<Pool>) -> Result<Router, InitError<GetLanguageImpl>> {
+    let get_language = GetLanguageImpl::try_new(db.clone()).await?;
+
+    let login_session = LoginSessionLayer::try_new(db.clone(), cache.clone())
+        .await
+        .map_err(|e| InitError::<GetLanguageImpl>::new(e.into()))?;
+
+    let services = ServiceBuilder::new()
+        .layer(login_session);
+
+    let router = Router::new()
+        .route("/language", get(handler))
+        .layer(services)
+        .with_state(Arc::new(get_language));
+
+    Ok(router)
+} */
+
 
 #[debug_handler]
 pub async fn handler(

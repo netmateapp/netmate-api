@@ -7,14 +7,14 @@ use scylla::Session;
 use tower::ServiceBuilder;
 use tracing::info;
 
-use crate::{common::{id::AccountId, language::Language}, helper::{error::InitError, valkey::Pool}, middlewares::session::middleware::LoginSessionLayer, routes::settings::language::get::dsl::GetLanguage};
+use crate::{common::{id::AccountId, language::Language}, helper::{error::InitError, valkey::Pool}, middlewares::manage_session::middleware::ManageSessionLayer, routes::settings::language::get::dsl::GetLanguage};
 
 use super::interpreter::GetLanguageImpl;
 
 pub async fn endpoint(db: Arc<Session>, cache: Arc<Pool>) -> Result<Router, InitError<GetLanguageImpl>> {
     let get_language = GetLanguageImpl::try_new(db.clone()).await?;
 
-    let login_session = LoginSessionLayer::try_new(db.clone(), cache.clone())
+    let login_session = ManageSessionLayer::try_new(db.clone(), cache.clone())
         .await
         .map_err(|e| InitError::<GetLanguageImpl>::new(e.into()))?;
 

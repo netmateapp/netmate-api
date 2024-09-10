@@ -6,27 +6,27 @@ use scylla::Session;
 use tokio::pin;
 use tower::{Layer, Service};
 
-use crate::{helper::{error::InitError, valkey::Pool}, middlewares::session::dsl::manage_session::{ManageSession, ManageSessionError}};
+use crate::{helper::{error::InitError, valkey::Pool}, middlewares::manage_session::dsl::manage_session::{ManageSession, ManageSessionError}};
 
 use super::interpreter::ManageSessionImpl;
 
 #[derive(Clone)]
-pub struct LoginSessionLayer {
+pub struct ManageSessionLayer {
     manage_session: Arc<ManageSessionImpl>,
 }
 
-impl LoginSessionLayer {
+impl ManageSessionLayer {
     pub async fn try_new(db: Arc<Session>, cache: Arc<Pool>) -> Result<Self, InitError<ManageSessionImpl>> {
         let manage_session = ManageSessionImpl::try_new(db, cache).await?;
         Ok(Self { manage_session: Arc::new(manage_session) })
     }
 }
 
-impl<S> Layer<S> for LoginSessionLayer {
-    type Service = LoginSessionService<S>;
+impl<S> Layer<S> for ManageSessionLayer {
+    type Service = ManageSessionService<S>;
 
     fn layer(&self, inner: S) -> Self::Service {
-        LoginSessionService {
+        ManageSessionService {
             inner,
             manage_session: self.manage_session.clone(),
         }
@@ -34,12 +34,12 @@ impl<S> Layer<S> for LoginSessionLayer {
 }
 
 #[derive(Clone)]
-pub struct LoginSessionService<S> {
+pub struct ManageSessionService<S> {
     inner: S,
     manage_session: Arc<ManageSessionImpl>,
 }
 
-impl <S, B> Service<Request<B>> for LoginSessionService<S>
+impl <S, B> Service<Request<B>> for ManageSessionService<S>
 where
     S: Service<Request<B>, Error = Infallible, Response = Response<B>> + Clone,
     S::Future: Future<Output = Result<S::Response, S::Error>>,

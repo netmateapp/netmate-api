@@ -11,22 +11,22 @@ use crate::{helper::{error::InitError, valkey::Pool}, middlewares::rate_limit::d
 use super::{dsl::increment_rate::{InculsiveLimit, TimeWindow}, interpreter::{EndpointName, RateLimitImpl}};
 
 #[derive(Clone)]
-pub struct LoginSessionLayer {
+pub struct RateLimitLayer {
     rate_limit: Arc<RateLimitImpl>,
 }
 
-impl LoginSessionLayer {
+impl RateLimitLayer {
     pub async fn try_new(endpoint_name: EndpointName, limit: InculsiveLimit, time_window: TimeWindow, db: Arc<Session>, cache: Arc<Pool>) -> Result<Self, InitError<RateLimitImpl>> {
         let rate_limit = RateLimitImpl::try_new(endpoint_name, limit, time_window, db, cache).await?;
         Ok(Self { rate_limit: Arc::new(rate_limit) })
     }
 }
 
-impl<S> Layer<S> for LoginSessionLayer {
-    type Service = LoginSessionService<S>;
+impl<S> Layer<S> for RateLimitLayer {
+    type Service = RateLimitService<S>;
 
     fn layer(&self, inner: S) -> Self::Service {
-        LoginSessionService {
+        RateLimitService {
             inner,
             rate_limit: self.rate_limit.clone(),
         }
@@ -34,12 +34,12 @@ impl<S> Layer<S> for LoginSessionLayer {
 }
 
 #[derive(Clone)]
-pub struct LoginSessionService<S> {
+pub struct RateLimitService<S> {
     inner: S,
     rate_limit: Arc<RateLimitImpl>,
 }
 
-impl <S, B> Service<Request<B>> for LoginSessionService<S>
+impl <S, B> Service<Request<B>> for RateLimitService<S>
 where
     S: Service<Request<B>, Error = Infallible, Response = Response<B>> + Clone,
     S::Future: Future<Output = Result<S::Response, S::Error>>,
