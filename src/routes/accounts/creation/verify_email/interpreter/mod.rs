@@ -2,7 +2,7 @@ use std::{str::FromStr, sync::Arc};
 
 use scylla::{prepared_statement::PreparedStatement, Session};
 
-use crate::{common::{birth_year::BirthYear, email::address::Email, fallible::Fallible, id::AccountId, language::Language, password::PasswordHash, region::Region}, helper::{error::{DslErrorMapper, InitError}, scylla::prepare}, routes::accounts::creation::value::OneTimeToken};
+use crate::{common::{birth_year::BirthYear, email::address::Email, fallible::Fallible, id::AccountId, language::Language, password::PasswordHash, region::Region}, helper::{error::InitError, scylla::prepare}, routes::accounts::creation::value::OneTimeToken};
 
 use super::dsl::{VerifyEmail, VerifyEmailError};
 
@@ -36,24 +36,28 @@ impl VerifyEmailImpl {
 
 impl VerifyEmail for VerifyEmailImpl {
     async fn retrieve_account_creation_application_by(&self, token: &OneTimeToken) -> Fallible<(Email, PasswordHash, BirthYear, Region, Language), VerifyEmailError> {
+        fn handle_error<E: Into<anyhow::Error>>(e: E) -> VerifyEmailError {
+            VerifyEmailError::RetrieveAccountCreationApplicationFailed(e.into())
+        }
+
         let res = self.session
             .execute_unpaged(&self.select_account_creation_application, (token.value(), ))
             .await
-            .map_dsl_error()?;
+            .map_err(handle_error)?;
 
         let (email, password_hash, birth_year, region, language) = res.first_row_typed::<(String, String, i16, i8, i8)>()
-            .map_dsl_error()?;
+            .map_err(handle_error)?;
 
         let email = Email::from_str(email.as_str())
-            .map_dsl_error()?;
+            .map_err(handle_error)?;
         let password_hash = PasswordHash::from_str(password_hash.as_str())
-            .map_dsl_error()?;
+            .map_err(handle_error)?;
         let birth_year = BirthYear::try_from(birth_year)
-            .map_dsl_error()?;
+            .map_err(handle_error)?;
         let region = Region::try_from(region)
-            .map_dsl_error()?;
+            .map_err(handle_error)?;
         let language = Language::try_from(language)
-            .map_dsl_error()?;
+            .map_err(handle_error)?;
 
         Ok((email, password_hash, birth_year, region, language))
     }
@@ -76,11 +80,5 @@ impl VerifyEmail for VerifyEmailImpl {
             .await
             .map(|_| ())
             .map_err(|e| VerifyEmailError::DeleteAccountCreationApplicationFailed(e.into()))
-    }
-}
-
-impl <T, U: Into<anyhow::Error>> DslErrorMapper<T, VerifyEmailError> for Result<T, U> {
-    fn map_dsl_error(self) -> Result<T, VerifyEmailError> {
-        self.map_err(|e| VerifyEmailError::RetrieveAccountCreationApplicationFailed(e.into()))
     }
 }

@@ -12,8 +12,3 @@ impl<T> InitError<T> {
         InitError(error, PhantomData)
     }
 }
-
-// インタプリタで使用する
-pub trait DslErrorMapper<T, E> {
-    fn map_dsl_error(self) -> Result<T, E>;
-}
