@@ -1,3 +1,4 @@
 pub mod error;
-pub mod valkey;
+pub mod middleware;
 pub mod scylla;
+pub mod valkey;
