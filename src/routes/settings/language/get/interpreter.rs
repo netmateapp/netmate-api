@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use scylla::{prepared_statement::PreparedStatement, serialize::row::SerializeRow, FromRow, Session};
+use scylla::{prepared_statement::PreparedStatement, Session};
 
 use super::dsl::{GetLanguage, GetLanguageError};
 
@@ -8,7 +8,7 @@ use crate::{common::{fallible::Fallible, id::AccountId, language::Language}, cql
 
 pub struct GetLanguageImpl {
     session: Arc<Session>,
-    select_language: Arc<PreparedStatement>,
+    select_language: UpdateLanguage,
 }
 
 impl GetLanguageImpl {
@@ -17,7 +17,8 @@ impl GetLanguageImpl {
             &session,
             cql!("SELECT language FROM accounts WHERE id = ? LIMIT 1")
         )
-        .await?;
+        .await
+        .map(UpdateLanguage)?;
 
         Ok(Self { session, select_language })
     }
@@ -29,14 +30,21 @@ impl GetLanguage for GetLanguageImpl {
             GetLanguageError::GetLanguageFailed(e.into())
         }
 
-        self.session
-            .execute_unpaged(&self.select_language, (account_id.to_string(),))
+        self.select_language.execute(&self.session, (account_id, ))
             .await
-            .map_err(handle_error)?
-            .first_row_typed::<(i8, )>()
-            .map_err(handle_error)?
-            .0
-            .try_into()
+            .map(|(language, )| language)
             .map_err(handle_error)
+    }
+}
+
+struct UpdateLanguage(Arc<PreparedStatement>);
+
+impl<'a> TypedStatement<(&'a AccountId, ), (Language, )> for UpdateLanguage {
+    async fn execute(&self, session: &Arc<Session>, values: (&'a AccountId, )) -> anyhow::Result<(Language, )> {
+        session.execute_unpaged(&self.0, values)
+            .await
+            .map_err(anyhow::Error::from)?
+            .first_row_typed()
+            .map_err(anyhow::Error::from)
     }
 }
