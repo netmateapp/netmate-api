@@ -1,1 +1,0 @@
-UPDATE session_series SET refreshed_at = ? WHERE account_id = ? AND series = ? USING TTL ?

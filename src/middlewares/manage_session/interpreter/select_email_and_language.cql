@@ -1,1 +1,0 @@
-SELECT email, language FROM accounts WHERE id = ? LIMIT 1

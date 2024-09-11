@@ -5,7 +5,7 @@ use scylla::{frame::value::CqlTimestamp, prepared_statement::PreparedStatement, 
 use thiserror::Error;
 use uuid::Uuid;
 
-use crate::{common::{email::{address::Email, resend::ResendEmailSender, send::{Body, EmailSender, HtmlContent, NetmateEmail, PlainText, SenderName, Subject}}, fallible::Fallible, id::{uuid7::Uuid7, AccountId}, language::Language, session::value::{RefreshToken, SessionId, SessionSeries}, unixtime::UnixtimeMillis}, helper::{error::InitError, scylla::prepare, valkey::{conn, Pool}}, translation::ja};
+use crate::{common::{email::{address::Email, resend::ResendEmailSender, send::{Body, EmailSender, HtmlContent, NetmateEmail, PlainText, SenderName, Subject}}, fallible::Fallible, id::{uuid7::Uuid7, AccountId}, language::Language, session::value::{RefreshToken, SessionId, SessionSeries}, unixtime::UnixtimeMillis}, cql, helper::{error::InitError, scylla::prepare, valkey::{conn, Pool}}, translation::ja};
 
 use super::dsl::{authenticate::{AuthenticateSession, AuthenticateSessionError}, extract_session_info::ExtractSessionInformation, manage_session::{ManageSession, RefreshPairExpirationSeconds, SessionExpirationSeconds}, mitigate_session_theft::{MitigateSessionTheft, MitigateSessionTheftError}, reauthenticate::{ReAuthenticateSession, ReAuthenticateSessionError}, refresh_session_series::{LastSessionSeriesRefreshedTime, RefreshSessionSeries, RefreshSessionSeriesError, SessionSeriesRefreshThereshold}, set_cookie::SetSessionCookie, update_refresh_token::{UpdateRefreshToken, UpdateRefreshTokenError}, update_session::{UpdateSession, UpdateSessionError}};
 
@@ -16,6 +16,7 @@ pub struct ManageSessionImpl {
     select_email_and_language: Arc<PreparedStatement>,
     select_last_session_series_refreshed_at: Arc<PreparedStatement>,
     update_session_series_ttl: Arc<PreparedStatement>,
+    select_all_session_series: Arc<PreparedStatement>,
     delete_all_session_series: Arc<PreparedStatement>
 }
 
@@ -23,25 +24,30 @@ impl ManageSessionImpl {
     pub async fn try_new(db: Arc<Session>, cache: Arc<Pool>) -> Result<Self, InitError<Self>> {
         let select_email_and_language = prepare::<InitError<Self>>(
             &db,
-            include_str!("select_email_and_language.cql")
+            cql!("SELECT email, language FROM accounts WHERE id = ? LIMIT 1")
         ).await?;
 
         let select_last_session_series_refreshed_at = prepare::<InitError<Self>>(
             &db,
-            include_str!("select_last_session_series_refreshed_at.cql")
+            cql!("SELECT refreshed_at FROM session_series WHERE account_id = ? AND series = ? LIMIT 1")
         ).await?;
 
         let update_session_series_ttl = prepare::<InitError<Self>>(
             &db,
-            include_str!("update_session_series_ttl.cql")
+            cql!("UPDATE session_series SET refreshed_at = ? WHERE account_id = ? AND series = ? USING TTL ?")
+        ).await?;
+
+        let select_all_session_series = prepare::<InitError<Self>>(
+            &db,
+            cql!("SELECT FROM session_series WHERE account_id = ?")
         ).await?;
 
         let delete_all_session_series = prepare::<InitError<Self>>(
             &db,
-            include_str!("delete_all_session_series.cql")
+            cql!("DELETE FROM login_ids WHERE account_id = ?")
         ).await?;
 
-        Ok(Self { db, cache, select_email_and_language, select_last_session_series_refreshed_at, update_session_series_ttl, delete_all_session_series })
+        Ok(Self { db, cache, select_email_and_language, select_last_session_series_refreshed_at, update_session_series_ttl, select_all_session_series, delete_all_session_series })
     }
 }
 
@@ -256,10 +262,22 @@ impl MitigateSessionTheft for ManageSessionImpl {
     }
 
     async fn purge_all_session_series(&self, account_id: &AccountId) -> Fallible<(), MitigateSessionTheftError> {
+        fn handle_error<E: Into<anyhow::Error>>(e: E) -> MitigateSessionTheftError {
+            MitigateSessionTheftError::DeleteAllSessionSeriesFailed(e.into())
+        }
+
+        /*let all_session_series = self.db
+            .execute_iter(&self.select_all_session_series, (account_id.to_string(), ))
+            .await
+            .map_err(handle_error)?
+            .into_typed::<(String, )>()*/
+            
+            
+
         self.db
-            .execute_unpaged(&self.delete_all_session_series, (account_id.value().value(),))
+            .execute_unpaged(&self.delete_all_session_series, (account_id.to_string(), ))
             .await
             .map(|_| ())
-            .map_err(|e| MitigateSessionTheftError::DeleteAllSessionSeriesFailed(e.into()))
+            .map_err(handle_error)
     }
 }

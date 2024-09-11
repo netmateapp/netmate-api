@@ -4,7 +4,7 @@ use redis::Script;
 use scylla::{frame::value::CqlTimestamp, prepared_statement::PreparedStatement, Session};
 use thiserror::Error;
 
-use crate::{common::{api_key::ApiKey, fallible::Fallible, unixtime::UnixtimeMillis}, helper::{error::InitError, scylla::prepare, valkey::{conn, Pool}}, middlewares::rate_limit::dsl::{increment_rate::{IncrementRate, IncrementRateError, InculsiveLimit, Rate, TimeWindow}, rate_limit::{LastApiKeyRefreshedAt, RateLimit, RateLimitError}, refresh_api_key::{ApiKeyExpirationSeconds, ApiKeyRefreshThereshold, RefreshApiKey, RefreshApiKeyError}}};
+use crate::{common::{api_key::ApiKey, fallible::Fallible, unixtime::UnixtimeMillis}, cql, helper::{error::InitError, scylla::prepare, valkey::{conn, Pool}}, middlewares::rate_limit::dsl::{increment_rate::{IncrementRate, IncrementRateError, InculsiveLimit, Rate, TimeWindow}, rate_limit::{LastApiKeyRefreshedAt, RateLimit, RateLimitError}, refresh_api_key::{ApiKeyExpirationSeconds, ApiKeyRefreshThereshold, RefreshApiKey, RefreshApiKeyError}}};
 
 const BASE_NAMESPACE: &str = "rtlim";
 
@@ -24,12 +24,12 @@ impl RateLimitImpl {
     pub async fn try_new(db: Arc<Session>, cache: Arc<Pool>, namespace: EndpointName, limit: InculsiveLimit, time_window: TimeWindow) -> Result<Self, InitError<Self>> {
         let select_last_api_key_refreshed_at = prepare::<InitError<Self>>(
             &db,
-            include_str!("select_last_api_key_refreshed_at.cql")
+            cql!("SELECT refreshed_at FROM api_keys WHERE api_key = ?")
         ).await?;
 
         let insert_api_key_with_ttl_refresh = prepare::<InitError<Self>>(
             &db,
-            include_str!("insert_api_key_with_ttl_refresh.cql")
+            cql!("INSERT INTO api_keys (api_key, refreshed_at) VALUES (?, ?) USING TTL ?")
         ).await?;
 
         let incr_and_expire_if_first = Arc::new(

@@ -1,1 +1,0 @@
-SELECT refreshed_at FROM session_series WHERE account_id = ? AND series = ? LIMIT 1

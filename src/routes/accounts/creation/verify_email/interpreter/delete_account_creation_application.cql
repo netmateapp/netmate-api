@@ -1,1 +1,0 @@
-DELETE FROM account_creation_applications WHERE code = ?

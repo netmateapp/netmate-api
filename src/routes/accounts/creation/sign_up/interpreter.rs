@@ -2,7 +2,7 @@ use std::{str::FromStr, sync::{Arc, LazyLock}};
 
 use scylla::{prepared_statement::PreparedStatement, Session};
 
-use crate::{common::{birth_year::BirthYear, email::{address::Email, resend::ResendEmailSender, send::{Body, EmailSender, HtmlContent, NetmateEmail, PlainText, SenderName, Subject}}, fallible::Fallible, language::Language, password::PasswordHash, region::Region}, helper::{error::InitError, scylla::prepare}, routes::accounts::creation::value::OneTimeToken, translation::{ja, us_en}};
+use crate::{common::{birth_year::BirthYear, email::{address::Email, resend::ResendEmailSender, send::{Body, EmailSender, HtmlContent, NetmateEmail, PlainText, SenderName, Subject}}, fallible::Fallible, language::Language, password::PasswordHash, region::Region}, cql, helper::{error::InitError, scylla::prepare}, routes::accounts::creation::value::OneTimeToken, translation::{ja, us_en}};
 
 use super::dsl::{SignUp, SignUpError};
 
@@ -18,12 +18,12 @@ impl SignUpImpl {
     ) -> Result<Self, InitError<SignUpImpl>> {
         let select_id = prepare::<InitError<SignUpImpl>>(
             &session,
-            include_str!("select_id.cql")
+            cql!("SELECT id FROM accounts_by_email WHERE email = ? LIMIT 1")
         ).await?;
 
         let insert_account_creation_application = prepare::<InitError<SignUpImpl>>(
             &session,
-            include_str!("insert_account_creation_application.cql")
+            cql!("INSERT INTO account_creation_applications (ottoken, email, password_hash, birth_year, region, language) VALUES (?, ?, ?, ?, ?, ?) USING TTL 86400")
         ).await?;
 
         Ok(Self { session, select_id, insert_account_creation_application })

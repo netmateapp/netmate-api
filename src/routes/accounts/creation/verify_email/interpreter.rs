@@ -2,7 +2,7 @@ use std::{str::FromStr, sync::Arc};
 
 use scylla::{prepared_statement::PreparedStatement, Session};
 
-use crate::{common::{birth_year::BirthYear, email::address::Email, fallible::Fallible, id::AccountId, language::Language, password::PasswordHash, region::Region}, helper::{error::InitError, scylla::prepare}, routes::accounts::creation::value::OneTimeToken};
+use crate::{common::{birth_year::BirthYear, email::address::Email, fallible::Fallible, id::AccountId, language::Language, password::PasswordHash, region::Region}, cql, helper::{error::InitError, scylla::prepare}, routes::accounts::creation::value::OneTimeToken};
 
 use super::dsl::{VerifyEmail, VerifyEmailError};
 
@@ -17,17 +17,17 @@ impl VerifyEmailImpl {
     pub async fn try_new(session: Arc<Session>) -> Result<Self, InitError<VerifyEmailImpl>> {
         let select_account_creation_application = prepare::<InitError<VerifyEmailImpl>>(
             &session,
-            include_str!("select_account_creation_application.cql")
+            cql!("SELECT email, password_hash, birth_year, region, language FROM account_creation_applications WHERE ottoken = ? LIMIT 1")
         ).await?;
 
         let insert_account = prepare::<InitError<VerifyEmailImpl>>(
             &session,
-            include_str!("insert_account.cql")
+            cql!("INSERT INTO accounts (id, email, password_hash, birth_year, region, language) VALUES (?, ?, ?, ?, ?, ?) IF NOT EXISTS")
         ).await?;
 
         let delete_account_creation_application = prepare::<InitError<VerifyEmailImpl>>(
             &session,
-            include_str!("delete_account_creation_application.cql")
+            cql!("DELETE FROM account_creation_applications WHERE code = ?")
         ).await?;
 
         Ok(Self { session, select_account_creation_application, insert_account, delete_account_creation_application })

@@ -1,1 +1,0 @@
-INSERT INTO account_creation_applications (ottoken, email, password_hash, birth_year, region, language) VALUES (?, ?, ?, ?, ?, ?) USING TTL 86400
