@@ -1,5 +1,6 @@
 use std::fmt::Display;
 
+use scylla::{frame::response::result::ColumnType, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
 use uuid4::Uuid4;
 use uuid7::Uuid7;
 
@@ -24,6 +25,12 @@ impl AccountId {
 impl Display for AccountId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
+    }
+}
+
+impl SerializeValue for AccountId {
+    fn serialize<'b>(&self, typ: &ColumnType, writer: CellWriter<'b>) -> Result<WrittenCellProof<'b>, SerializationError> {
+        self.0.serialize(typ, writer)
     }
 }
 
