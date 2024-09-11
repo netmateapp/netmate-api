@@ -1,3 +1,4 @@
+use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::CqlValue};
 use serde::{de, Deserialize, Serialize};
 use thiserror::Error;
 
@@ -65,6 +66,12 @@ impl<'de> Deserialize<'de> for Language {
       let n: u8 = Deserialize::deserialize(deserializer)?;
       Language::try_from(n).map_err(de::Error::custom)
   }
+}
+
+impl FromCqlVal<Option<CqlValue>> for Language {
+    fn from_cql(cql_val: Option<CqlValue>) -> Result<Self, FromCqlValError> {
+        i8::from_cql(cql_val).and_then(|v| Language::try_from(v).map_err(|_| FromCqlValError::BadVal))
+    }
 }
 
 #[cfg(test)]

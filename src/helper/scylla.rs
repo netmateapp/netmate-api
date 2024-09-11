@@ -4,6 +4,13 @@ use scylla::{prepared_statement::PreparedStatement, serialize::row::SerializeRow
 
 use super::error::InitError;
 
+#[macro_export]
+macro_rules! cql {
+    ($query:expr) => {
+        $query
+    };
+}
+
 pub async fn prepare<T: From<QueryError>>(session: &Arc<Session>, query: &str) -> Result<Arc<PreparedStatement>, T> {
     match session.prepare(query).await {
         Ok(statement) => Ok(Arc::new(statement)),
@@ -17,22 +24,10 @@ impl<T> From<QueryError> for InitError<T> {
     }
 }
 
-#[macro_export]
-macro_rules! cql {
-    ($query:expr) => {
-        $query
-    };
-}
-
-fn a() {
-    let _s = cql!("SELECT * FROM table");
-}
-
-pub(crate) trait TypedStatement<V, R> {
-    type Output: FromRow;
-    type Error;
-
-    fn serialize_values(&self, values: V) -> impl SerializeRow;
-
-    fn deserialize_values(values: Self::Output) -> Result<R, Self::Error>; 
+pub(crate) trait TypedStatement<I, O>
+where
+    I: SerializeRow,
+    O: FromRow,
+{
+    async fn execute(&self, db: &Arc<Session>, values: I) -> anyhow::Result<O>;
 }
