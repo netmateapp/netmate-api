@@ -1,3 +1,4 @@
+use scylla::{frame::response::result::ColumnType, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
 use thiserror::Error;
 
 use crate::common::{api_key::ApiKey, fallible::Fallible, unixtime::UnixtimeMillis};
@@ -62,6 +63,12 @@ impl ApiKeyExpirationSeconds {
 impl From<ApiKeyExpirationSeconds> for i64 {
     fn from(expiration: ApiKeyExpirationSeconds) -> i64 {
         expiration.0 as i64
+    }
+}
+
+impl SerializeValue for ApiKeyExpirationSeconds {
+    fn serialize<'b>(&self, typ: &ColumnType, writer: CellWriter<'b>) -> Result<WrittenCellProof<'b>, SerializationError> {
+        (self.0 as i64).serialize(typ, writer)
     }
 }
 
