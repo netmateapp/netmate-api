@@ -1,5 +1,6 @@
 use std::{fmt::Display, str::FromStr};
 
+use scylla::{frame::response::result::ColumnType, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
 use thiserror::Error;
 
 use super::token::{calc_entropy_bytes, Token};
@@ -38,5 +39,11 @@ impl FromStr for ApiKey {
         Token::from_str(s)
             .map(|t| Self(t))
             .map_err(|e| ParseApiKeyError(e.into()))
+    }
+}
+
+impl SerializeValue for ApiKey {
+    fn serialize<'b>(&self, typ: &ColumnType, writer: CellWriter<'b>) -> Result<WrittenCellProof<'b>, SerializationError> {
+        self.0.serialize(typ, writer)
     }
 }
