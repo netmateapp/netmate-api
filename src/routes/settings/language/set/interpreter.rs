@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use scylla::{prepared_statement::PreparedStatement, Session};
 
-use crate::{common::{fallible::Fallible, id::AccountId, language::Language}, cql, helper::{error::InitError, scylla::prepare}};
+use crate::{common::{fallible::Fallible, id::AccountId, language::Language}, cql, helper::{error::InitError, scylla::prep}};
 
 use super::dsl::{SetLanaguage, SetLanguageError};
 
@@ -13,7 +13,7 @@ pub struct SetLanguageImpl {
 
 impl SetLanguageImpl {
     pub async fn try_new(db: Arc<Session>) -> Result<SetLanguageImpl, InitError<SetLanguageImpl>> {
-        let update_language = prepare::<InitError<SetLanguageImpl>>(
+        let update_language = prep::<InitError<SetLanguageImpl>>(
             &db,
             cql!("UPDATE accounts SET language = ? WHERE id = ?")
         ).await?;

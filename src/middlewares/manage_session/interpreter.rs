@@ -5,7 +5,7 @@ use scylla::{frame::value::CqlTimestamp, prepared_statement::PreparedStatement, 
 use thiserror::Error;
 use uuid::Uuid;
 
-use crate::{common::{email::{address::Email, resend::ResendEmailSender, send::{Body, EmailSender, HtmlContent, NetmateEmail, PlainText, SenderName, Subject}}, fallible::Fallible, id::{uuid7::Uuid7, AccountId}, language::Language, session::value::{RefreshToken, SessionId, SessionSeries}, unixtime::UnixtimeMillis}, cql, helper::{error::InitError, scylla::prepare, valkey::{conn, Pool}}, translation::ja};
+use crate::{common::{email::{address::Email, resend::ResendEmailSender, send::{Body, EmailSender, HtmlContent, NetmateEmail, PlainText, SenderName, Subject}}, fallible::Fallible, id::{uuid7::Uuid7, AccountId}, language::Language, session::value::{RefreshToken, SessionId, SessionSeries}, unixtime::UnixtimeMillis}, cql, helper::{error::InitError, scylla::prep, valkey::{conn, Pool}}, translation::ja};
 
 use super::dsl::{authenticate::{AuthenticateSession, AuthenticateSessionError}, extract_session_info::ExtractSessionInformation, manage_session::{ManageSession, RefreshPairExpirationSeconds, SessionExpirationSeconds}, mitigate_session_theft::{MitigateSessionTheft, MitigateSessionTheftError}, reauthenticate::{ReAuthenticateSession, ReAuthenticateSessionError}, refresh_session_series::{LastSessionSeriesRefreshedTime, RefreshSessionSeries, RefreshSessionSeriesError, SessionSeriesRefreshThereshold}, set_cookie::SetSessionCookie, update_refresh_token::{UpdateRefreshToken, UpdateRefreshTokenError}, update_session::{UpdateSession, UpdateSessionError}};
 
@@ -22,27 +22,27 @@ pub struct ManageSessionImpl {
 
 impl ManageSessionImpl {
     pub async fn try_new(db: Arc<Session>, cache: Arc<Pool>) -> Result<Self, InitError<Self>> {
-        let select_email_and_language = prepare::<InitError<Self>>(
+        let select_email_and_language = prep::<InitError<Self>>(
             &db,
             cql!("SELECT email, language FROM accounts WHERE id = ? LIMIT 1")
         ).await?;
 
-        let select_last_session_series_refreshed_at = prepare::<InitError<Self>>(
+        let select_last_session_series_refreshed_at = prep::<InitError<Self>>(
             &db,
             cql!("SELECT refreshed_at FROM session_series WHERE account_id = ? AND series = ? LIMIT 1")
         ).await?;
 
-        let update_session_series_ttl = prepare::<InitError<Self>>(
+        let update_session_series_ttl = prep::<InitError<Self>>(
             &db,
             cql!("UPDATE session_series SET refreshed_at = ? WHERE account_id = ? AND series = ? USING TTL ?")
         ).await?;
 
-        let select_all_session_series = prepare::<InitError<Self>>(
+        let select_all_session_series = prep::<InitError<Self>>(
             &db,
             cql!("SELECT FROM session_series WHERE account_id = ?")
         ).await?;
 
-        let delete_all_session_series = prepare::<InitError<Self>>(
+        let delete_all_session_series = prep::<InitError<Self>>(
             &db,
             cql!("DELETE FROM login_ids WHERE account_id = ?")
         ).await?;
