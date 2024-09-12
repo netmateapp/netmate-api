@@ -1,5 +1,7 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use scylla::{frame::response::result::ColumnType, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
+
 pub struct UnixtimeMillis(u64);
 
 impl UnixtimeMillis {
@@ -29,5 +31,11 @@ impl From<i64> for UnixtimeMillis {
 impl From<UnixtimeMillis> for i64 {
     fn from(unixtime: UnixtimeMillis) -> Self {
         unixtime.0 as i64
+    }
+}
+
+impl SerializeValue for UnixtimeMillis {
+    fn serialize<'b>(&self, typ: &ColumnType, writer: CellWriter<'b>) -> Result<WrittenCellProof<'b>, SerializationError> {
+        (self.0 as i64).serialize(typ, writer)
     }
 }
