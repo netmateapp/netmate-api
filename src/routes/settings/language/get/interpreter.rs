@@ -7,23 +7,23 @@ use super::dsl::{GetLanguage, GetLanguageError};
 use crate::{common::{fallible::Fallible, id::AccountId, language::Language}, helper::{error::InitError, scylla::{prepare, Statement, TypedStatement}}};
 
 pub struct GetLanguageImpl {
-    session: Arc<Session>,
+    db: Arc<Session>,
     select_language: SelectLanguage,
 }
 
 impl GetLanguageImpl {
-    pub async fn try_new(session: Arc<Session>) -> Result<GetLanguageImpl, InitError<GetLanguageImpl>> {
-        let select_language = prepare(&session, SelectLanguage, SELECT_LANGUAGE)
+    pub async fn try_new(db: Arc<Session>) -> Result<GetLanguageImpl, InitError<GetLanguageImpl>> {
+        let select_language = prepare(&db, SelectLanguage, SELECT_LANGUAGE)
             .await
             .map_err(|e| InitError::new(e.into()))?;
 
-        Ok(Self { session, select_language })
+        Ok(Self { db, select_language })
     }
 }
 
 impl GetLanguage for GetLanguageImpl {
     async fn get_language(&self, account_id: &AccountId) -> Fallible<Language, GetLanguageError> {
-        self.select_language.execute(&self.session, (account_id, ))
+        self.select_language.execute(&self.db, (account_id, ))
             .await
             .map(|(language, )| language)
             .map_err(|e| GetLanguageError::GetLanguageFailed(e.into()))
