@@ -1,6 +1,6 @@
 use std::{any::type_name, marker::PhantomData, sync::Arc};
 
-use scylla::{prepared_statement::PreparedStatement, serialize::row::SerializeRow, transport::errors::QueryError, FromRow, Session};
+use scylla::{cql_to_rust::FromRowError, frame::response::result::Row, prepared_statement::PreparedStatement, serialize::row::SerializeRow, transport::errors::QueryError, FromRow, Session};
 
 use super::error::InitError;
 
@@ -59,6 +59,15 @@ where
     async fn execute(&self, db: &Arc<Session>, values: I) -> anyhow::Result<O>;
 }
 
+// 孤児のルールにより FromRow for () ができないため、`()`を代替する型として定義
+pub struct Unit;
+
+impl FromRow for Unit {
+    fn from_row(_: Row) -> Result<Self, FromRowError> {
+        Ok(Self)
+    }
+}
+
 fn count_tuple_elements<T>() -> usize {
     let type_name = type_name::<T>();
 
@@ -73,6 +82,8 @@ fn count_tuple_elements<T>() -> usize {
         } else {
             comma_count + 1
         }
+    } else if type_name == "Unit" {
+        0
     } else {
         panic!()
     }
