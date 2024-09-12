@@ -1,4 +1,4 @@
-use std::{marker::PhantomData, sync::Arc};
+use std::{any::type_name, marker::PhantomData, sync::Arc};
 
 use scylla::{prepared_statement::PreparedStatement, serialize::row::SerializeRow, transport::errors::QueryError, FromRow, Session};
 
@@ -57,4 +57,42 @@ where
     O: FromRow,
 {
     async fn execute(&self, db: &Arc<Session>, values: I) -> anyhow::Result<O>;
+}
+
+fn count_tuple_elements<T>() -> usize {
+    let type_name = type_name::<T>();
+
+    let comma_count = type_name.matches(',')
+        .count();
+    
+    if type_name.starts_with('(') && type_name.ends_with(')') {
+        if comma_count == 0 {
+            0
+        } else if type_name.ends_with(",)") {
+            1
+        } else {
+            comma_count + 1
+        }
+    } else {
+        panic!()
+    }
+}
+
+// CQL文と`TypedStatement<I, O>`のパラメータと列の数がそれぞれ一致しているか確認する
+// あくまで数の一致を確かめているだけであり、実際の列の型との比較は行っていない
+pub(crate) fn check_cql_statement_type<I: SerializeRow, O: FromRow>(statement: Statement<impl TypedStatement<I, O>>) {
+    let statement = statement.value();
+    
+    let value_count = statement.matches('?')
+        .count();
+
+    let column_count = &statement[(statement.find("SELECT").unwrap() + 6)..statement.find("FROM").unwrap()]
+        .matches(',')
+        .count() + 1;
+
+    let values = count_tuple_elements::<I>();
+    let columns = count_tuple_elements::<O>();
+
+    assert_eq!(values, value_count);
+    assert_eq!(columns, column_count);
 }
