@@ -2,6 +2,7 @@ use std::{fmt::{self, Display, Formatter}, str::FromStr};
 
 use rand::{RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
+use scylla::{frame::response::result::ColumnType, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
 use serde::{de, Deserialize};
 use thiserror::Error;
 
@@ -115,6 +116,12 @@ impl<'de, const BYTES: usize> Deserialize<'de> for Token<BYTES> {
     {
         let s: &str = Deserialize::deserialize(deserializer)?;
         Token::from_str(s).map_err(de::Error::custom)
+    }
+}
+
+impl<const BYTES: usize> SerializeValue for Token<BYTES> {
+    fn serialize<'b>(&self, typ: &ColumnType, writer: CellWriter<'b>) -> Result<WrittenCellProof<'b>, SerializationError> {
+        self.0.serialize(typ, writer)
     }
 }
 
