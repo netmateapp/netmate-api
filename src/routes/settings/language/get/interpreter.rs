@@ -13,13 +13,9 @@ pub struct GetLanguageImpl {
 
 impl GetLanguageImpl {
     pub async fn try_new(session: Arc<Session>) -> Result<GetLanguageImpl, InitError<GetLanguageImpl>> {
-        fn handle_error<E: Into<anyhow::Error>>(e: E) -> InitError<GetLanguageImpl> {
-            InitError::new(e.into())
-        }
-
         let select_language = prepare(&session, SelectLanguage, SELECT_LANGUAGE)
             .await
-            .map_err(handle_error)?;
+            .map_err(|e| InitError::new(e.into()))?;
 
         Ok(Self { session, select_language })
     }
