@@ -8,7 +8,7 @@ use crate::{common::{fallible::Fallible, id::AccountId, language::Language}, hel
 
 pub struct GetLanguageImpl {
     db: Arc<Session>,
-    select_language: SelectLanguage,
+    select_language: Arc<SelectLanguage>,
 }
 
 impl GetLanguageImpl {
@@ -30,9 +30,10 @@ impl GetLanguage for GetLanguageImpl {
     }
 }
 
-const SELECT_LANGUAGE: Statement<SelectLanguage> = Statement::of("SELECT language FROM accounts WHERE id = ? LIMIT 1");
+const SELECT_LANGUAGE: Statement<SelectLanguage>
+    = Statement::of("SELECT language FROM accounts WHERE id = ? LIMIT 1");
 
-struct SelectLanguage(Arc<PreparedStatement>);
+struct SelectLanguage(PreparedStatement);
 
 impl<'a> TypedStatement<(&'a AccountId, ), (Language, )> for SelectLanguage {
     type Result<U> = U where U: FromRow;
