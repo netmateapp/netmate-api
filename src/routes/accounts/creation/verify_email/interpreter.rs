@@ -82,10 +82,10 @@ const INSERT_ACCOUNT: Statement<InsertAccount>
 
 struct InsertAccount(PreparedStatement);
 
-impl<'a> TypedStatement<(&'a AccountId, &'a Email, &'a PasswordHash, &'a BirthYear, &'a Region, &'a Language), Unit> for InsertAccount {
+impl<'a, 'b, 'c, 'd, 'e, 'f> TypedStatement<(&'a AccountId, &'b Email, &'c PasswordHash, &'d BirthYear, &'e Region, &'f Language), Unit> for InsertAccount {
     type Result<U> = U where U: FromRow;
 
-    async fn query(&self, session: &Arc<Session>, values: (&'a AccountId, &'a Email, &'a PasswordHash, &'a BirthYear, &'a Region, &'a Language)) -> anyhow::Result<Unit> {
+    async fn query(&self, session: &Arc<Session>, values: (&'a AccountId, &'b Email, &'c PasswordHash, &'d BirthYear, &'e Region, &'f Language)) -> anyhow::Result<Unit> {
         session.execute_unpaged(&self.0, values)
             .await
             .map(|_| Unit)
