@@ -1,8 +1,9 @@
 use std::{str::FromStr, sync::{Arc, LazyLock}};
 
+use redis::cmd;
 use scylla::{prepared_statement::PreparedStatement, transport::session::TypedRowIter, FromRow, Session};
 
-use crate::{common::{email::{address::Email, resend::ResendEmailSender, send::{Body, EmailSender, HtmlContent, NetmateEmail, PlainText, SenderName, Subject}}, fallible::Fallible, id::AccountId, language::Language, session::value::SessionSeries}, helper::scylla::{Statement, TypedStatement, Unit}, middlewares::manage_session::dsl::mitigate_session_theft::{MitigateSessionTheft, MitigateSessionTheftError}, translation::ja};
+use crate::{common::{email::{address::Email, resend::ResendEmailSender, send::{Body, EmailSender, HtmlContent, NetmateEmail, PlainText, SenderName, Subject}}, fallible::Fallible, id::AccountId, language::Language, session::value::SessionSeries}, helper::{scylla::{Statement, TypedStatement, Unit}, valkey::conn}, middlewares::manage_session::{dsl::mitigate_session_theft::{MitigateSessionTheft, MitigateSessionTheftError}, interpreter::SESSION_ID_NAMESPACE}, translation::ja};
 
 use super::ManageSessionImpl;
 
@@ -34,16 +35,29 @@ impl MitigateSessionTheft for ManageSessionImpl {
             MitigateSessionTheftError::DeleteAllSessionSeriesFailed(e.into())
         }
 
-        /*let all_session_series = self.db
-            .execute_iter(&self.select_all_session_series, (account_id.to_string(), ))
+        let all_session_series_key: &[String] = &self.select_all_session_series
+            .query(&self.db, (account_id, ))
             .await
             .map_err(handle_error)?
-            .into_typed::<(String, )>()*/
+            .filter(Result::is_ok)
+            .map(Result::unwrap)
+            .map(|(session_series, )| session_series)
+            .map(|session_series| format!("{}:{}", SESSION_ID_NAMESPACE, session_series.to_string()))
+            .collect::<Vec<String>>();
 
         self.delete_all_session_series
             .execute(&self.db, (account_id, ))
             .await
             .map(|_| ())
+            .map_err(handle_error)?;
+
+        // データベースでの削除後にキャッシュを削除するのは、エラー委譲でデータベースの削除をキャンセルしないため
+        let mut conn = conn(&self.cache, handle_error).await?;
+
+        cmd("DEL")
+            .arg(all_session_series_key)
+            .exec_async(&mut *conn)
+            .await
             .map_err(handle_error)
     }
 }
