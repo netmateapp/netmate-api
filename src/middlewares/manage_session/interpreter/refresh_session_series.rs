@@ -38,10 +38,10 @@ pub const SELECT_LAST_API_KEY_REFRESHED_AT: Statement<SelectLastSessionSeriesRef
 #[derive(Debug)]
 pub struct SelectLastSessionSeriesRefreshedAt(pub PreparedStatement);
 
-impl<'a> TypedStatement<(&'a AccountId, &'a SessionSeries), (LastSessionSeriesRefreshedAt, )> for SelectLastSessionSeriesRefreshedAt {
+impl<'a, 'b> TypedStatement<(&'a AccountId, &'b SessionSeries), (LastSessionSeriesRefreshedAt, )> for SelectLastSessionSeriesRefreshedAt {
     type Result<U> = U where U: FromRow;
 
-    async fn query(&self, db: &Arc<Session>, values: (&'a AccountId, &'a SessionSeries)) -> anyhow::Result<Self::Result<(LastSessionSeriesRefreshedAt, )>> {
+    async fn query(&self, db: &Arc<Session>, values: (&'a AccountId, &'b SessionSeries)) -> anyhow::Result<Self::Result<(LastSessionSeriesRefreshedAt, )>> {
         db.execute_unpaged(&self.0, values)
             .await
             .map_err(anyhow::Error::from)?
@@ -56,10 +56,10 @@ pub const UPDATE_SESSION_SERIES_TTL: Statement<UpdateSessionSeriesTtl>
 #[derive(Debug)]
 pub struct UpdateSessionSeriesTtl(pub PreparedStatement);
 
-impl<'a> TypedStatement<(&'a AccountId, &'a SessionSeries, &'a UnixtimeMillis, &'a RefreshPairExpirationSeconds), Unit> for UpdateSessionSeriesTtl {
+impl<'a, 'b, 'c, 'd> TypedStatement<(&'a AccountId, &'b SessionSeries, &'c UnixtimeMillis, &'d RefreshPairExpirationSeconds), Unit> for UpdateSessionSeriesTtl {
     type Result<U> = U where U: FromRow;
 
-    async fn query(&self, db: &Arc<Session>, values: (&'a AccountId, &'a SessionSeries, &'a UnixtimeMillis, &'a RefreshPairExpirationSeconds)) -> anyhow::Result<Self::Result<Unit>> {
+    async fn query(&self, db: &Arc<Session>, values: (&'a AccountId, &'b SessionSeries, &'c UnixtimeMillis, &'d RefreshPairExpirationSeconds)) -> anyhow::Result<Self::Result<Unit>> {
         db.execute_unpaged(&self.0, values)
             .await
             .map_err(anyhow::Error::from)?
