@@ -1,6 +1,7 @@
 use std::convert::Infallible;
 
 use http::{header::SET_COOKIE, Request, Response};
+use scylla::{frame::response::result::ColumnType, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
 use thiserror::Error;
 use tower::Service;
 
@@ -117,6 +118,12 @@ impl RefreshPairExpirationSeconds {
 impl From<RefreshPairExpirationSeconds> for i32 {
     fn from(expiration: RefreshPairExpirationSeconds) -> Self {
         expiration.0 as i32
+    }
+}
+
+impl SerializeValue for RefreshPairExpirationSeconds {
+    fn serialize<'b>(&self, typ: &ColumnType, writer: CellWriter<'b>) -> Result<WrittenCellProof<'b>, SerializationError> {
+        (self.0 as i32).serialize(typ, writer)
     }
 }
 

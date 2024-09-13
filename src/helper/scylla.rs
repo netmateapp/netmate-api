@@ -84,8 +84,6 @@ fn count_tuple_elements<T>() -> usize {
         } else {
             comma_count + 1
         }
-    } else if type_name == "Unit" {
-        0
     } else {
         panic!()
     }
@@ -93,7 +91,7 @@ fn count_tuple_elements<T>() -> usize {
 
 // CQL文と`TypedStatement<I, O>`のパラメータと列の数がそれぞれ一致しているか確認する
 // あくまで数の一致を確かめているだけであり、実際の列の型との比較は行っていない
-pub(crate) fn check_cql_statement_type<I: SerializeRow, O: FromRow>(statement: Statement<impl TypedStatement<I, O>>) {
+pub(crate) fn check_cql_query_type<I: SerializeRow, O: FromRow>(statement: Statement<impl TypedStatement<I, O>>) {
     let statement = statement.0;
     
     let value_count = statement.matches('?')
@@ -108,4 +106,13 @@ pub(crate) fn check_cql_statement_type<I: SerializeRow, O: FromRow>(statement: S
 
     assert_eq!(values, value_count);
     assert_eq!(columns, column_count);
+}
+
+pub(crate) fn check_cql_statement_type<I: SerializeRow>(statement: Statement<impl TypedStatement<I, Unit>>) {
+    let value_count = statement.0.matches('?')
+        .count();
+
+    let values = count_tuple_elements::<I>();
+
+    assert_eq!(values, value_count);
 }
