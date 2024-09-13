@@ -129,10 +129,10 @@ const INSERT_API_KEY_WITH_TTL_REFRESH: Statement<InsertApiKeyWithTtlRefresh> = S
 #[derive(Debug)]
 struct InsertApiKeyWithTtlRefresh(PreparedStatement);
 
-impl<'a> TypedStatement<(&'a ApiKey, &'a UnixtimeMillis, &'a ApiKeyExpirationSeconds), Unit> for InsertApiKeyWithTtlRefresh {
+impl<'a, 'b, 'c> TypedStatement<(&'a ApiKey, &'b UnixtimeMillis, &'c ApiKeyExpirationSeconds), Unit> for InsertApiKeyWithTtlRefresh {
     type Result<U> = U where U: FromRow;
 
-    async fn query(&self, session: &Arc<Session>, values: (&'a ApiKey, &'a UnixtimeMillis, &'a ApiKeyExpirationSeconds)) -> anyhow::Result<Unit> {
+    async fn query(&self, session: &Arc<Session>, values: (&'a ApiKey, &'b UnixtimeMillis, &'c ApiKeyExpirationSeconds)) -> anyhow::Result<Unit> {
         session.execute_unpaged(&self.0, values)
             .await
             .map(|_| Unit)
