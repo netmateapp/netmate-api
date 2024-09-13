@@ -52,11 +52,16 @@ where
 
 pub(crate) trait TypedStatement<I, O>
 where
-    Self: Sized,
     I: SerializeRow,
     O: FromRow,
 {
-    async fn execute(&self, db: &Arc<Session>, values: I) -> anyhow::Result<O>;
+    async fn query(&self, db: &Arc<Session>, values: I) -> anyhow::Result<O>;
+
+    async fn execute(&self, db: &Arc<Session>, values: I) -> anyhow::Result<()> {
+        self.query(db, values)
+            .await
+            .map(|_| ())
+    }
 }
 
 // 孤児のルールにより FromRow for () ができないため、`()`を代替する型として定義

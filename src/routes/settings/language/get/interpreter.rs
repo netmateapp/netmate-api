@@ -23,7 +23,7 @@ impl GetLanguageImpl {
 
 impl GetLanguage for GetLanguageImpl {
     async fn get_language(&self, account_id: &AccountId) -> Fallible<Language, GetLanguageError> {
-        self.select_language.execute(&self.db, (account_id, ))
+        self.select_language.query(&self.db, (account_id, ))
             .await
             .map(|(language, )| language)
             .map_err(|e| GetLanguageError::GetLanguageFailed(e.into()))
@@ -35,7 +35,7 @@ const SELECT_LANGUAGE: Statement<SelectLanguage> = Statement::of("SELECT languag
 struct SelectLanguage(Arc<PreparedStatement>);
 
 impl<'a> TypedStatement<(&'a AccountId, ), (Language, )> for SelectLanguage {
-    async fn execute(&self, session: &Arc<Session>, values: (&'a AccountId, )) -> anyhow::Result<(Language, )> {
+    async fn query(&self, session: &Arc<Session>, values: (&'a AccountId, )) -> anyhow::Result<(Language, )> {
         session.execute_unpaged(&self.0, values)
             .await
             .map_err(anyhow::Error::from)?

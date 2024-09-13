@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
 use redis::Script;
-use scylla::{frame::value::CqlTimestamp, prepared_statement::PreparedStatement, Session};
+use scylla::{frame::value::CqlTimestamp, prepared_statement::PreparedStatement, transport::session, Session};
 use thiserror::Error;
 
-use crate::{common::{api_key::ApiKey, fallible::Fallible, unixtime::UnixtimeMillis}, cql, helper::{error::InitError, scylla::prep, valkey::{conn, Pool}}, middlewares::rate_limit::dsl::{increment_rate::{IncrementRate, IncrementRateError, InculsiveLimit, Rate, TimeWindow}, rate_limit::{LastApiKeyRefreshedAt, RateLimit, RateLimitError}, refresh_api_key::{ApiKeyExpirationSeconds, ApiKeyRefreshThereshold, RefreshApiKey, RefreshApiKeyError}}};
+use crate::{common::{api_key::ApiKey, fallible::Fallible, unixtime::UnixtimeMillis}, cql, helper::{error::InitError, scylla::{prep, prepare, Statement, TypedStatement, TypedStmt, Unit}, valkey::{conn, Pool}}, middlewares::rate_limit::dsl::{increment_rate::{IncrementRate, IncrementRateError, InculsiveLimit, Rate, TimeWindow}, rate_limit::{LastApiKeyRefreshedAt, RateLimit, RateLimitError}, refresh_api_key::{ApiKeyExpirationSeconds, ApiKeyRefreshThereshold, RefreshApiKey, RefreshApiKeyError}}};
 
 const BASE_NAMESPACE: &str = "rtlim";
 
@@ -15,22 +15,24 @@ pub struct RateLimitImpl {
     endpoint_name: EndpointName,
     limit: InculsiveLimit,
     time_window: TimeWindow,
-    select_last_api_key_refreshed_at: Arc<PreparedStatement>,
-    insert_api_key_with_ttl_refresh: Arc<PreparedStatement>,
+    select_last_api_key_refreshed_at: SelectLastApiKeyRefreshedAt,
+    insert_api_key_with_ttl_refresh: InsertApiKeyWithTtlRefresh,
     incr_and_expire_if_first: Arc<Script>,
 }
 
 impl RateLimitImpl {
     pub async fn try_new(db: Arc<Session>, cache: Arc<Pool>, namespace: EndpointName, limit: InculsiveLimit, time_window: TimeWindow) -> Result<Self, InitError<Self>> {
-        let select_last_api_key_refreshed_at = prep::<InitError<Self>>(
-            &db,
-            cql!("SELECT refreshed_at FROM api_keys WHERE api_key = ?")
-        ).await?;
+        fn handle_error<E: Into<anyhow::Error>>(e: E) -> InitError<RateLimitImpl> {
+            InitError::new(e.into())
+        }
 
-        let insert_api_key_with_ttl_refresh = prep::<InitError<Self>>(
-            &db,
-            cql!("INSERT INTO api_keys (api_key, refreshed_at) VALUES (?, ?) USING TTL ?")
-        ).await?;
+        let select_last_api_key_refreshed_at = prepare(&db, SelectLastApiKeyRefreshedAt, SELECT_LAST_API_KEY_REFRESHED_AT)
+            .await
+            .map_err(handle_error)?;
+
+        let insert_api_key_with_ttl_refresh = prepare(&db, InsertApiKeyWithTtlRefresh, INSERT_API_KEY_WITH_TTL_REFRESH)
+            .await
+            .map_err(handle_error)?;
 
         let incr_and_expire_if_first = Arc::new(
             Script::new(include_str!("incr_and_expire_if_first.lua"))
@@ -56,6 +58,21 @@ impl RateLimit for RateLimitImpl {
             .first_row_typed::<(CqlTimestamp, )>()
             .map(|(last_refreshed_ttl_at, )| Some(LastApiKeyRefreshedAt::new(UnixtimeMillis::from(last_refreshed_ttl_at.0))))
             .map_err(handle_error)
+    }
+}
+
+const SELECT_LAST_API_KEY_REFRESHED_AT: Statement<SelectLastApiKeyRefreshedAt> = Statement::of("SELECT refreshed_at FROM api_keys WHERE api_key = ?");
+
+#[derive(Debug)]
+struct SelectLastApiKeyRefreshedAt(Arc<PreparedStatement>);
+
+impl<'a> TypedStatement<(&'a ApiKey, ), (CqlTimestamp, )> for SelectLastApiKeyRefreshedAt {
+    async fn query(&self, session: &Arc<Session>, values: (&'a ApiKey, )) -> anyhow::Result<(CqlTimestamp, )> {
+        session.execute_unpaged(&self.0, values)
+            .await
+            .map_err(anyhow::Error::from)?
+            .first_row_typed()
+            .map_err(anyhow::Error::from)
     }
 }
 
@@ -100,13 +117,24 @@ impl RefreshApiKey for RateLimitImpl {
     }
 
     async fn refresh_api_key(&self, api_key: &ApiKey, expiration: &ApiKeyExpirationSeconds) -> Fallible<(), RefreshApiKeyError> {
-        let values = (api_key.to_string(), i64::from(UnixtimeMillis::now()), i64::from(expiration.clone()));
-
-        self.db
-            .execute_unpaged(&self.insert_api_key_with_ttl_refresh, values)
+        self.insert_api_key_with_ttl_refresh
+            .execute(&self.db, (api_key, &UnixtimeMillis::now(), expiration))
             .await
-            .map(|_| ())
             .map_err(|e| RefreshApiKeyError::RefreshApiKeyFailed(e.into()))
+    }
+}
+
+const INSERT_API_KEY_WITH_TTL_REFRESH: Statement<InsertApiKeyWithTtlRefresh> = Statement::of("INSERT INTO api_keys (api_key, refreshed_at) VALUES (?, ?) USING TTL ?");
+
+#[derive(Debug)]
+struct InsertApiKeyWithTtlRefresh(Arc<PreparedStatement>);
+
+impl<'a> TypedStatement<(&'a ApiKey, &'a UnixtimeMillis, &'a ApiKeyExpirationSeconds), Unit> for InsertApiKeyWithTtlRefresh {
+    async fn query(&self, session: &Arc<Session>, values: (&'a ApiKey, &'a UnixtimeMillis, &'a ApiKeyExpirationSeconds)) -> anyhow::Result<Unit> {
+        session.execute_unpaged(&self.0, values)
+            .await
+            .map(|_| Unit)
+            .map_err(anyhow::Error::from)
     }
 }
 
