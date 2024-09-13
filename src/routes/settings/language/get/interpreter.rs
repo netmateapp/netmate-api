@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use scylla::{prepared_statement::PreparedStatement, Session};
+use scylla::{prepared_statement::PreparedStatement, FromRow, Session};
 
 use super::dsl::{GetLanguage, GetLanguageError};
 
@@ -35,6 +35,8 @@ const SELECT_LANGUAGE: Statement<SelectLanguage> = Statement::of("SELECT languag
 struct SelectLanguage(Arc<PreparedStatement>);
 
 impl<'a> TypedStatement<(&'a AccountId, ), (Language, )> for SelectLanguage {
+    type Result<U> = U where U: FromRow;
+
     async fn query(&self, session: &Arc<Session>, values: (&'a AccountId, )) -> anyhow::Result<(Language, )> {
         session.execute_unpaged(&self.0, values)
             .await

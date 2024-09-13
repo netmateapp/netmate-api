@@ -30,11 +30,6 @@ impl<T> Statement<T> {
     pub const fn of(statement: &'static str) -> Self {
         Self(statement, PhantomData)
     }
-
-    #[cfg(debug_assertions)]
-    pub fn value(&self) -> &str {
-        self.0
-    }
 }
 
 pub(crate) async fn prepare<I, O, T, C>(session: &Arc<Session>, constructor: C, statement: Statement<T>) -> Result<T, QueryError>
@@ -55,7 +50,9 @@ where
     I: SerializeRow,
     O: FromRow,
 {
-    async fn query(&self, db: &Arc<Session>, values: I) -> anyhow::Result<O>;
+    type Result<U> where U: FromRow;
+
+    async fn query(&self, db: &Arc<Session>, values: I) -> anyhow::Result<Self::Result<O>>;
 
     async fn execute(&self, db: &Arc<Session>, values: I) -> anyhow::Result<()> {
         self.query(db, values)
@@ -64,7 +61,7 @@ where
     }
 }
 
-// 孤児のルールにより FromRow for () ができないため、`()`を代替する型として定義
+// 孤児のルールにより`impl FromRow for ()`ができないため、`()`を代替する型として定義
 pub struct Unit;
 
 impl FromRow for Unit {
@@ -97,7 +94,7 @@ fn count_tuple_elements<T>() -> usize {
 // CQL文と`TypedStatement<I, O>`のパラメータと列の数がそれぞれ一致しているか確認する
 // あくまで数の一致を確かめているだけであり、実際の列の型との比較は行っていない
 pub(crate) fn check_cql_statement_type<I: SerializeRow, O: FromRow>(statement: Statement<impl TypedStatement<I, O>>) {
-    let statement = statement.value();
+    let statement = statement.0;
     
     let value_count = statement.matches('?')
         .count();

@@ -1,6 +1,7 @@
 use std::{convert::Infallible, str::FromStr};
 
 use http::{HeaderMap, Request, Response};
+use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::CqlValue};
 use thiserror::Error;
 use tower::Service;
 
@@ -71,6 +72,12 @@ impl LastApiKeyRefreshedAt {
 
     pub fn value(&self) -> &UnixtimeMillis {
         &self.0
+    }
+}
+
+impl FromCqlVal<CqlValue> for LastApiKeyRefreshedAt {
+    fn from_cql(cql_val: CqlValue) -> Result<Self, FromCqlValError> {
+        UnixtimeMillis::from_cql(cql_val).map(Self::new)
     }
 }
 
