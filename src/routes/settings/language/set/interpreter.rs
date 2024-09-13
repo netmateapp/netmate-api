@@ -36,10 +36,10 @@ const UPDATE_LANGUAGE: Statement<UpdateLanguage>
 
 struct UpdateLanguage(PreparedStatement);
 
-impl<'a> TypedStatement<(&'a AccountId, &'a Language), Unit> for UpdateLanguage {
+impl<'a, 'b> TypedStatement<(&'a AccountId, &'b Language), Unit> for UpdateLanguage {
     type Result<U> = U where U: FromRow;
 
-    async fn query(&self, session: &Arc<Session>, values: (&'a AccountId, &'a Language)) -> anyhow::Result<Unit> {
+    async fn query(&self, session: &Arc<Session>, values: (&'a AccountId, &'b Language)) -> anyhow::Result<Unit> {
         session.execute_unpaged(&self.0, values)
             .await
             .map(|_| Unit)
