@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use scylla::{frame::response::result::ColumnType, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
+use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::{ColumnType, CqlValue}, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
 use thiserror::Error;
 use uuid::Uuid;
 
@@ -26,6 +26,12 @@ impl Display for Uuid7 {
 impl SerializeValue for Uuid7 {
     fn serialize<'b>(&self, typ: &ColumnType, writer: CellWriter<'b>) -> Result<WrittenCellProof<'b>, SerializationError> {
         self.0.serialize(typ, writer)
+    }
+}
+
+impl FromCqlVal<Option<CqlValue>> for Uuid7 {
+    fn from_cql(cql_val: Option<CqlValue>) -> Result<Self, FromCqlValError> {
+        Uuid::from_cql(cql_val).map(Uuid7)
     }
 }
 

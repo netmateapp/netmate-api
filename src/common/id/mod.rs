@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use scylla::{frame::response::result::ColumnType, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
+use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::{ColumnType, CqlValue}, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
 use uuid4::Uuid4;
 use uuid7::Uuid7;
 
@@ -31,6 +31,12 @@ impl Display for AccountId {
 impl SerializeValue for AccountId {
     fn serialize<'b>(&self, typ: &ColumnType, writer: CellWriter<'b>) -> Result<WrittenCellProof<'b>, SerializationError> {
         self.0.serialize(typ, writer)
+    }
+}
+
+impl FromCqlVal<Option<CqlValue>> for AccountId {
+    fn from_cql(cql_val: Option<CqlValue>) -> Result<Self, FromCqlValError> {
+        Uuid7::from_cql(cql_val).map(AccountId)
     }
 }
 

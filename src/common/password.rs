@@ -4,6 +4,7 @@ use argon2::{password_hash::{PasswordHasher, SaltString}, Algorithm, Argon2, Par
 use base64::{engine::general_purpose, Engine};
 use rand::rngs::OsRng;
 use regex::Regex;
+use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::{ColumnType, CqlValue}, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
 use serde::{de::{self}, Deserialize};
 use thiserror::Error;
 
@@ -95,6 +96,18 @@ impl FromStr for PasswordHash {
         } else {
             Err(ParsePasswordHashError)
         }
+    }
+}
+
+impl SerializeValue for PasswordHash {
+    fn serialize<'b>(&self, typ: &ColumnType, writer: CellWriter<'b>) -> Result<WrittenCellProof<'b>, SerializationError> {
+        self.0.serialize(typ, writer)
+    }
+}
+
+impl FromCqlVal<Option<CqlValue>> for PasswordHash {
+    fn from_cql(cql_val: Option<CqlValue>) -> Result<Self, FromCqlValError> {
+        String::from_cql(cql_val).map(PasswordHash)
     }
 }
 

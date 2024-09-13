@@ -1,3 +1,4 @@
+use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::{ColumnType, CqlValue}, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
 use serde::{de, Deserialize};
 use thiserror::Error;
 
@@ -443,6 +444,18 @@ impl<'de> Deserialize<'de> for Region {
   {
       let n: u8 = Deserialize::deserialize(deserializer)?;
       Region::try_from(n).map_err(de::Error::custom)
+  }
+}
+
+impl SerializeValue for Region {
+  fn serialize<'b>(&self, typ: &ColumnType, writer: CellWriter<'b>) -> Result<WrittenCellProof<'b>, SerializationError> {
+    i8::from(*self).serialize(typ, writer)
+  }
+}
+
+impl FromCqlVal<Option<CqlValue>> for Region {
+  fn from_cql(cql_val: Option<CqlValue>) -> Result<Self, FromCqlValError> {
+    i8::from_cql(cql_val).and_then(|n| Region::try_from(n).map_err(|_| FromCqlValError::BadVal))
   }
 }
 

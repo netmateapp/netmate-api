@@ -2,7 +2,7 @@ use std::{str::FromStr, sync::LazyLock};
 
 use idna::domain_to_ascii;
 use regex::Regex;
-use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::CqlValue};
+use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::{ColumnType, CqlValue}, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
 use serde::{de::{self}, Deserialize};
 use thiserror::Error;
 
@@ -80,6 +80,12 @@ impl<'de> Deserialize<'de> for Email {
     {
         let s: &str = Deserialize::deserialize(deserializer)?;
         Email::from_str(s).map_err(de::Error::custom)
+    }
+}
+
+impl SerializeValue for Email {
+    fn serialize<'b>(&self, typ: &ColumnType, writer: CellWriter<'b>) -> Result<WrittenCellProof<'b>, SerializationError> {
+        self.0.serialize(typ, writer)
     }
 }
 

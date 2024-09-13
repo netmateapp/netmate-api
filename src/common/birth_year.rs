@@ -1,5 +1,6 @@
 use std::{num::NonZeroU16, sync::LazyLock, time::SystemTime};
 
+use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::{ColumnType, CqlValue}, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
 use serde::{de, Deserialize};
 use thiserror::Error;
 
@@ -65,6 +66,19 @@ impl<'de> Deserialize<'de> for BirthYear {
     {
         let n: u16 = Deserialize::deserialize(deserializer)?;
         BirthYear::try_from(n).map_err(de::Error::custom)
+    }
+}
+
+impl SerializeValue for BirthYear {
+    fn serialize<'b>(&self, typ: &ColumnType, writer: CellWriter<'b>) -> Result<WrittenCellProof<'b>, SerializationError> {
+        let value = self.0.map_or_else(|| 0, |v| v.get());
+        (value as i16).serialize(typ, writer)
+    }
+}
+
+impl FromCqlVal<Option<CqlValue>> for BirthYear {
+    fn from_cql(cql_val: Option<CqlValue>) -> Result<Self, FromCqlValError> {
+        i16::from_cql(cql_val).and_then(|v| BirthYear::try_from(v).map_err(|_| FromCqlValError::BadVal))
     }
 }
 
