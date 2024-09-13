@@ -2,6 +2,7 @@ use std::{str::FromStr, sync::LazyLock};
 
 use idna::domain_to_ascii;
 use regex::Regex;
+use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::CqlValue};
 use serde::{de::{self}, Deserialize};
 use thiserror::Error;
 
@@ -79,6 +80,12 @@ impl<'de> Deserialize<'de> for Email {
     {
         let s: &str = Deserialize::deserialize(deserializer)?;
         Email::from_str(s).map_err(de::Error::custom)
+    }
+}
+
+impl FromCqlVal<Option<CqlValue>> for Email {
+    fn from_cql(cql_val: Option<CqlValue>) -> Result<Self, FromCqlValError> {
+        String::from_cql(cql_val).and_then(|v| Email::from_str(v.as_str()).map_err(|_| FromCqlValError::BadVal))
     }
 }
 

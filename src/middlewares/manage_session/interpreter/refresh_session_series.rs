@@ -31,6 +31,7 @@ impl RefreshSessionSeries for ManageSessionImpl {
     }
 }
 
+// 以下、型付きCQL文の定義
 pub const SELECT_LAST_API_KEY_REFRESHED_AT: Statement<SelectLastSessionSeriesRefreshedAt>
     = Statement::of("SELECT refreshed_at FROM session_series WHERE account_id = ? AND series = ? LIMIT 1");
 

@@ -1,6 +1,8 @@
-use std::{str::FromStr, sync::LazyLock};
+use std::{str::FromStr, sync::{Arc, LazyLock}};
 
-use crate::{common::{email::{address::Email, resend::ResendEmailSender, send::{Body, EmailSender, HtmlContent, NetmateEmail, PlainText, SenderName, Subject}}, fallible::Fallible, id::AccountId, language::Language}, middlewares::manage_session::dsl::mitigate_session_theft::{MitigateSessionTheft, MitigateSessionTheftError}, translation::ja};
+use scylla::{prepared_statement::PreparedStatement, transport::session::TypedRowIter, FromRow, Session};
+
+use crate::{common::{email::{address::Email, resend::ResendEmailSender, send::{Body, EmailSender, HtmlContent, NetmateEmail, PlainText, SenderName, Subject}}, fallible::Fallible, id::AccountId, language::Language, session::value::SessionSeries}, helper::scylla::{Statement, TypedStatement, Unit}, middlewares::manage_session::dsl::mitigate_session_theft::{MitigateSessionTheft, MitigateSessionTheftError}, translation::ja};
 
 use super::ManageSessionImpl;
 
@@ -9,23 +11,10 @@ const SECURITY_NOTIFICATION_SUBJECT: LazyLock<Subject> = LazyLock::new(|| Subjec
 
 impl MitigateSessionTheft for ManageSessionImpl {
     async fn fetch_email_and_language(&self, account_id: &AccountId) -> Fallible<(Email, Language), MitigateSessionTheftError> {
-        fn handle_error<E: Into<anyhow::Error>>(e: E) -> MitigateSessionTheftError {
-            MitigateSessionTheftError::FetchEmailAndLanguageFailed(e.into())
-        }
-
-        self.db
-            .execute_unpaged(&self.select_email_and_language, (account_id.to_string(),))
+        self.select_email_and_language
+            .query(&self.db, (account_id, ))
             .await
-            .map_err(handle_error)?
-            .first_row_typed::<(String, i8)>()
-            .map_err(handle_error)
-            .and_then(|(email, language)| {
-                let email = Email::from_str(email.as_str())
-                    .map_err(handle_error)?;
-                let language = Language::try_from(language)
-                    .map_err(handle_error)?;
-                Ok((email, language))
-            })
+            .map_err(|e| MitigateSessionTheftError::FetchEmailAndLanguageFailed(e.into()))
     }
 
     async fn send_security_notification(&self, email: &Email, language: &Language) -> Fallible<(), MitigateSessionTheftError> {
@@ -50,13 +39,88 @@ impl MitigateSessionTheft for ManageSessionImpl {
             .await
             .map_err(handle_error)?
             .into_typed::<(String, )>()*/
-            
-            
 
-        self.db
-            .execute_unpaged(&self.delete_all_session_series, (account_id.to_string(), ))
+        self.delete_all_session_series
+            .execute(&self.db, (account_id, ))
             .await
             .map(|_| ())
             .map_err(handle_error)
+    }
+}
+
+
+// 以下、型付きCQL文の定義
+pub const SELECT_EMAIL_AND_LANGUAGE: Statement<SelectEmailAndLanguage>
+    = Statement::of("SELECT email, language FROM accounts WHERE id = ? LIMIT 1");
+
+#[derive(Debug)]
+pub struct SelectEmailAndLanguage(pub Arc<PreparedStatement>);
+
+impl<'a> TypedStatement<(&'a AccountId, ), (Email, Language)> for SelectEmailAndLanguage {
+    type Result<U> = U where U: FromRow;
+
+    async fn query(&self, db: &Arc<Session>, values: (&'a AccountId, )) -> anyhow::Result<(Email, Language)> {
+        db.execute_unpaged(&self.0, values)
+            .await
+            .map_err(anyhow::Error::from)?
+            .first_row_typed()
+            .map_err(anyhow::Error::from)
+    }
+}
+
+pub const SELECT_ALL_SESSION_SERIES: Statement<SelectAllSessionSeries>
+    = Statement::of("SELECT FROM session_series WHERE account_id = ?");
+
+#[derive(Debug)]
+pub struct SelectAllSessionSeries(pub Arc<PreparedStatement>);
+
+impl<'a> TypedStatement<(&'a AccountId, ), (SessionSeries, )> for SelectAllSessionSeries {
+    type Result<U> = TypedRowIter<U> where U: FromRow;
+
+    async fn query(&self, db: &Arc<Session>, values: (&'a AccountId, )) -> anyhow::Result<Self::Result<(SessionSeries, )>> {
+        db.execute_unpaged(&self.0, values)
+            .await
+            .map_err(anyhow::Error::from)?
+            .rows_typed()
+            .map_err(anyhow::Error::from)
+    }
+}
+
+pub const DELETE_ALL_SESSION_SERIES: Statement<DeleteAllSessionSeries>
+    = Statement::of("DELETE FROM session_series WHERE account_id = ?");
+
+#[derive(Debug)]
+pub struct DeleteAllSessionSeries(pub Arc<PreparedStatement>);
+
+impl<'a> TypedStatement<(&'a AccountId, ), Unit> for DeleteAllSessionSeries {
+    type Result<U> = U where U: FromRow;
+
+    async fn query(&self, db: &Arc<Session>, values: (&'a AccountId, )) -> anyhow::Result<Unit> {
+        db.execute_unpaged(&self.0, values)
+            .await
+            .map(|_| Unit)
+            .map_err(anyhow::Error::from)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{helper::scylla::{check_cql_query_type, check_cql_statement_type}, middlewares::manage_session::interpreter::SELECT_EMAIL_AND_LANGUAGE};
+
+    use super::{DELETE_ALL_SESSION_SERIES, SELECT_ALL_SESSION_SERIES};
+
+    #[test]
+    fn check_select_email_and_language_type() {
+        check_cql_query_type(SELECT_EMAIL_AND_LANGUAGE);
+    }
+
+    #[test]
+    fn check_select_all_session_series_type() {
+        check_cql_query_type(SELECT_ALL_SESSION_SERIES);
+    }
+
+    #[test]
+    fn check_delete_all_session_series_type() {
+        check_cql_statement_type(DELETE_ALL_SESSION_SERIES);
     }
 }

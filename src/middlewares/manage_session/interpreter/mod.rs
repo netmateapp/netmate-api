@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
+use mitigate_session_theft::{DeleteAllSessionSeries, SelectAllSessionSeries, SelectEmailAndLanguage, DELETE_ALL_SESSION_SERIES, SELECT_ALL_SESSION_SERIES, SELECT_EMAIL_AND_LANGUAGE};
 use refresh_session_series::{SelectLastSessionSeriesRefreshedAt, UpdateSessionSeriesTtl, SELECT_LAST_API_KEY_REFRESHED_AT, UPDATE_SESSION_SERIES_TTL};
-use scylla::{prepared_statement::PreparedStatement, Session};
+use scylla::Session;
 
-use crate::{cql, helper::{error::InitError, scylla::{prep, prepare}, valkey::Pool}};
+use crate::helper::{error::InitError, scylla::prepare, valkey::Pool};
 
 use super::dsl::{extract_session_info::ExtractSessionInformation, manage_session::{ManageSession, RefreshPairExpirationSeconds, SessionExpirationSeconds}, set_cookie::SetSessionCookie};
 
@@ -20,9 +21,9 @@ pub struct ManageSessionImpl {
     cache: Arc<Pool>,
     select_last_session_series_refreshed_at: SelectLastSessionSeriesRefreshedAt,
     update_session_series_ttl: UpdateSessionSeriesTtl,
-    select_email_and_language: Arc<PreparedStatement>,
-    select_all_session_series: Arc<PreparedStatement>,
-    delete_all_session_series: Arc<PreparedStatement>
+    select_email_and_language: SelectEmailAndLanguage,
+    select_all_session_series: SelectAllSessionSeries,
+    delete_all_session_series: DeleteAllSessionSeries,
 }
 
 impl ManageSessionImpl {
@@ -39,20 +40,17 @@ impl ManageSessionImpl {
             .await
             .map_err(handle_error)?;
 
-        let select_email_and_language = prep::<InitError<Self>>(
-            &db,
-            cql!("SELECT email, language FROM accounts WHERE id = ? LIMIT 1")
-        ).await?;
+        let select_email_and_language = prepare(&db, SelectEmailAndLanguage, SELECT_EMAIL_AND_LANGUAGE)
+            .await
+            .map_err(handle_error)?;
 
-        let select_all_session_series = prep::<InitError<Self>>(
-            &db,
-            cql!("SELECT FROM session_series WHERE account_id = ?")
-        ).await?;
+        let select_all_session_series = prepare(&db, SelectAllSessionSeries, SELECT_ALL_SESSION_SERIES)
+            .await
+            .map_err(handle_error)?;
 
-        let delete_all_session_series = prep::<InitError<Self>>(
-            &db,
-            cql!("DELETE FROM login_ids WHERE account_id = ?")
-        ).await?;
+        let delete_all_session_series = prepare(&db, DeleteAllSessionSeries, DELETE_ALL_SESSION_SERIES)
+            .await
+            .map_err(handle_error)?;
 
         Ok(Self { db, cache, select_last_session_series_refreshed_at, update_session_series_ttl, select_email_and_language, select_all_session_series, delete_all_session_series })
     }
