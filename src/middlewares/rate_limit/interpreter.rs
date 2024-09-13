@@ -15,8 +15,8 @@ pub struct RateLimitImpl {
     endpoint_name: EndpointName,
     limit: InculsiveLimit,
     time_window: TimeWindow,
-    select_last_api_key_refreshed_at: SelectLastApiKeyRefreshedAt,
-    insert_api_key_with_ttl_refresh: InsertApiKeyWithTtlRefresh,
+    select_last_api_key_refreshed_at: Arc<SelectLastApiKeyRefreshedAt>,
+    insert_api_key_with_ttl_refresh: Arc<InsertApiKeyWithTtlRefresh>,
     incr_and_expire_if_first: Arc<Script>,
 }
 
@@ -62,7 +62,7 @@ impl RateLimit for RateLimitImpl {
 const SELECT_LAST_API_KEY_REFRESHED_AT: Statement<SelectLastApiKeyRefreshedAt> = Statement::of("SELECT refreshed_at FROM api_keys WHERE api_key = ?");
 
 #[derive(Debug)]
-struct SelectLastApiKeyRefreshedAt(Arc<PreparedStatement>);
+struct SelectLastApiKeyRefreshedAt(PreparedStatement);
 
 impl<'a> TypedStatement<(&'a ApiKey, ), (LastApiKeyRefreshedAt, )> for SelectLastApiKeyRefreshedAt {
     type Result<U> = Option<U> where U: FromRow;
@@ -127,7 +127,7 @@ impl RefreshApiKey for RateLimitImpl {
 const INSERT_API_KEY_WITH_TTL_REFRESH: Statement<InsertApiKeyWithTtlRefresh> = Statement::of("INSERT INTO api_keys (api_key, refreshed_at) VALUES (?, ?) USING TTL ?");
 
 #[derive(Debug)]
-struct InsertApiKeyWithTtlRefresh(Arc<PreparedStatement>);
+struct InsertApiKeyWithTtlRefresh(PreparedStatement);
 
 impl<'a> TypedStatement<(&'a ApiKey, &'a UnixtimeMillis, &'a ApiKeyExpirationSeconds), Unit> for InsertApiKeyWithTtlRefresh {
     type Result<U> = U where U: FromRow;

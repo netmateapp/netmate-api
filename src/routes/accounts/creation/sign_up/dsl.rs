@@ -2,7 +2,7 @@ use thiserror::Error;
 
 use crate::{common::{birth_year::BirthYear, email::address::Email, fallible::Fallible, language::Language, password::{Password, PasswordHash}, region::Region}, routes::accounts::creation::value::OneTimeToken};
 
-pub(crate) trait SignUp: Send {
+pub(crate) trait SignUp {
     async fn sign_up(&self, email: &Email, password: &Password, birth_year: &BirthYear, region: &Region, language: &Language) -> Fallible<(), SignUpError> {
         if self.is_available_email(email).await? {
             // この位置でパスワードのハッシュ化が行われ高い負荷が発生するため、

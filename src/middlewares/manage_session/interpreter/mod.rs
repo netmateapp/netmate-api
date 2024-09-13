@@ -19,11 +19,11 @@ mod update_session;
 pub struct ManageSessionImpl {
     db: Arc<Session>,
     cache: Arc<Pool>,
-    select_last_session_series_refreshed_at: SelectLastSessionSeriesRefreshedAt,
-    update_session_series_ttl: UpdateSessionSeriesTtl,
-    select_email_and_language: SelectEmailAndLanguage,
-    select_all_session_series: SelectAllSessionSeries,
-    delete_all_session_series: DeleteAllSessionSeries,
+    select_last_session_series_refreshed_at: Arc<SelectLastSessionSeriesRefreshedAt>,
+    update_session_series_ttl: Arc<UpdateSessionSeriesTtl>,
+    select_email_and_language: Arc<SelectEmailAndLanguage>,
+    select_all_session_series: Arc<SelectAllSessionSeries>,
+    delete_all_session_series: Arc<DeleteAllSessionSeries>,
 }
 
 impl ManageSessionImpl {

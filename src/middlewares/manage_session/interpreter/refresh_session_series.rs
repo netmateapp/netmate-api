@@ -36,7 +36,7 @@ pub const SELECT_LAST_API_KEY_REFRESHED_AT: Statement<SelectLastSessionSeriesRef
     = Statement::of("SELECT refreshed_at FROM session_series WHERE account_id = ? AND series = ? LIMIT 1");
 
 #[derive(Debug)]
-pub struct SelectLastSessionSeriesRefreshedAt(pub Arc<PreparedStatement>);
+pub struct SelectLastSessionSeriesRefreshedAt(pub PreparedStatement);
 
 impl<'a> TypedStatement<(&'a AccountId, &'a SessionSeries), (LastSessionSeriesRefreshedAt, )> for SelectLastSessionSeriesRefreshedAt {
     type Result<U> = U where U: FromRow;
@@ -54,7 +54,7 @@ pub const UPDATE_SESSION_SERIES_TTL: Statement<UpdateSessionSeriesTtl>
     = Statement::of("UPDATE session_series SET refreshed_at = ? WHERE account_id = ? AND series = ? USING TTL ?");
 
 #[derive(Debug)]
-pub struct UpdateSessionSeriesTtl(pub Arc<PreparedStatement>);
+pub struct UpdateSessionSeriesTtl(pub PreparedStatement);
 
 impl<'a> TypedStatement<(&'a AccountId, &'a SessionSeries, &'a UnixtimeMillis, &'a RefreshPairExpirationSeconds), Unit> for UpdateSessionSeriesTtl {
     type Result<U> = U where U: FromRow;

@@ -33,6 +33,12 @@ pub async fn handler(
     State(routine): State<Arc<SignUpImpl>>,
     Json(payload): Json<Payload>,
 ) -> impl IntoResponse {
+    /*
+    `Send` の実装が一般化されていません。  
+    `Send` は型 `&SignUpImpl` に対して実装される必要がありますが、
+    実際には特定のライフタイム `'0` の型 `&'0 SignUpImpl` に対してのみ実装されています。
+     */
+
     // 非 quick exit パターンを採用し、攻撃者に処理時間の差を計測させない
     task::spawn(async move {
         match routine.sign_up(&payload.email, &payload.password, &payload.birth_year, &payload.region, &payload.language).await {

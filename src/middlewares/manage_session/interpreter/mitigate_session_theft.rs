@@ -68,7 +68,7 @@ pub const SELECT_EMAIL_AND_LANGUAGE: Statement<SelectEmailAndLanguage>
     = Statement::of("SELECT email, language FROM accounts WHERE id = ? LIMIT 1");
 
 #[derive(Debug)]
-pub struct SelectEmailAndLanguage(pub Arc<PreparedStatement>);
+pub struct SelectEmailAndLanguage(pub PreparedStatement);
 
 impl<'a> TypedStatement<(&'a AccountId, ), (Email, Language)> for SelectEmailAndLanguage {
     type Result<U> = U where U: FromRow;
@@ -86,7 +86,7 @@ pub const SELECT_ALL_SESSION_SERIES: Statement<SelectAllSessionSeries>
     = Statement::of("SELECT FROM session_series WHERE account_id = ?");
 
 #[derive(Debug)]
-pub struct SelectAllSessionSeries(pub Arc<PreparedStatement>);
+pub struct SelectAllSessionSeries(pub PreparedStatement);
 
 impl<'a> TypedStatement<(&'a AccountId, ), (SessionSeries, )> for SelectAllSessionSeries {
     type Result<U> = TypedRowIter<U> where U: FromRow;
@@ -104,7 +104,7 @@ pub const DELETE_ALL_SESSION_SERIES: Statement<DeleteAllSessionSeries>
     = Statement::of("DELETE FROM session_series WHERE account_id = ?");
 
 #[derive(Debug)]
-pub struct DeleteAllSessionSeries(pub Arc<PreparedStatement>);
+pub struct DeleteAllSessionSeries(pub PreparedStatement);
 
 impl<'a> TypedStatement<(&'a AccountId, ), Unit> for DeleteAllSessionSeries {
     type Result<U> = U where U: FromRow;

@@ -1,32 +1,32 @@
 use std::{str::FromStr, sync::{Arc, LazyLock}};
 
-use scylla::{prepared_statement::PreparedStatement, Session};
+use scylla::{prepared_statement::PreparedStatement, FromRow, Session};
 
-use crate::{common::{birth_year::BirthYear, email::{address::Email, resend::ResendEmailSender, send::{Body, EmailSender, HtmlContent, NetmateEmail, PlainText, SenderName, Subject}}, fallible::Fallible, language::Language, password::PasswordHash, region::Region}, cql, helper::{error::InitError, scylla::prep}, routes::accounts::creation::value::OneTimeToken, translation::{ja, us_en}};
+use crate::{common::{birth_year::BirthYear, email::{address::Email, resend::ResendEmailSender, send::{Body, EmailSender, HtmlContent, NetmateEmail, PlainText, SenderName, Subject}}, fallible::Fallible, id::AccountId, language::Language, password::PasswordHash, region::Region}, helper::{error::InitError, scylla::{prepare, Statement, TypedStatement, Unit}}, routes::accounts::creation::value::OneTimeToken, translation::{ja, us_en}};
 
 use super::dsl::{SignUp, SignUpError};
 
 pub struct SignUpImpl {
-    session: Arc<Session>,
-    select_id: Arc<PreparedStatement>,
-    insert_account_creation_application: Arc<PreparedStatement>,
+    db: Arc<Session>,
+    select_account_id: Arc<SelectAccountId>,
+    insert_account_creation_application: Arc<InsertAccountCreationApplication>,
 }
 
 impl SignUpImpl {
-    pub async fn try_new(
-        session: Arc<Session>,
-    ) -> Result<Self, InitError<SignUpImpl>> {
-        let select_id = prep::<InitError<SignUpImpl>>(
-            &session,
-            cql!("SELECT id FROM accounts_by_email WHERE email = ? LIMIT 1")
-        ).await?;
+    pub async fn try_new(db: Arc<Session>) -> Result<Self, InitError<SignUpImpl>> {
+        fn handle_error<E: Into<anyhow::Error>>(e: E) -> InitError<SignUpImpl> {
+            InitError::new(e.into())
+        }
 
-        let insert_account_creation_application = prep::<InitError<SignUpImpl>>(
-            &session,
-            cql!("INSERT INTO account_creation_applications (ottoken, email, password_hash, birth_year, region, language) VALUES (?, ?, ?, ?, ?, ?) USING TTL 86400")
-        ).await?;
+        let select_account_id = prepare(&db, SelectAccountId, SELECT_ACCOUNT_ID)
+            .await
+            .map_err(handle_error)?;
 
-        Ok(Self { session, select_id, insert_account_creation_application })
+        let insert_account_creation_application = prepare(&db, InsertAccountCreationApplication, INSERT_ACCOUNT_CREATION_APPLICATION)
+            .await
+            .map_err(handle_error)?;
+
+        Ok(Self { db, select_account_id, insert_account_creation_application })
     }
 }
 
@@ -36,30 +36,26 @@ static US_EN_AUTHENTICATION_EMAIL_SUBJECT: LazyLock<Subject> = LazyLock::new(|| 
 
 impl SignUp for SignUpImpl {
     async fn is_available_email(&self, email: &Email) -> Fallible<bool, SignUpError> {
-        let res = self.session
-            .execute_unpaged(&self.select_id, (email.value(), ))
-            .await;
-
-        match res {
-            Ok(qr) => match qr.rows() {
-                // ここの正当性が自動テストで保証されていない
-                Ok(v) => Ok(!v.is_empty()),
-                Err(e) => Err(SignUpError::PotentiallyUnavailableEmail(e.into()))
-            },
-            Err(e) => Err(SignUpError::PotentiallyUnavailableEmail(e.into()))
-        }
+        self.select_account_id
+            .query(&self.db, (email, ))
+            .await
+            .map(|v| v.is_some())
+            .map_err(|e| SignUpError::PotentiallyUnavailableEmail(e.into()))
     }
 
     async fn apply_to_create_account(&self, email: &Email, pw_hash: &PasswordHash, birth_year: &BirthYear, region: &Region, language: &Language, token: &OneTimeToken) -> Result<(), SignUpError> {
-        let birth_year = i16::from(*birth_year);
-        let region = i8::from(*region);
-        let language = i8::from(*language);
-
-        self.session
-            .execute_unpaged(&self.insert_account_creation_application, (token.value(), email.value(), pw_hash.value(), birth_year, region, language))
+        /*self.insert_account_creation_application
+            .execute(&self.db, (token, email, pw_hash, birth_year, region, language))
             .await
             .map(|_| ())
-            .map_err(|e| SignUpError::ApplicationFailed(e.into()))
+            .map_err(|e| SignUpError::ApplicationFailed(e.into()))*/
+
+        let values = (token, email, pw_hash, birth_year, region, language);
+        let stmt = &self.insert_account_creation_application;
+        stmt.query(&self.db, values).await;
+        //stmt.query(&self.db, values).await;
+
+        Ok(())
     }
 
     async fn send_verification_email(&self, email: &Email, language: &Language, token: &OneTimeToken) -> Result<(), SignUpError> {
@@ -79,5 +75,54 @@ impl SignUp for SignUpImpl {
         ResendEmailSender::send(&*AUTHENTICATION_EMAIL_ADDRESS, email, &sender_name, &subject, &body)
             .await
             .map_err(|e| SignUpError::AuthenticationEmailSendFailed(e.into()))
+    }
+}
+
+const SELECT_ACCOUNT_ID: Statement<SelectAccountId> = Statement::of("SELECT id FROM accounts_by_email WHERE email = ? LIMIT 1");
+
+struct SelectAccountId(PreparedStatement);
+
+impl<'a> TypedStatement<(&'a Email, ), (AccountId, )> for SelectAccountId {
+    type Result<U> = Option<U> where U: FromRow;
+
+    async fn query(&self, session: &Arc<Session>, values: (&'a Email, )) -> anyhow::Result<Self::Result<(AccountId, )>> {
+        session.execute_unpaged(&self.0, values)
+            .await
+            .map_err(anyhow::Error::from)?
+            .maybe_first_row_typed()
+            .map_err(anyhow::Error::from)
+    }
+}
+
+const INSERT_ACCOUNT_CREATION_APPLICATION: Statement<InsertAccountCreationApplication>
+    = Statement::of("INSERT INTO account_creation_applications (ottoken, email, password_hash, birth_year, region, language) VALUES (?, ?, ?, ?, ?, ?) USING TTL 86400");
+
+struct InsertAccountCreationApplication(PreparedStatement);
+
+impl<'a> TypedStatement<(&'a OneTimeToken, &'a Email, &'a PasswordHash, &'a BirthYear, &'a Region, &'a Language), Unit> for InsertAccountCreationApplication {
+    type Result<U> = U where U: FromRow;
+
+    async fn query(&self, session: &Arc<Session>, values: (&'a OneTimeToken, &'a Email, &'a PasswordHash, &'a BirthYear, &'a Region, &'a Language)) -> anyhow::Result<Unit> {
+        session.execute_unpaged(&self.0, values)
+            .await
+            .map(|_| Unit)
+            .map_err(anyhow::Error::from)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::helper::scylla::{check_cql_query_type, check_cql_statement_type};
+
+    use super::{INSERT_ACCOUNT_CREATION_APPLICATION, SELECT_ACCOUNT_ID};
+
+    #[test]
+    fn check_select_account_id_type() {
+        check_cql_query_type(SELECT_ACCOUNT_ID);
+    }
+
+    #[test]
+    fn check_insert_account_creation_application_type() {
+        check_cql_statement_type(INSERT_ACCOUNT_CREATION_APPLICATION);
     }
 }

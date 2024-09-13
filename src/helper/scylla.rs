@@ -4,13 +4,6 @@ use scylla::{cql_to_rust::FromRowError, frame::response::result::Row, prepared_s
 
 use super::error::InitError;
 
-#[macro_export]
-macro_rules! cql {
-    ($query:expr) => {
-        $query
-    };
-}
-
 pub async fn prep<T: From<QueryError>>(session: &Arc<Session>, query: &str) -> Result<Arc<PreparedStatement>, T> {
     match session.prepare(query).await {
         Ok(statement) => Ok(Arc::new(statement)),
@@ -32,15 +25,15 @@ impl<T> Statement<T> {
     }
 }
 
-pub(crate) async fn prepare<I, O, T, C>(session: &Arc<Session>, constructor: C, statement: Statement<T>) -> Result<T, QueryError>
+pub(crate) async fn prepare<I, O, T, C>(session: &Arc<Session>, constructor: C, statement: Statement<T>) -> Result<Arc<T>, QueryError>
 where
     I: SerializeRow,
     O: FromRow,
     T: TypedStatement<I, O>,
-    C: FnOnce(Arc<PreparedStatement>) -> T
+    C: FnOnce(PreparedStatement) -> T
 {
     match session.prepare(statement.0).await {
-        Ok(statement) => Ok(constructor(Arc::new(statement))),
+        Ok(statement) => Ok(Arc::new(constructor(statement))),
         Err(e) => Err(e)
     }
 }
@@ -52,10 +45,10 @@ where
 {
     type Result<U> where U: FromRow;
 
-    async fn query(&self, db: &Arc<Session>, values: I) -> anyhow::Result<Self::Result<O>>;
+    async fn query(&self, session: &Arc<Session>, values: I) -> anyhow::Result<Self::Result<O>>;
 
-    async fn execute(&self, db: &Arc<Session>, values: I) -> anyhow::Result<()> {
-        self.query(db, values)
+    async fn execute(&self, session: &Arc<Session>, values: I) -> anyhow::Result<()> {
+        self.query(session, values)
             .await
             .map(|_| ())
     }
