@@ -1,3 +1,4 @@
+use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::CqlValue};
 use thiserror::Error;
 
 use crate::common::{fallible::Fallible, id::AccountId, session::value::SessionSeries, unixtime::UnixtimeMillis};
@@ -15,9 +16,9 @@ pub(crate) trait RefreshSessionSeries {
         }
     }
 
-    async fn fetch_last_session_series_refreshed_at(&self, session_series: &SessionSeries, session_account_id: &AccountId) -> Fallible<LastSessionSeriesRefreshedTime, RefreshSessionSeriesError>;
+    async fn fetch_last_session_series_refreshed_at(&self, session_series: &SessionSeries, session_account_id: &AccountId) -> Fallible<LastSessionSeriesRefreshedAt, RefreshSessionSeriesError>;
 
-    fn should_refresh_session_series(last_refreshed_at: &LastSessionSeriesRefreshedTime) -> bool {
+    fn should_refresh_session_series(last_refreshed_at: &LastSessionSeriesRefreshedAt) -> bool {
         let now = UnixtimeMillis::now();
         let last_refreshed_at = last_refreshed_at.as_unixtime_millis();
         now.value() - last_refreshed_at.value() >= Self::refresh_thereshold().as_millis()
@@ -36,15 +37,21 @@ pub enum RefreshSessionSeriesError {
     RefreshSessionSeriesFailed(#[source] anyhow::Error),
 }
 
-pub struct LastSessionSeriesRefreshedTime(UnixtimeMillis);
+pub struct LastSessionSeriesRefreshedAt(UnixtimeMillis);
 
-impl LastSessionSeriesRefreshedTime {
+impl LastSessionSeriesRefreshedAt {
     pub const fn new(time: UnixtimeMillis) -> Self {
         Self(time)
     }
 
     pub fn as_unixtime_millis(&self) -> &UnixtimeMillis {
         &self.0
+    }
+}
+
+impl FromCqlVal<Option<CqlValue>> for LastSessionSeriesRefreshedAt {
+    fn from_cql(cql_val: Option<CqlValue>) -> Result<Self, FromCqlValError> {
+        UnixtimeMillis::from_cql(cql_val).map(Self)
     }
 }
 
@@ -66,7 +73,7 @@ mod tests {
 
     use crate::{common::{fallible::Fallible, id::{uuid7::Uuid7, AccountId}, session::value::SessionSeries, unixtime::UnixtimeMillis}, middlewares::manage_session::dsl::manage_session::RefreshPairExpirationSeconds};
 
-    use super::{LastSessionSeriesRefreshedTime, RefreshSessionSeries, RefreshSessionSeriesError, SessionSeriesRefreshThereshold};
+    use super::{LastSessionSeriesRefreshedAt, RefreshSessionSeries, RefreshSessionSeriesError, SessionSeriesRefreshThereshold};
 
     const SESSION_SERIES_TO_BE_REFRESHED: LazyLock<SessionSeries> = LazyLock::new(|| SessionSeries::gen());
     const REFRESH_THERESHOLD: SessionSeriesRefreshThereshold = SessionSeriesRefreshThereshold::days(1);
@@ -74,12 +81,12 @@ mod tests {
     struct MockRefreshSessionSeries;
 
     impl RefreshSessionSeries for MockRefreshSessionSeries {
-        async fn fetch_last_session_series_refreshed_at(&self, session_series: &SessionSeries, _session_account_id: &AccountId) -> Fallible<LastSessionSeriesRefreshedTime, RefreshSessionSeriesError> {
+        async fn fetch_last_session_series_refreshed_at(&self, session_series: &SessionSeries, _session_account_id: &AccountId) -> Fallible<LastSessionSeriesRefreshedAt, RefreshSessionSeriesError> {
             if session_series == &*SESSION_SERIES_TO_BE_REFRESHED {
                 let last_refreshed_at = UnixtimeMillis::now().value() - REFRESH_THERESHOLD.as_millis();
-                Ok(LastSessionSeriesRefreshedTime::new(UnixtimeMillis::new(last_refreshed_at)))
+                Ok(LastSessionSeriesRefreshedAt::new(UnixtimeMillis::new(last_refreshed_at)))
             } else {
-                Ok(LastSessionSeriesRefreshedTime::new(UnixtimeMillis::now()))
+                Ok(LastSessionSeriesRefreshedAt::new(UnixtimeMillis::now()))
             }
         }
 

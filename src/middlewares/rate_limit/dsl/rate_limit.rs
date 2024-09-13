@@ -75,8 +75,8 @@ impl LastApiKeyRefreshedAt {
     }
 }
 
-impl FromCqlVal<CqlValue> for LastApiKeyRefreshedAt {
-    fn from_cql(cql_val: CqlValue) -> Result<Self, FromCqlValError> {
+impl FromCqlVal<Option<CqlValue>> for LastApiKeyRefreshedAt {
+    fn from_cql(cql_val: Option<CqlValue>) -> Result<Self, FromCqlValError> {
         UnixtimeMillis::from_cql(cql_val).map(Self::new)
     }
 }

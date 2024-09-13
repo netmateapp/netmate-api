@@ -40,8 +40,8 @@ impl SerializeValue for UnixtimeMillis {
     }
 }
 
-impl FromCqlVal<CqlValue> for UnixtimeMillis {
-    fn from_cql(cql_val: CqlValue) -> Result<Self, FromCqlValError> {
+impl FromCqlVal<Option<CqlValue>> for UnixtimeMillis {
+    fn from_cql(cql_val: Option<CqlValue>) -> Result<Self, FromCqlValError> {
         CqlTimestamp::from_cql(cql_val).map(|cql_timestamp| Self(cql_timestamp.0 as u64))
     }
 }

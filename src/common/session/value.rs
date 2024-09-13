@@ -1,6 +1,7 @@
 use std::{fmt::{self, Display, Formatter}, str::FromStr};
 
 use cookie::{Cookie, CookieBuilder, SameSite};
+use scylla::{frame::response::result::ColumnType, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
 use thiserror::Error;
 use time::Duration;
 
@@ -77,6 +78,12 @@ impl FromStr for SessionSeries {
         Token::from_str(s)
             .map(|t| Self(t))
             .map_err(|e| ParseSessionSeriesError(e.into()))
+    }
+}
+
+impl SerializeValue for SessionSeries {
+    fn serialize<'b>(&self, typ: &ColumnType, writer: CellWriter<'b>) -> Result<WrittenCellProof<'b>, SerializationError> {
+        self.0.serialize(typ, writer)
     }
 }
 
