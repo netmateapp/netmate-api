@@ -41,8 +41,7 @@ impl MitigateSessionTheft for ManageSessionImpl {
             .map_err(handle_error)?
             .filter(Result::is_ok)
             .map(Result::unwrap)
-            .map(|(session_series, )| session_series)
-            .map(|session_series| format!("{}:{}", SESSION_ID_NAMESPACE, session_series.to_string()))
+            .map(|(session_series, )| format!("{}:{}", SESSION_ID_NAMESPACE, session_series.to_string()))
             .collect::<Vec<String>>();
 
         self.delete_all_session_series
