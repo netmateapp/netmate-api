@@ -10,7 +10,7 @@ impl UpdateRefreshToken for ManageSessionImpl {
         let key = Key(session_series);
         let value = Value(new_refresh_token, session_account_id);
 
-        SetNewRefreshTokenCommand::run(&self.cache, (key, value, expiration))
+        SetNewRefreshTokenCommand.run(&self.cache, (key, value, expiration))
             .await
             .map_err(|e| UpdateRefreshTokenError::AssignNewRefreshTokenFailed(e.into()))
     }
@@ -49,7 +49,7 @@ impl<'a, 'b> ToRedisArgs for Value<'a, 'b> {
 }
 
 impl<'a, 'b, 'c, 'd> TypedCommand<(Key<'a>, Value<'b, 'c>, &'d RefreshPairExpirationSeconds), ()> for SetNewRefreshTokenCommand {
-    async fn execute(mut conn: Connection<'_>, (key, value, expiration): (Key<'a>, Value<'b, 'c>, &'d RefreshPairExpirationSeconds)) -> anyhow::Result<()> {
+    async fn execute(&self, mut conn: Connection<'_>, (key, value, expiration): (Key<'a>, Value<'b, 'c>, &'d RefreshPairExpirationSeconds)) -> anyhow::Result<()> {
         cmd(SET_COMMAND)
             .arg(key)
             .arg(value)

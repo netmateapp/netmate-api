@@ -93,13 +93,13 @@ where
     I: ToRedisArgs,
     O: FromRedisValue,
 {
-    async fn run(cache: &Pool, args: I) -> anyhow::Result<O> {
+    async fn run(&self, cache: &Pool, args: I) -> anyhow::Result<O> {
         let conn = cache.get()
             .await
             .map_err(Into::<anyhow::Error>::into)?;
 
-        Self::execute(conn, args).await
+        self.execute(conn, args).await
     }
 
-    async fn execute(conn: Connection<'_>, args: I) -> anyhow::Result<O>;
+    async fn execute(&self, conn: Connection<'_>, args: I) -> anyhow::Result<O>;
 }

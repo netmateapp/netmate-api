@@ -1,5 +1,6 @@
 use std::{fmt::{self, Display}, sync::Arc};
 
+use increment_rate::IncrAndExpireIfFirstScript;
 use rate_limit::{SelectLastApiKeyRefreshedAt, SELECT_LAST_API_KEY_REFRESHED_AT};
 use redis::Script;
 use refresh_api_key::{InsertApiKeyWithTtlRefresh, INSERT_API_KEY_WITH_TTL_REFRESH};
@@ -22,7 +23,7 @@ pub struct RateLimitImpl {
     time_window: TimeWindow,
     select_last_api_key_refreshed_at: Arc<SelectLastApiKeyRefreshedAt>,
     insert_api_key_with_ttl_refresh: Arc<InsertApiKeyWithTtlRefresh>,
-    incr_and_expire_if_first: Arc<Script>,
+    incr_and_expire_if_first: Arc<IncrAndExpireIfFirstScript>,
 }
 
 impl RateLimitImpl {
@@ -39,9 +40,7 @@ impl RateLimitImpl {
             .await
             .map_err(handle_error)?;
 
-        let incr_and_expire_if_first = Arc::new(
-            Script::new(include_str!("incr_and_expire_if_first.lua"))
-        );
+        let incr_and_expire_if_first = Arc::new(IncrAndExpireIfFirstScript(Script::new(include_str!("incr_and_expire_if_first.lua"))));
 
         Ok(Self { endpoint_name, limit, time_window, db, select_last_api_key_refreshed_at, insert_api_key_with_ttl_refresh, cache, incr_and_expire_if_first })
     }

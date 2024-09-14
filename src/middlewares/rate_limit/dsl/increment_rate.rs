@@ -1,3 +1,4 @@
+use redis::{FromRedisValue, RedisResult, ToRedisArgs};
 use thiserror::Error;
 
 use crate::common::{api_key::ApiKey, fallible::Fallible};
@@ -51,6 +52,15 @@ impl TimeWindow {
     }
 }
 
+impl ToRedisArgs for TimeWindow {
+    fn write_redis_args<W>(&self, out: &mut W)
+    where
+        W: ?Sized + redis::RedisWrite
+    {
+        self.0.write_redis_args(out);
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Rate(u32);
 
@@ -61,6 +71,12 @@ impl Rate {
 
     pub fn value(&self) -> u32 {
         self.0
+    }
+}
+
+impl FromRedisValue for Rate {
+    fn from_redis_value(v: &redis::Value) -> RedisResult<Self> {
+        u32::from_redis_value(v).map(Rate)
     }
 }
 
