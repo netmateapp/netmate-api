@@ -168,7 +168,7 @@ mod tests {
     fn test_format_key() {
         let session_series = SessionSeries::gen();
         let key = format_key(&session_series);
-        let expected = format!("{}{}{}", super::SESSION_ID_NAMESPACE, NAMESPACE_SEPARATOR, session_series.to_string());
+        let expected = format!("{}{}{}", super::SESSION_ID_NAMESPACE, NAMESPACE_SEPARATOR, session_series);
         assert_eq!(key, expected);
     }
 }

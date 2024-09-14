@@ -50,7 +50,7 @@ mod tests {
     fn test_format_key() {
         let session_id = SessionId::gen();
         let key = format_key(&session_id);
-        let expected = format!("{}{}{}", SESSION_ID_NAMESPACE, NAMESPACE_SEPARATOR, session_id.to_string());
+        let expected = format!("{}{}{}", SESSION_ID_NAMESPACE, NAMESPACE_SEPARATOR, session_id);
         assert_eq!(key, expected);
     }
 }
