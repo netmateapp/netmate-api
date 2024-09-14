@@ -52,3 +52,19 @@ impl<'a, 'b, 'c> TypedCommand<(Key<'a, 'b>, &'c TimeWindow), Rate> for IncrAndEx
             .map_err(Into::into)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{common::api_key::ApiKey, helper::redis::{Namespace, NAMESPACE_SEPARATOR}, middlewares::rate_limit::interpreter::{EndpointName, RATE_LIMIT_NAMESPACE}};
+
+    use super::format_key;
+
+    #[test]
+    fn test_format_key() {
+        let endpoint_name = EndpointName::new(Namespace::new("test").unwrap());
+        let api_key = ApiKey::gen();
+        let key = format_key(&endpoint_name, &api_key);
+        let expected = format!("{}{}{}{}{}", RATE_LIMIT_NAMESPACE, NAMESPACE_SEPARATOR, endpoint_name, NAMESPACE_SEPARATOR, api_key);
+        assert_eq!(key, expected);
+    }
+}
