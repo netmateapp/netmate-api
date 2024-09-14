@@ -6,7 +6,6 @@ use crate::{common::{api_key::ApiKey, fallible::Fallible, unixtime::UnixtimeMill
 
 use super::RateLimitImpl;
 
-
 const API_KEY_REFRESH_THERESHOLD: ApiKeyRefreshThereshold = ApiKeyRefreshThereshold::days(10);
 const API_KEY_EXPIRATION: ApiKeyExpirationSeconds = ApiKeyExpirationSeconds::secs(2592000);
 
@@ -27,7 +26,8 @@ impl RefreshApiKey for RateLimitImpl {
     }
 }
 
-pub const INSERT_API_KEY_WITH_TTL_REFRESH: Statement<InsertApiKeyWithTtlRefresh> = Statement::of("INSERT INTO api_keys (api_key, refreshed_at) VALUES (?, ?) USING TTL ?");
+pub const INSERT_API_KEY_WITH_TTL_REFRESH: Statement<InsertApiKeyWithTtlRefresh>
+    = Statement::of("INSERT INTO api_keys (api_key, refreshed_at) VALUES (?, ?) USING TTL ?");
 
 #[derive(Debug)]
 pub struct InsertApiKeyWithTtlRefresh(pub PreparedStatement);
