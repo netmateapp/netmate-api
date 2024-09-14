@@ -72,3 +72,16 @@ impl<'a> TypedCommand<Key<'a>, Option<RefreshPair>> for GetRefreshPairCommand {
             .map_err(Into::into)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{common::session::value::SessionSeries, helper::redis::NAMESPACE_SEPARATOR, middlewares::manage_session::interpreter::{reauthenticate::format_key, REFRESH_PAIR_NAMESPACE}};
+
+    #[test]
+    fn test_format_key() {
+        let series = SessionSeries::gen();
+        let key = format_key(&series);
+        let expected = format!("{}{}{}", REFRESH_PAIR_NAMESPACE, NAMESPACE_SEPARATOR, series);
+        assert_eq!(key, expected);
+    }
+}
