@@ -50,8 +50,8 @@ impl RateLimitImpl {
 #[derive(Debug)]
 pub struct EndpointName(Namespace);
 
-impl From<Namespace> for EndpointName {
-    fn from(namespace: Namespace) -> Self {
+impl EndpointName {
+    pub fn new(namespace: Namespace) -> Self {
         Self(namespace)
     }
 }
