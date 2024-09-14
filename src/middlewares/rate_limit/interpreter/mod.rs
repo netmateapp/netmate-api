@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{fmt::{self, Display}, sync::{Arc, LazyLock}};
 
 use rate_limit::{SelectLastApiKeyRefreshedAt, SELECT_LAST_API_KEY_REFRESHED_AT};
 use redis::Script;
@@ -11,7 +11,7 @@ mod increment_rate;
 mod rate_limit;
 mod refresh_api_key;
 
-const BASE_NAMESPACE: &str = "rtlim";
+const BASE_NAMESPACE: Namespace = Namespace::of("rtlim");
 
 #[derive(Debug)]
 pub struct RateLimitImpl {
@@ -53,5 +53,11 @@ pub struct EndpointName(Namespace);
 impl From<Namespace> for EndpointName {
     fn from(namespace: Namespace) -> Self {
         Self(namespace)
+    }
+}
+
+impl Display for EndpointName {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
     }
 }
