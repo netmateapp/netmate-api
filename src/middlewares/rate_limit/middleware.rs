@@ -6,7 +6,7 @@ use scylla::Session;
 use tokio::pin;
 use tower::{Layer, Service};
 
-use crate::{helper::{error::InitError, valkey::Pool}, middlewares::rate_limit::dsl::rate_limit::{RateLimit, RateLimitError}};
+use crate::{helper::{error::InitError, redis::Pool}, middlewares::rate_limit::dsl::rate_limit::{RateLimit, RateLimitError}};
 
 use super::{dsl::increment_rate::{InculsiveLimit, TimeWindow}, interpreter::{EndpointName, RateLimitImpl}};
 

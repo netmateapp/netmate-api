@@ -1,6 +1,6 @@
 use bb8_redis::redis::cmd;
 
-use crate::{common::{fallible::Fallible, id::AccountId, session::value::{RefreshToken, SessionSeries}}, helper::valkey::conn, middlewares::manage_session::{dsl::{manage_session::RefreshPairExpirationSeconds, update_refresh_token::{UpdateRefreshToken, UpdateRefreshTokenError}}, interpreter::{REFRESH_PAIR_NAMESPACE, REFRESH_PAIR_VALUE_SEPARATOR}}};
+use crate::{common::{fallible::Fallible, id::AccountId, session::value::{RefreshToken, SessionSeries}}, helper::redis::conn, middlewares::manage_session::{dsl::{manage_session::RefreshPairExpirationSeconds, update_refresh_token::{UpdateRefreshToken, UpdateRefreshTokenError}}, interpreter::{REFRESH_PAIR_NAMESPACE, REFRESH_PAIR_VALUE_SEPARATOR}}};
 
 use super::ManageSessionImpl;
 

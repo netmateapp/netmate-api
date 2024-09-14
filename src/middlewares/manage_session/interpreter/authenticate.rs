@@ -1,7 +1,7 @@
 use bb8_redis::redis::cmd;
 use uuid::Uuid;
 
-use crate::{common::{fallible::Fallible, id::{uuid7::Uuid7, AccountId}, session::value::SessionId}, helper::valkey::conn, middlewares::manage_session::{dsl::authenticate::{AuthenticateSession, AuthenticateSessionError}, interpreter::SESSION_ID_NAMESPACE}};
+use crate::{common::{fallible::Fallible, id::{uuid7::Uuid7, AccountId}, session::value::SessionId}, helper::redis::conn, middlewares::manage_session::{dsl::authenticate::{AuthenticateSession, AuthenticateSessionError}, interpreter::SESSION_ID_NAMESPACE}};
 
 use super::ManageSessionImpl;
 

@@ -6,7 +6,6 @@ use crate::{common::{api_key::ApiKey, fallible::Fallible}, helper::scylla::{Stat
 
 use super::RateLimitImpl;
 
-
 impl RateLimit for RateLimitImpl {
     // ScyllaDBのキャッシュは高速であるため問題ないが、
     // 複数のエンドポイントで同じ検証をするのは効率が悪いので、

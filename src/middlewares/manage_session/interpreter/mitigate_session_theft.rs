@@ -3,7 +3,7 @@ use std::{str::FromStr, sync::{Arc, LazyLock}};
 use redis::cmd;
 use scylla::{prepared_statement::PreparedStatement, transport::session::TypedRowIter, FromRow, Session};
 
-use crate::{common::{email::{address::Email, resend::ResendEmailSender, send::{Body, EmailSender, HtmlContent, NetmateEmail, PlainText, SenderName, Subject}}, fallible::Fallible, id::AccountId, language::Language, session::value::SessionSeries}, helper::{scylla::{Statement, TypedStatement, Unit}, valkey::conn}, middlewares::manage_session::{dsl::mitigate_session_theft::{MitigateSessionTheft, MitigateSessionTheftError}, interpreter::SESSION_ID_NAMESPACE}, translation::ja};
+use crate::{common::{email::{address::Email, resend::ResendEmailSender, send::{Body, EmailSender, HtmlContent, NetmateEmail, PlainText, SenderName, Subject}}, fallible::Fallible, id::AccountId, language::Language, session::value::SessionSeries}, helper::{scylla::{Statement, TypedStatement, Unit}, redis::conn}, middlewares::manage_session::{dsl::mitigate_session_theft::{MitigateSessionTheft, MitigateSessionTheftError}, interpreter::SESSION_ID_NAMESPACE}, translation::ja};
 
 use super::ManageSessionImpl;
 

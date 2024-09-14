@@ -6,7 +6,7 @@ use refresh_api_key::{InsertApiKeyWithTtlRefresh, INSERT_API_KEY_WITH_TTL_REFRES
 use scylla::Session;
 use thiserror::Error;
 
-use crate::{helper::{error::InitError, scylla::prepare, valkey::Pool}, middlewares::rate_limit::dsl::increment_rate::{InculsiveLimit, TimeWindow}};
+use crate::{helper::{error::InitError, scylla::prepare, redis::Pool}, middlewares::rate_limit::dsl::increment_rate::{InculsiveLimit, TimeWindow}};
 
 mod increment_rate;
 mod rate_limit;

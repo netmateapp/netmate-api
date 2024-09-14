@@ -1,4 +1,4 @@
-use crate::{common::{api_key::ApiKey, fallible::Fallible}, helper::valkey::conn, middlewares::rate_limit::{dsl::increment_rate::{IncrementRate, IncrementRateError, InculsiveLimit, Rate, TimeWindow}, interpreter::BASE_NAMESPACE}};
+use crate::{common::{api_key::ApiKey, fallible::Fallible}, helper::redis::conn, middlewares::rate_limit::{dsl::increment_rate::{IncrementRate, IncrementRateError, InculsiveLimit, Rate, TimeWindow}, interpreter::BASE_NAMESPACE}};
 
 use super::RateLimitImpl;
 
