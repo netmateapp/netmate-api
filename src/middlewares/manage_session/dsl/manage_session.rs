@@ -103,6 +103,15 @@ impl SessionExpirationSeconds {
     }
 }
 
+impl ToRedisArgs for SessionExpirationSeconds {
+    fn write_redis_args<W>(&self, out: &mut W)
+    where
+        W: ?Sized + redis::RedisWrite
+    {
+        self.0.write_redis_args(out);
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct RefreshPairExpirationSeconds(u32);
 
