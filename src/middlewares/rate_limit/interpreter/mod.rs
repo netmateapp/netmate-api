@@ -1,4 +1,4 @@
-use std::{fmt::{self, Display}, sync::{Arc, LazyLock}};
+use std::{fmt::{self, Display}, sync::Arc};
 
 use rate_limit::{SelectLastApiKeyRefreshedAt, SELECT_LAST_API_KEY_REFRESHED_AT};
 use redis::Script;
@@ -11,7 +11,9 @@ mod increment_rate;
 mod rate_limit;
 mod refresh_api_key;
 
-const BASE_NAMESPACE: Namespace = Namespace::of("rtlim");
+const RATE_LIMIT_NAMESPACE: RateLimitNamespace = RateLimitNamespace(Namespace::of("rtlim"));
+
+struct RateLimitNamespace(Namespace);
 
 #[derive(Debug)]
 pub struct RateLimitImpl {
