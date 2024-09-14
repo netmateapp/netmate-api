@@ -4,13 +4,6 @@ use scylla::{cql_to_rust::FromRowError, frame::response::result::Row, prepared_s
 
 use super::error::InitError;
 
-pub async fn prep<T: From<QueryError>>(session: &Arc<Session>, query: &str) -> Result<Arc<PreparedStatement>, T> {
-    match session.prepare(query).await {
-        Ok(statement) => Ok(Arc::new(statement)),
-        Err(e) => Err(T::from(e))
-    }
-}
-
 impl<T> From<QueryError> for InitError<T> {
     fn from(value: QueryError) -> Self {
         Self::new(value.into())
@@ -23,18 +16,18 @@ impl<T> Statement<T> {
     pub const fn of(statement: &'static str) -> Self {
         Self(statement, PhantomData)
     }
-}
 
-pub(crate) async fn prepare<I, O, T, C>(session: &Arc<Session>, constructor: C, statement: Statement<T>) -> Result<Arc<T>, QueryError>
-where
-    I: SerializeRow,
-    O: FromRow,
-    T: TypedStatement<I, O>,
-    C: FnOnce(PreparedStatement) -> T
-{
-    match session.prepare(statement.0).await {
-        Ok(statement) => Ok(Arc::new(constructor(statement))),
-        Err(e) => Err(e)
+    pub(crate) async fn prepared<I, O, S, C>(&self, session: &Arc<Session>, constructor: C) -> Result<Arc<S>, QueryError>
+    where
+        I: SerializeRow,
+        O: FromRow,
+        S: TypedStatement<I, O>,
+        C: FnOnce(PreparedStatement) -> S
+    {
+        match session.prepare(self.0).await {
+            Ok(statement) => Ok(Arc::new(constructor(statement))),
+            Err(e) => Err(e)
+        }
     }
 }
 

@@ -2,7 +2,7 @@ use std::{str::FromStr, sync::{Arc, LazyLock}};
 
 use scylla::{prepared_statement::PreparedStatement, FromRow, Session};
 
-use crate::{common::{birth_year::BirthYear, email::{address::Email, resend::ResendEmailSender, send::{Body, EmailSender, HtmlContent, NetmateEmail, PlainText, SenderName, Subject}}, fallible::Fallible, id::AccountId, language::Language, password::PasswordHash, region::Region}, helper::{error::InitError, scylla::{prepare, Statement, TypedStatement, Unit}}, routes::accounts::creation::value::OneTimeToken, translation::{ja, us_en}};
+use crate::{common::{birth_year::BirthYear, email::{address::Email, resend::ResendEmailSender, send::{Body, EmailSender, HtmlContent, NetmateEmail, PlainText, SenderName, Subject}}, fallible::Fallible, id::AccountId, language::Language, password::PasswordHash, region::Region}, helper::{error::InitError, scylla::{Statement, TypedStatement, Unit}}, routes::accounts::creation::value::OneTimeToken, translation::{ja, us_en}};
 
 use super::dsl::{SignUp, SignUpError};
 
@@ -18,11 +18,11 @@ impl SignUpImpl {
             InitError::new(e.into())
         }
 
-        let select_account_id = prepare(&db, SelectAccountId, SELECT_ACCOUNT_ID)
+        let select_account_id = SELECT_ACCOUNT_ID.prepared(&db, SelectAccountId)
             .await
             .map_err(handle_error)?;
 
-        let insert_account_creation_application = prepare(&db, InsertAccountCreationApplication, INSERT_ACCOUNT_CREATION_APPLICATION)
+        let insert_account_creation_application = INSERT_ACCOUNT_CREATION_APPLICATION.prepared(&db, InsertAccountCreationApplication)
             .await
             .map_err(handle_error)?;
 

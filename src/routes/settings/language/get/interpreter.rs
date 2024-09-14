@@ -4,7 +4,7 @@ use scylla::{prepared_statement::PreparedStatement, FromRow, Session};
 
 use super::dsl::{GetLanguage, GetLanguageError};
 
-use crate::{common::{fallible::Fallible, id::AccountId, language::Language}, helper::{error::InitError, scylla::{prepare, Statement, TypedStatement}}};
+use crate::{common::{fallible::Fallible, id::AccountId, language::Language}, helper::{error::InitError, scylla::{Statement, TypedStatement}}};
 
 pub struct GetLanguageImpl {
     db: Arc<Session>,
@@ -13,7 +13,7 @@ pub struct GetLanguageImpl {
 
 impl GetLanguageImpl {
     pub async fn try_new(db: Arc<Session>) -> Result<GetLanguageImpl, InitError<GetLanguageImpl>> {
-        let select_language = prepare(&db, SelectLanguage, SELECT_LANGUAGE)
+        let select_language = SELECT_LANGUAGE.prepared(&db, SelectLanguage)
             .await
             .map_err(|e| InitError::new(e.into()))?;
 

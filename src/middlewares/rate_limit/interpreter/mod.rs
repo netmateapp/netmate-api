@@ -6,7 +6,7 @@ use redis::Script;
 use refresh_api_key::{InsertApiKeyWithTtlRefresh, INSERT_API_KEY_WITH_TTL_REFRESH};
 use scylla::Session;
 
-use crate::{helper::{error::InitError, redis::{Namespace, Pool}, scylla::prepare}, middlewares::rate_limit::dsl::increment_rate::{InculsiveLimit, TimeWindow}};
+use crate::{helper::{error::InitError, redis::{Namespace, Pool}}, middlewares::rate_limit::dsl::increment_rate::{InculsiveLimit, TimeWindow}};
 
 mod increment_rate;
 mod rate_limit;
@@ -32,11 +32,11 @@ impl RateLimitImpl {
             InitError::new(e.into())
         }
 
-        let select_last_api_key_refreshed_at = prepare(&db, SelectLastApiKeyRefreshedAt, SELECT_LAST_API_KEY_REFRESHED_AT)
+        let select_last_api_key_refreshed_at = SELECT_LAST_API_KEY_REFRESHED_AT.prepared(&db, SelectLastApiKeyRefreshedAt)
             .await
             .map_err(handle_error)?;
 
-        let insert_api_key_with_ttl_refresh = prepare(&db, InsertApiKeyWithTtlRefresh, INSERT_API_KEY_WITH_TTL_REFRESH)
+        let insert_api_key_with_ttl_refresh = INSERT_API_KEY_WITH_TTL_REFRESH.prepared(&db, InsertApiKeyWithTtlRefresh)
             .await
             .map_err(handle_error)?;
 

@@ -4,7 +4,7 @@ use mitigate_session_theft::{DeleteAllSessionSeries, SelectAllSessionSeries, Sel
 use refresh_session_series::{SelectLastSessionSeriesRefreshedAt, UpdateSessionSeriesTtl, SELECT_LAST_API_KEY_REFRESHED_AT, UPDATE_SESSION_SERIES_TTL};
 use scylla::Session;
 
-use crate::helper::{error::InitError, redis::{Namespace, Pool}, scylla::prepare};
+use crate::helper::{error::InitError, redis::{Namespace, Pool}};
 
 use super::dsl::{extract_session_info::ExtractSessionInformation, manage_session::{ManageSession, RefreshPairExpirationSeconds, SessionExpirationSeconds}, set_cookie::SetSessionCookie};
 
@@ -32,23 +32,23 @@ impl ManageSessionImpl {
             InitError::new(e.into())
         }
 
-        let select_last_session_series_refreshed_at = prepare(&db, SelectLastSessionSeriesRefreshedAt, SELECT_LAST_API_KEY_REFRESHED_AT)
+        let select_last_session_series_refreshed_at = SELECT_LAST_API_KEY_REFRESHED_AT.prepared(&db, SelectLastSessionSeriesRefreshedAt)
             .await
             .map_err(handle_error)?;
 
-        let update_session_series_ttl = prepare(&db, UpdateSessionSeriesTtl, UPDATE_SESSION_SERIES_TTL)
+        let update_session_series_ttl = UPDATE_SESSION_SERIES_TTL.prepared(&db, UpdateSessionSeriesTtl)
             .await
             .map_err(handle_error)?;
 
-        let select_email_and_language = prepare(&db, SelectEmailAndLanguage, SELECT_EMAIL_AND_LANGUAGE)
+        let select_email_and_language = SELECT_EMAIL_AND_LANGUAGE.prepared(&db, SelectEmailAndLanguage)
             .await
             .map_err(handle_error)?;
 
-        let select_all_session_series = prepare(&db, SelectAllSessionSeries, SELECT_ALL_SESSION_SERIES)
+        let select_all_session_series = SELECT_ALL_SESSION_SERIES.prepared(&db, SelectAllSessionSeries)
             .await
             .map_err(handle_error)?;
 
-        let delete_all_session_series = prepare(&db, DeleteAllSessionSeries, DELETE_ALL_SESSION_SERIES)
+        let delete_all_session_series = DELETE_ALL_SESSION_SERIES.prepared(&db, DeleteAllSessionSeries)
             .await
             .map_err(handle_error)?;
 

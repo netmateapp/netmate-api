@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use scylla::{prepared_statement::PreparedStatement, FromRow, Session};
 
-use crate::{common::{birth_year::BirthYear, email::address::Email, fallible::Fallible, id::AccountId, language::Language, password::PasswordHash, region::Region}, helper::{error::InitError, scylla::{prepare, Statement, TypedStatement, Unit}}, routes::accounts::creation::value::OneTimeToken};
+use crate::{common::{birth_year::BirthYear, email::address::Email, fallible::Fallible, id::AccountId, language::Language, password::PasswordHash, region::Region}, helper::{error::InitError, scylla::{Statement, TypedStatement, Unit}}, routes::accounts::creation::value::OneTimeToken};
 
 use super::dsl::{VerifyEmail, VerifyEmailError};
 
@@ -19,15 +19,15 @@ impl VerifyEmailImpl {
             InitError::new(e.into())
         }
 
-        let select_account_creation_application = prepare(&db, SelectAccountCreationApplication, SELECT_ACCOUNT_CREATION_APPLICATION)
+        let select_account_creation_application = SELECT_ACCOUNT_CREATION_APPLICATION.prepared(&db, SelectAccountCreationApplication)
             .await
             .map_err(handle_error)?;
 
-        let insert_account = prepare(&db, InsertAccount, INSERT_ACCOUNT)
+        let insert_account = INSERT_ACCOUNT.prepared(&db, InsertAccount)
             .await
             .map_err(handle_error)?;
 
-        let delete_account_creation_application = prepare(&db, DeleteAccountCreationApplication, DELETE_ACCOUNT_CREATION_APPLICATION)
+        let delete_account_creation_application = DELETE_ACCOUNT_CREATION_APPLICATION.prepared(&db, DeleteAccountCreationApplication)
             .await
             .map_err(handle_error)?;
 
