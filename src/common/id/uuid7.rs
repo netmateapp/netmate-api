@@ -1,5 +1,6 @@
 use std::fmt::Display;
 
+use redis::{FromRedisValue, RedisResult};
 use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::{ColumnType, CqlValue}, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
 use thiserror::Error;
 use uuid::Uuid;
@@ -32,6 +33,12 @@ impl SerializeValue for Uuid7 {
 impl FromCqlVal<Option<CqlValue>> for Uuid7 {
     fn from_cql(cql_val: Option<CqlValue>) -> Result<Self, FromCqlValError> {
         Uuid::from_cql(cql_val).map(Uuid7)
+    }
+}
+
+impl FromRedisValue for Uuid7 {
+    fn from_redis_value(v: &redis::Value) -> RedisResult<Self> {
+        Uuid::from_redis_value(v).map(Uuid7)
     }
 }
 

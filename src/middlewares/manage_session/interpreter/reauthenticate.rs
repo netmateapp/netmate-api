@@ -8,7 +8,6 @@ use crate::{common::{fallible::Fallible, id::{uuid7::Uuid7, AccountId}, session:
 
 use super::ManageSessionImpl;
 
-
 impl ReAuthenticateSession for ManageSessionImpl {
     async fn fetch_refresh_token_and_account_id(&self, session_series: &SessionSeries) -> Fallible<Option<(RefreshToken, AccountId)>, ReAuthenticateSessionError> {
         fn handle_error<E: Into<anyhow::Error>>(e: E) -> ReAuthenticateSessionError {
