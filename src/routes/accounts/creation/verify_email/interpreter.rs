@@ -45,17 +45,17 @@ impl VerifyEmail for VerifyEmailImpl {
 
     async fn create_account(&self, account_id: &AccountId, email: &Email, password_hash: &PasswordHash, birth_year: &BirthYear, region: &Region, language: &Language) -> Fallible<(), VerifyEmailError> {
         self.insert_account
-            .query(&self.db, (account_id, email, password_hash, birth_year, region, language))
+            .execute(&self.db, (account_id, email, password_hash, birth_year, region, language))
             .await
-            .map(|_| ()) // execute -ize
+            .map(|_| ())
             .map_err(|e| VerifyEmailError::CreateAccountFailed(e.into()))
     }
 
     async fn delete_account_creation_application_by(&self, token: &OneTimeToken) -> Fallible<(), VerifyEmailError> {
         self.delete_account_creation_application
-            .query(&self.db, (token, ))
+            .execute(&self.db, (token, ))
             .await
-            .map(|_| ()) // execute -ize
+            .map(|_| ())
             .map_err(|e| VerifyEmailError::DeleteAccountCreationApplicationFailed(e.into()))
     }
 }
