@@ -85,6 +85,7 @@ where
 }
 
 pub const SET_COMMAND: &str = "SET";
+pub const DEL_COMMAND: &str = "DEL";
 
 pub const EX_OPTION: &str = "EX";
 

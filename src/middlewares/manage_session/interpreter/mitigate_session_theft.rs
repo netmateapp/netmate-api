@@ -1,9 +1,9 @@
 use std::{str::FromStr, sync::{Arc, LazyLock}};
 
-use redis::cmd;
-use scylla::{prepared_statement::PreparedStatement, transport::session::TypedRowIter, FromRow, Session};
+use redis::{cmd, ToRedisArgs};
+use scylla::{prepared_statement::PreparedStatement, FromRow, Session};
 
-use crate::{common::{email::{address::Email, resend::ResendEmailSender, send::{Body, EmailSender, HtmlContent, NetmateEmail, PlainText, SenderName, Subject}}, fallible::Fallible, id::AccountId, language::Language, session::value::SessionSeries}, helper::{scylla::{Statement, TypedStatement, Unit}, redis::conn}, middlewares::manage_session::{dsl::mitigate_session_theft::{MitigateSessionTheft, MitigateSessionTheftError}, interpreter::SESSION_ID_NAMESPACE}, translation::ja};
+use crate::{common::{email::{address::Email, resend::ResendEmailSender, send::{Body, EmailSender, HtmlContent, NetmateEmail, PlainText, SenderName, Subject}}, fallible::Fallible, id::AccountId, language::Language, session::value::SessionSeries}, helper::{redis::{Connection, TypedCommand, DEL_COMMAND, NAMESPACE_SEPARATOR}, scylla::{Statement, TypedStatement, Unit}}, middlewares::manage_session::{dsl::mitigate_session_theft::{MitigateSessionTheft, MitigateSessionTheftError}, interpreter::SESSION_ID_NAMESPACE}, translation::ja};
 
 use super::ManageSessionImpl;
 
@@ -35,28 +35,24 @@ impl MitigateSessionTheft for ManageSessionImpl {
             MitigateSessionTheftError::DeleteAllSessionSeriesFailed(e.into())
         }
 
-        let all_session_series_key: &[String] = &self.select_all_session_series
+        let all_session_series = self.select_all_session_series
             .query(&self.db, (account_id, ))
             .await
-            .map_err(handle_error)?
-            .filter(Result::is_ok)
-            .map(Result::unwrap)
-            .map(|(session_series, )| format!("{}:{}", SESSION_ID_NAMESPACE, session_series.to_string()))
-            .collect::<Vec<String>>();
+            .map_err(handle_error)?;
+
+        let keys: Vec<Key<'_>> = all_session_series
+            .iter()
+            .map(|(session_series, )| Key(&session_series))
+            .collect();
+
+        DeleteAllSessionSeriesCommand.run(&self.cache, keys)
+            .await
+            .map_err(handle_error)?;
 
         self.delete_all_session_series
             .execute(&self.db, (account_id, ))
             .await
             .map(|_| ())
-            .map_err(handle_error)?;
-
-        // データベースでの削除後にキャッシュを削除するのは、エラー委譲でデータベースの削除をキャンセルしないため
-        let mut conn = conn(&self.cache, handle_error).await?;
-
-        cmd("DEL")
-            .arg(all_session_series_key)
-            .exec_async(&mut *conn)
-            .await
             .map_err(handle_error)
     }
 }
@@ -88,13 +84,18 @@ pub const SELECT_ALL_SESSION_SERIES: Statement<SelectAllSessionSeries>
 pub struct SelectAllSessionSeries(pub PreparedStatement);
 
 impl<'a> TypedStatement<(&'a AccountId, ), (SessionSeries, )> for SelectAllSessionSeries {
-    type Result<U> = TypedRowIter<U> where U: FromRow;
+    type Result<U> = Vec<U> where U: FromRow;
 
     async fn query(&self, db: &Arc<Session>, values: (&'a AccountId, )) -> anyhow::Result<Self::Result<(SessionSeries, )>> {
         db.execute_unpaged(&self.0, values)
             .await
             .map_err(anyhow::Error::from)?
             .rows_typed()
+            .map(|rows| {
+                rows.filter(Result::is_ok)
+                    .map(Result::unwrap)
+                    .collect::<Vec<(SessionSeries, )>>()
+        })
             .map_err(anyhow::Error::from)
     }
 }
@@ -116,11 +117,37 @@ impl<'a> TypedStatement<(&'a AccountId, ), Unit> for DeleteAllSessionSeries {
     }
 }
 
+struct DeleteAllSessionSeriesCommand;
+
+struct Key<'a>(&'a SessionSeries);
+
+fn format_key(session_series: &SessionSeries) -> String {
+    format!("{}{}{}", SESSION_ID_NAMESPACE, NAMESPACE_SEPARATOR, session_series.to_string())
+}
+
+impl<'a> ToRedisArgs for Key<'a> {
+    fn write_redis_args<W>(&self, out: &mut W)
+    where
+        W: ?Sized + redis::RedisWrite
+    {
+        format_key(self.0).write_redis_args(out);
+    }
+}
+
+impl<'a> TypedCommand<Vec<Key<'a>>, ()> for DeleteAllSessionSeriesCommand {
+    async fn execute(&self, mut conn: Connection<'_>, keys: Vec<Key<'a>>) -> anyhow::Result<()> {
+        cmd(DEL_COMMAND).arg(keys)
+            .query_async::<()>(&mut *conn)
+            .await
+            .map_err(Into::into)
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::{helper::scylla::{check_cql_query_type, check_cql_statement_type}, middlewares::manage_session::interpreter::SELECT_EMAIL_AND_LANGUAGE};
+    use crate::{common::session::value::SessionSeries, helper::{redis::NAMESPACE_SEPARATOR, scylla::{check_cql_query_type, check_cql_statement_type}}, middlewares::manage_session::interpreter::SELECT_EMAIL_AND_LANGUAGE};
 
-    use super::{DELETE_ALL_SESSION_SERIES, SELECT_ALL_SESSION_SERIES};
+    use super::{format_key, DELETE_ALL_SESSION_SERIES, SELECT_ALL_SESSION_SERIES};
 
     #[test]
     fn check_select_email_and_language_type() {
@@ -135,5 +162,13 @@ mod tests {
     #[test]
     fn check_delete_all_session_series_type() {
         check_cql_statement_type(DELETE_ALL_SESSION_SERIES);
+    }
+
+    #[test]
+    fn test_format_key() {
+        let session_series = SessionSeries::gen();
+        let key = format_key(&session_series);
+        let expected = format!("{}{}{}", super::SESSION_ID_NAMESPACE, NAMESPACE_SEPARATOR, session_series.to_string());
+        assert_eq!(key, expected);
     }
 }
