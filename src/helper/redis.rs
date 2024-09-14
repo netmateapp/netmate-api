@@ -7,6 +7,8 @@ use thiserror::Error;
 pub type Pool = bb8::Pool<RedisConnectionManager>;
 pub type Connection<'a> = PooledConnection<'a, RedisConnectionManager>;
 
+pub const NAMESPACE_SEPARATOR: char = ':';
+
 const MIN_NAMESPACE_LENGTH: usize = 3;
 const MAX_NAMESPACE_LENGTH: usize = 9;
 
@@ -73,7 +75,7 @@ impl Display for Namespace {
     }
 }
 
-pub async fn conn<O, E>(cache: &Pool, map_err: O) -> Result<Connection<'_>, E>
+pub async fn conn<O, E>(cache: &Pool, map_err: O) -> Result<PooledConnection<'_, RedisConnectionManager>, E>
 where
     O: FnOnce(RunError<RedisError>) -> E,
 {
@@ -82,18 +84,22 @@ where
         .map_err(|e| map_err(e))
 }
 
+pub const SET_COMMAND: &str = "SET";
+
+pub const EX_OPTION: &str = "EX";
+
 pub(crate) trait TypedCommand<I, O>
 where
     I: ToRedisArgs,
     O: FromRedisValue,
 {
-    fn query(&self, conn: &mut Connection<'_>, input: I) -> anyhow::Result<O>;
-}
+    async fn run(cache: &Pool, args: I) -> anyhow::Result<O> {
+        let conn = cache.get()
+            .await
+            .map_err(Into::<anyhow::Error>::into)?;
 
-pub trait ToKey: ToRedisArgs {
-    fn to_key(&self) -> String;
-
-    fn write_redis_args(&self, out: &mut Vec<Vec<u8>>) {
-        self.to_key().write_redis_args(out);
+        Self::execute(conn, args).await
     }
+
+    async fn execute(conn: Connection<'_>, args: I) -> anyhow::Result<O>;
 }

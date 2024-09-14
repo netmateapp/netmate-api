@@ -1,6 +1,7 @@
 use std::convert::Infallible;
 
 use http::{header::SET_COOKIE, Request, Response};
+use redis::ToRedisArgs;
 use scylla::{frame::response::result::ColumnType, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
 use thiserror::Error;
 use tower::Service;
@@ -124,6 +125,15 @@ impl From<RefreshPairExpirationSeconds> for i32 {
 impl SerializeValue for RefreshPairExpirationSeconds {
     fn serialize<'b>(&self, typ: &ColumnType, writer: CellWriter<'b>) -> Result<WrittenCellProof<'b>, SerializationError> {
         (self.0 as i32).serialize(typ, writer)
+    }
+}
+
+impl ToRedisArgs for RefreshPairExpirationSeconds {
+    fn write_redis_args<W>(&self, out: &mut W)
+    where
+        W: ?Sized + redis::RedisWrite
+    {
+        self.0.write_redis_args(out);
     }
 }
 

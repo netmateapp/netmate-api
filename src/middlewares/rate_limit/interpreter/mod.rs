@@ -11,9 +11,7 @@ mod increment_rate;
 mod rate_limit;
 mod refresh_api_key;
 
-const RATE_LIMIT_NAMESPACE: RateLimitNamespace = RateLimitNamespace(Namespace::of("rtlim"));
-
-struct RateLimitNamespace(Namespace);
+const RATE_LIMIT_NAMESPACE: Namespace = Namespace::of("rtlim");
 
 #[derive(Debug)]
 pub struct RateLimitImpl {

@@ -1,4 +1,5 @@
-use crate::{common::{api_key::ApiKey, fallible::Fallible}, helper::redis::conn, middlewares::rate_limit::{dsl::increment_rate::{IncrementRate, IncrementRateError, InculsiveLimit, Rate, TimeWindow}, interpreter::BASE_NAMESPACE}};
+
+use crate::{common::{api_key::ApiKey, fallible::Fallible}, helper::redis::conn, middlewares::rate_limit::{dsl::increment_rate::{IncrementRate, IncrementRateError, InculsiveLimit, Rate, TimeWindow}, interpreter::RATE_LIMIT_NAMESPACE}};
 
 use super::RateLimitImpl;
 
@@ -10,7 +11,7 @@ impl IncrementRate for RateLimitImpl {
         
         let mut conn = conn(&self.cache, handle_error).await?;
 
-        let key = format!("{}:{}:{}", BASE_NAMESPACE, self.endpoint_name.value(), api_key.value().value());
+        let key = format!("{}:{}:{}", RATE_LIMIT_NAMESPACE, self.endpoint_name, api_key);
 
         self.incr_and_expire_if_first
                 .key(key)
