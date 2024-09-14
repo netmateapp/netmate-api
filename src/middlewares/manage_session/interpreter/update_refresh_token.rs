@@ -10,47 +10,75 @@ impl UpdateRefreshToken for ManageSessionImpl {
         let key = Key(session_series);
         let value = Value(new_refresh_token, session_account_id);
 
-        SetNewRefreshToken::run(&self.cache, (key, value, expiration))
+        SetNewRefreshTokenCommand::run(&self.cache, (key, value, expiration))
             .await
             .map_err(|e| UpdateRefreshTokenError::AssignNewRefreshTokenFailed(e.into()))
     }
 }
 
-struct SetNewRefreshToken;
+struct SetNewRefreshTokenCommand;
 
 struct Key<'a>(&'a SessionSeries);
+
+fn format_key(session_series: &SessionSeries) -> String {
+    format!("{}{}{}", REFRESH_PAIR_NAMESPACE, NAMESPACE_SEPARATOR, session_series)
+}
 
 impl<'a> ToRedisArgs for Key<'a> {
     fn write_redis_args<W>(&self, out: &mut W)
     where
         W: ?Sized + redis::RedisWrite
     {
-        let key = format!("{}{}{}", REFRESH_PAIR_NAMESPACE, NAMESPACE_SEPARATOR, self.0);
-        key.write_redis_args(out);
+        format_key(self.0).write_redis_args(out);
     }
 }
 
 struct Value<'a, 'b>(&'a RefreshToken, &'b AccountId);
+
+fn format_value(new_refresh_token: &RefreshToken, session_account_id: &AccountId) -> String {
+    format!("{}{}{}", new_refresh_token, REFRESH_PAIR_VALUE_SEPARATOR, session_account_id)
+}
 
 impl<'a, 'b> ToRedisArgs for Value<'a, 'b> {
     fn write_redis_args<W>(&self, out: &mut W)
     where
         W: ?Sized + redis::RedisWrite
     {
-        let key = format!("{}{}{}", self.0, REFRESH_PAIR_VALUE_SEPARATOR, self.1);
-        key.write_redis_args(out);
+        format_value(self.0, self.1).write_redis_args(out);
     }
 }
 
-impl<'a, 'b, 'c, 'd> TypedCommand<(Key<'a>, Value<'b, 'c>, &'d RefreshPairExpirationSeconds), ()> for SetNewRefreshToken {
-    async fn execute(mut conn: Connection<'_>, args: (Key<'a>, Value<'b, 'c>, &'d RefreshPairExpirationSeconds)) -> anyhow::Result<()> {
+impl<'a, 'b, 'c, 'd> TypedCommand<(Key<'a>, Value<'b, 'c>, &'d RefreshPairExpirationSeconds), ()> for SetNewRefreshTokenCommand {
+    async fn execute(mut conn: Connection<'_>, (key, value, expiration): (Key<'a>, Value<'b, 'c>, &'d RefreshPairExpirationSeconds)) -> anyhow::Result<()> {
         cmd(SET_COMMAND)
-            .arg(args.0)
-            .arg(args.1)
+            .arg(key)
+            .arg(value)
             .arg(EX_OPTION)
-            .arg(args.2)
+            .arg(expiration)
             .query_async(&mut *conn)
             .await
             .map_err(Into::into)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{common::{id::AccountId, session::value::{RefreshToken, SessionSeries}}, helper::redis::NAMESPACE_SEPARATOR, middlewares::manage_session::interpreter::{update_refresh_token::format_value, REFRESH_PAIR_NAMESPACE, REFRESH_PAIR_VALUE_SEPARATOR}};
+
+    use super::format_key;
+
+    #[test]
+    fn test_format_key() {
+        let session_series = SessionSeries::gen();
+        let key = format_key(&session_series);
+        assert_eq!(key, format!("{}{}{}", REFRESH_PAIR_NAMESPACE, NAMESPACE_SEPARATOR, session_series));
+    }
+
+    #[test]
+    fn test_format_value() {
+        let refresh_token = RefreshToken::gen();
+        let account_id = AccountId::gen();
+        let value = format_value(&refresh_token, &account_id);
+        assert_eq!(value, format!("{}{}{}", refresh_token, REFRESH_PAIR_VALUE_SEPARATOR, account_id));
     }
 }
