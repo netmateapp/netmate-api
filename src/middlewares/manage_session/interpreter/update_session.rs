@@ -41,7 +41,7 @@ impl<'a, 'b, 'c> TypedCommand<(Key<'a>, &'b AccountId, &'c SessionExpirationSeco
             .arg(EX_OPTION)
             .arg(new_expiration.as_secs())
             .arg(NX_OPTION)
-            .query_async::<Option<()>>(&mut *conn)
+            .query_async::<Option<()>>(&mut *conn) // 重複が無ければSome(())、あればNone
             .await
             .map_err(Into::into)
     }
