@@ -24,6 +24,6 @@ impl AuthenticateSession for ManageSessionImpl {
             .map_err(handle_error)?
             .map(|uuid| Uuid7::try_from(uuid))
             .transpose()
-            .map_or_else(|e| Err(handle_error(e)), |o| Ok(o.map(AccountId::new)))
+            .map_or_else(|e| Err(handle_error(e)), |o| Ok(o.map(AccountId::of)))
     }
 }

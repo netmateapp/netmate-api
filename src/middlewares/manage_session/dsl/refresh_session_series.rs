@@ -103,7 +103,7 @@ mod tests {
     async fn session_series_to_be_refreshed() {
         let result = MockRefreshSessionSeries.try_refresh_session_series(
             &*SESSION_SERIES_TO_BE_REFRESHED,
-            &AccountId::new(Uuid7::now()),
+            &AccountId::of(Uuid7::now()),
             &RefreshPairExpirationSeconds::new(1),
         ).await;
         assert!(result.is_ok());
@@ -113,7 +113,7 @@ mod tests {
     async fn session_series_to_not_be_refreshed() {
         let result = MockRefreshSessionSeries.try_refresh_session_series(
             &SessionSeries::gen(),
-            &AccountId::new(Uuid7::now()),
+            &AccountId::of(Uuid7::now()),
             &RefreshPairExpirationSeconds::new(1),
         ).await;
         assert!(result.is_ok());

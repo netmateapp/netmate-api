@@ -173,7 +173,7 @@ mod tests {
     impl AuthenticateSession for MockManageSession {
         async fn resolve_session_id_to_account_id(&self, session_id: &SessionId) -> Fallible<Option<AccountId>, AuthenticateSessionError> {
             if session_id == &*AUTHENTICATION_SUCCEEDED {
-                Ok(Some(AccountId::new(Uuid7::now())))
+                Ok(Some(AccountId::of(Uuid7::now())))
             } else {
                 Ok(None)
             }
@@ -183,7 +183,7 @@ mod tests {
     impl ReAuthenticateSession for MockManageSession {
         async fn fetch_refresh_token_and_account_id(&self, session_series: &SessionSeries) -> Fallible<Option<(RefreshToken, AccountId)>, ReAuthenticateSessionError> {
             if session_series == &(*REAUTHENTICATION_SUCCEDED).0 {
-                Ok(Some((REAUTHENTICATION_SUCCEDED.1.clone(), AccountId::new(Uuid7::now()))))
+                Ok(Some((REAUTHENTICATION_SUCCEDED.1.clone(), AccountId::of(Uuid7::now()))))
             } else {
                 Ok(None)
             }

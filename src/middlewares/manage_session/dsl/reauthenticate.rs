@@ -45,9 +45,9 @@ mod tests {
     impl ReAuthenticateSession for MockReauthenticateSession {
         async fn fetch_refresh_token_and_account_id(&self, session_series: &SessionSeries) -> Fallible<Option<(RefreshToken, AccountId)>, ReAuthenticateSessionError> {
             if session_series == &*REAUTHENTICATED {
-                Ok(Some((RefreshToken::gen(), AccountId::new(Uuid7::now()))))
+                Ok(Some((RefreshToken::gen(), AccountId::of(Uuid7::now()))))
             } else if session_series == &*POTENTIAL_SESSION_THEFT {
-                Err(ReAuthenticateSessionError::PotentialSessionTheft(AccountId::new(Uuid7::now())))
+                Err(ReAuthenticateSessionError::PotentialSessionTheft(AccountId::of(Uuid7::now())))
             } else {
                 Err(ReAuthenticateSessionError::InvalidRefreshToken)
             }

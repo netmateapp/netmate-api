@@ -5,7 +5,7 @@ use crate::{common::{birth_year::BirthYear, email::address::Email, fallible::Fal
 pub(crate) trait VerifyEmail {
     async fn verify_email(&self, token: &OneTimeToken) -> Fallible<TagId, VerifyEmailError> {
         let (email, password_hash, birth_year, region, language) = self.retrieve_account_creation_application_by(token).await?;
-        let account_id = AccountId::new(Uuid7::now());
+        let account_id = AccountId::of(Uuid7::now());
         match self.create_account(&account_id, &email, &password_hash, &birth_year, &region, &language).await {
             Ok(_) => {
                 // 失敗してもTTLにより削除されるため続行

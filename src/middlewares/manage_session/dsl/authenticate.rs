@@ -35,7 +35,7 @@ mod tests {
     impl AuthenticateSession for MockAuthenticateUser {
         async fn resolve_session_id_to_account_id(&self, session_id: &SessionId) -> Fallible<Option<AccountId>, AuthenticateSessionError> {
             if session_id == &*VALID_SESSION_ID {
-                Ok(Some(AccountId::new(Uuid7::now())))
+                Ok(Some(AccountId::of(Uuid7::now())))
             } else {
                 Ok(None)
             }

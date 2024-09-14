@@ -44,7 +44,7 @@ impl ReAuthenticateSession for ManageSessionImpl {
                     .map_err(handle_error)
                     .map(|u| Uuid7::try_from(u))?
                     .map_err(handle_error)
-                    .map(|u| AccountId::new(u))?;
+                    .map(|u| AccountId::of(u))?;
 
                 Ok((token, account_id))
             }))

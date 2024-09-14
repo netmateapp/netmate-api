@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::fmt::{self, Display};
 
 use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::{ColumnType, CqlValue}, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
 use uuid4::Uuid4;
@@ -11,19 +11,21 @@ pub mod uuid7;
 pub struct AccountId(Uuid7);
 
 impl AccountId {
+    pub fn gen() -> Self {
+        AccountId(Uuid7::now())
+    }
+
+    pub const fn of(value: Uuid7) -> Self {
+        AccountId(value)
+    }
+
     pub fn value(&self) -> &Uuid7 {
         &self.0
     }
 }
 
-impl AccountId {
-    pub const fn new(value: Uuid7) -> Self {
-        AccountId(value)
-    }
-}
-
 impl Display for AccountId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
     }
 }
