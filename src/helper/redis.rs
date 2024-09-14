@@ -84,6 +84,7 @@ where
         .map_err(|e| map_err(e))
 }
 
+pub const GET_COMMAND: &str = "GET";
 pub const SET_COMMAND: &str = "SET";
 pub const DEL_COMMAND: &str = "DEL";
 

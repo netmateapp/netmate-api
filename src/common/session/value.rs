@@ -1,6 +1,7 @@
 use std::{fmt::{self, Display, Formatter}, str::FromStr};
 
 use cookie::{Cookie, CookieBuilder, SameSite};
+use redis::FromRedisValue;
 use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::{ColumnType, CqlValue}, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
 use thiserror::Error;
 use time::Duration;
@@ -130,6 +131,11 @@ impl FromStr for RefreshToken {
     }
 }
 
+impl FromRedisValue for RefreshToken {
+    fn from_redis_value(v: &redis::Value) -> redis::RedisResult<Self> {
+        Token::from_redis_value(v).map(|t| Self(t))
+    }
+}
 
 pub fn to_cookie_value(series_id: &SessionSeries, token: &RefreshToken) -> String {
     format!("{}{}{}", series_id.value().value(), REFRESH_PAIR_SEPARATOR, token.value().value())

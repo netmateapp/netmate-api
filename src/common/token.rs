@@ -2,6 +2,7 @@ use std::{fmt::{self, Display, Formatter}, str::FromStr};
 
 use rand::{RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
+use redis::{FromRedisValue, RedisError, RedisResult};
 use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::{ColumnType, CqlValue}, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
 use serde::{de, Deserialize};
 use thiserror::Error;
@@ -128,6 +129,13 @@ impl<const BYTES: usize> SerializeValue for Token<BYTES> {
 impl<const BYTES: usize> FromCqlVal<Option<CqlValue>> for Token<BYTES> {
     fn from_cql(cql_val: Option<CqlValue>) -> Result<Self, FromCqlValError> {
         String::from_cql(cql_val).and_then(|v| Token::from_str(v.as_str()).map_err(|_| FromCqlValError::BadVal))
+    }
+}
+
+impl<const BYTES: usize> FromRedisValue for Token<BYTES> {
+    fn from_redis_value(v: &redis::Value) -> RedisResult<Self> {
+        String::from_redis_value(v)
+            .and_then(|v| Token::from_str(&v).map_err(|_| RedisError::from((redis::ErrorKind::TypeError, "トークンの形式を満たしていません"))))
     }
 }
 
