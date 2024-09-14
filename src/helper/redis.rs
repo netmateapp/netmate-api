@@ -1,7 +1,7 @@
 use std::fmt::{self, Display};
 
-use bb8_redis::{bb8::{self, PooledConnection, RunError}, RedisConnectionManager};
-use redis::{FromRedisValue, RedisError, ToRedisArgs};
+use bb8_redis::{bb8::{self, PooledConnection}, RedisConnectionManager};
+use redis::{FromRedisValue, ToRedisArgs};
 use thiserror::Error;
 
 pub type Pool = bb8::Pool<RedisConnectionManager>;
@@ -73,15 +73,6 @@ impl Display for Namespace {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
     }
-}
-
-pub async fn conn<O, E>(cache: &Pool, map_err: O) -> Result<PooledConnection<'_, RedisConnectionManager>, E>
-where
-    O: FnOnce(RunError<RedisError>) -> E,
-{
-    cache.get()
-        .await
-        .map_err(|e| map_err(e))
 }
 
 pub const GET_COMMAND: &str = "GET";
