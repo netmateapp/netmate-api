@@ -42,3 +42,15 @@ impl<'a, 'b, 'c> TypedStatement<(&'a ApiKey, &'b UnixtimeMillis, &'c ApiKeyExpir
             .map_err(anyhow::Error::from)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::helper::scylla::check_cql_statement_type;
+
+    use super::INSERT_API_KEY_WITH_TTL_REFRESH;
+
+    #[test]
+    fn check_insert_api_key_with_ttl_refresh_type() {
+        check_cql_statement_type(INSERT_API_KEY_WITH_TTL_REFRESH);
+    }
+}

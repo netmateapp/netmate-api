@@ -40,3 +40,15 @@ impl<'a> TypedStatement<(&'a ApiKey, ), (LastApiKeyRefreshedAt, )> for SelectLas
             .map_err(anyhow::Error::from)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::helper::scylla::check_cql_query_type;
+
+    use super::SELECT_LAST_API_KEY_REFRESHED_AT;
+
+    #[test]
+    fn check_select_last_api_key_refreshed_at_type() {
+        check_cql_query_type(SELECT_LAST_API_KEY_REFRESHED_AT);
+    }
+}
