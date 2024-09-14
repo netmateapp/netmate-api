@@ -122,7 +122,7 @@ struct DeleteAllSessionSeriesCommand;
 struct Key<'a>(&'a SessionSeries);
 
 fn format_key(session_series: &SessionSeries) -> String {
-    format!("{}{}{}", SESSION_ID_NAMESPACE, NAMESPACE_SEPARATOR, session_series.to_string())
+    format!("{}{}{}", SESSION_ID_NAMESPACE, NAMESPACE_SEPARATOR, session_series)
 }
 
 impl<'a> ToRedisArgs for Key<'a> {

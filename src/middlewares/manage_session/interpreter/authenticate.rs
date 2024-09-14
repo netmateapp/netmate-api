@@ -18,7 +18,7 @@ struct GetAccountIdCommand;
 struct Key<'a>(&'a SessionId);
 
 fn format_key(session_id: &SessionId) -> String {
-    format!("{}{}{}", SESSION_ID_NAMESPACE, NAMESPACE_SEPARATOR, session_id.to_string())
+    format!("{}{}{}", SESSION_ID_NAMESPACE, NAMESPACE_SEPARATOR, session_id)
 }
 
 impl<'a> ToRedisArgs for Key<'a> {
