@@ -15,27 +15,22 @@ pub(crate) trait RateLimit {
         Self: IncrementRate + RefreshApiKey,
         S: Service<Request<B>, Error = Infallible, Response = Response<B>>
     {
-        match Self::extract_no_account_user_api_key(request.headers()) {
-            Some(api_key) => {
-                match self.fetch_last_api_key_refreshed_at(&api_key).await? {
-                    Some(last_api_key_refreshed_at) => {
-                        match self.try_increment_rate(&api_key).await {
-                            Ok(_) => {
-                                // `Error`は`Infallible`であるため`unwrap()`で問題ない
-                                let response = inner.call(request).await.unwrap();
+        let api_key = Self::extract_no_account_user_api_key(request.headers())
+            .ok_or(RateLimitError::NoApiKey)?;
 
-                                let _ = self.try_refresh_api_key(last_api_key_refreshed_at, &api_key).await;
+        let last_api_key_refreshed_at = self.fetch_last_api_key_refreshed_at(&api_key)
+            .await?
+            .ok_or(RateLimitError::InvalidApiKey)?;
 
-                                Ok(response)
-                            },
-                            Err(IncrementRateError::RateLimitOver) => Err(RateLimitError::RateLimitOver),
-                            _ => Err(RateLimitError::RateLimitFailed),
-                        }
-                    },
-                    None => Err(RateLimitError::InvalidApiKey),
-                }
+        match self.try_increment_rate(&api_key).await {
+            Ok(_) => {
+                // `Error`は`Infallible`であるため`unwrap()`で問題ない
+                let response = inner.call(request).await.unwrap();
+                let _ = self.try_refresh_api_key(last_api_key_refreshed_at, &api_key).await;
+                Ok(response)
             },
-            None => Err(RateLimitError::NoApiKey)
+            Err(IncrementRateError::RateLimitOver) => Err(RateLimitError::RateLimitOver),
+            _ => Err(RateLimitError::RateLimitFailed),
         }
     }
 
