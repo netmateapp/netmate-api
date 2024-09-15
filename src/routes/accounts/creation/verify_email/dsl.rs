@@ -6,7 +6,7 @@ pub(crate) trait VerifyEmail {
     async fn verify_email(&self, token: &OneTimeToken) -> Fallible<TagId, VerifyEmailError> {
         let (email, password_hash, birth_year, region, language) = self.retrieve_account_creation_application_by(token).await?;
         let account_id = AccountId::of(Uuid7::now());
-        match self.create_account(&account_id, &email, &password_hash, &birth_year, &region, &language).await {
+        match self.create_account(account_id, &email, &password_hash, birth_year, region, language).await {
             Ok(_) => {
                 // 失敗してもTTLにより削除されるため続行
                 let _ = self.delete_account_creation_application_by(token).await;
@@ -22,7 +22,7 @@ pub(crate) trait VerifyEmail {
 
     async fn retrieve_account_creation_application_by(&self, token: &OneTimeToken) -> Fallible<(Email, PasswordHash, BirthYear, Region, Language), VerifyEmailError>;
 
-    async fn create_account(&self, account_id: &AccountId, email: &Email, password_hash: &PasswordHash, birth_year: &BirthYear, region: &Region, language: &Language) -> Fallible<(), VerifyEmailError>;
+    async fn create_account(&self, account_id: AccountId, email: &Email, password_hash: &PasswordHash, birth_year: BirthYear, region: Region, language: Language) -> Fallible<(), VerifyEmailError>;
 
     async fn delete_account_creation_application_by(&self, token: &OneTimeToken) -> Fallible<(), VerifyEmailError>;
 }
@@ -81,7 +81,7 @@ mod tests {
             }
         }
 
-        async fn create_account(&self, _: &AccountId, _: &Email, case: &PasswordHash, _: &BirthYear, _: &Region, _: &Language) -> Fallible<(), VerifyEmailError> {
+        async fn create_account(&self, _: AccountId, _: &Email, case: &PasswordHash, _: BirthYear, _: Region, _: Language) -> Fallible<(), VerifyEmailError> {
             match case.value().as_str() {
                 VERIFY_EMAIL => Ok(()),
                 RETRIEVE_BUT_ACCOUNT_ALREADY_EXISTS => Err(VerifyEmailError::AccountAlreadyExists),

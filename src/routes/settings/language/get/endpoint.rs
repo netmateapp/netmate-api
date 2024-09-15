@@ -36,7 +36,7 @@ pub async fn handler(
     State(routine): State<Arc<GetLanguageImpl>>,
     Extension(account_id): Extension<AccountId>,
 ) -> Result<Json<Language>, StatusCode> {
-    match routine.get_language(&account_id).await {
+    match routine.get_language(account_id).await {
         Ok(language) => Ok(Json(language)),
         Err(e) => {
             info!(

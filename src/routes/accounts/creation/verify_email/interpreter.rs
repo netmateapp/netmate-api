@@ -43,7 +43,7 @@ impl VerifyEmail for VerifyEmailImpl {
             .map_err(|e| VerifyEmailError::RetrieveAccountCreationApplicationFailed(e.into()))
     }
 
-    async fn create_account(&self, account_id: &AccountId, email: &Email, password_hash: &PasswordHash, birth_year: &BirthYear, region: &Region, language: &Language) -> Fallible<(), VerifyEmailError> {
+    async fn create_account(&self, account_id: AccountId, email: &Email, password_hash: &PasswordHash, birth_year: BirthYear, region: Region, language: Language) -> Fallible<(), VerifyEmailError> {
         self.insert_account
             .execute(&self.db, (account_id, email, password_hash, birth_year, region, language))
             .await
@@ -82,10 +82,10 @@ const INSERT_ACCOUNT: Statement<InsertAccount>
 
 struct InsertAccount(PreparedStatement);
 
-impl<'a, 'b, 'c, 'd, 'e, 'f> TypedStatement<(&'a AccountId, &'b Email, &'c PasswordHash, &'d BirthYear, &'e Region, &'f Language), Unit> for InsertAccount {
+impl<'a, 'b,> TypedStatement<(AccountId, &'a Email, &'b PasswordHash, BirthYear, Region, Language), Unit> for InsertAccount {
     type Result<U> = U where U: FromRow;
 
-    async fn query(&self, session: &Arc<Session>, values: (&'a AccountId, &'b Email, &'c PasswordHash, &'d BirthYear, &'e Region, &'f Language)) -> anyhow::Result<Unit> {
+    async fn query(&self, session: &Arc<Session>, values: (AccountId, &'a Email, &'b PasswordHash, BirthYear, Region, Language)) -> anyhow::Result<Unit> {
         session.execute_unpaged(&self.0, values)
             .await
             .map(|_| Unit)

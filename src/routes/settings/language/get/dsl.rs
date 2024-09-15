@@ -3,7 +3,7 @@ use thiserror::Error;
 use crate::common::{fallible::Fallible, id::AccountId, language::Language};
 
 pub(crate) trait GetLanguage {
-    async fn get_language(&self, account_id: &AccountId) -> Fallible<Language, GetLanguageError>;
+    async fn get_language(&self, account_id: AccountId) -> Fallible<Language, GetLanguageError>;
 }
 
 #[derive(Debug, Error)]

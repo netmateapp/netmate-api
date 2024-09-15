@@ -22,7 +22,7 @@ impl SetLanguageImpl {
 }
 
 impl SetLanaguage for SetLanguageImpl {
-    async fn set_language(&self, account_id: &AccountId, language: &Language) -> Fallible<(), SetLanguageError> {
+    async fn set_language(&self, account_id: AccountId, language: Language) -> Fallible<(), SetLanguageError> {
         self.update_language
             .query(&self.db, (account_id, language))
             .await
@@ -36,10 +36,10 @@ const UPDATE_LANGUAGE: Statement<UpdateLanguage>
 
 struct UpdateLanguage(PreparedStatement);
 
-impl<'a, 'b> TypedStatement<(&'a AccountId, &'b Language), Unit> for UpdateLanguage {
+impl TypedStatement<(AccountId, Language), Unit> for UpdateLanguage {
     type Result<U> = U where U: FromRow;
 
-    async fn query(&self, session: &Arc<Session>, values: (&'a AccountId, &'b Language)) -> anyhow::Result<Unit> {
+    async fn query(&self, session: &Arc<Session>, values: (AccountId, Language)) -> anyhow::Result<Unit> {
         session.execute_unpaged(&self.0, values)
             .await
             .map(|_| Unit)

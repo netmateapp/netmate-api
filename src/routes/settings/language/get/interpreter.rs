@@ -22,7 +22,7 @@ impl GetLanguageImpl {
 }
 
 impl GetLanguage for GetLanguageImpl {
-    async fn get_language(&self, account_id: &AccountId) -> Fallible<Language, GetLanguageError> {
+    async fn get_language(&self, account_id: AccountId) -> Fallible<Language, GetLanguageError> {
         self.select_language.query(&self.db, (account_id, ))
             .await
             .map(|(language, )| language)
@@ -35,10 +35,10 @@ const SELECT_LANGUAGE: Statement<SelectLanguage>
 
 struct SelectLanguage(PreparedStatement);
 
-impl<'a> TypedStatement<(&'a AccountId, ), (Language, )> for SelectLanguage {
+impl TypedStatement<(AccountId, ), (Language, )> for SelectLanguage {
     type Result<U> = U where U: FromRow;
 
-    async fn query(&self, session: &Arc<Session>, values: (&'a AccountId, )) -> anyhow::Result<(Language, )> {
+    async fn query(&self, session: &Arc<Session>, values: (AccountId, )) -> anyhow::Result<(Language, )> {
         session.execute_unpaged(&self.0, values)
             .await
             .map_err(anyhow::Error::from)?

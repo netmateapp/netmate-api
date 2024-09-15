@@ -37,7 +37,7 @@ pub async fn handler(
     Extension(account_id): Extension<AccountId>,
     Json(payload): Json<Payload>,
 ) -> Result<(), StatusCode> {
-    match routine.set_language(&account_id, &payload.language).await {
+    match routine.set_language(account_id, payload.language).await {
         Ok(()) => Ok(()),
         Err(e) => {
             info!(
