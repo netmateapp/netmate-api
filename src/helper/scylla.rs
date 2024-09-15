@@ -77,6 +77,7 @@ fn count_tuple_elements<T>() -> usize {
 
 // CQL文と`TypedStatement<I, O>`のパラメータと列の数がそれぞれ一致しているか確認する
 // あくまで数の一致を確かめているだけであり、実際の列の型との比較は行っていない
+#[allow(unused)]
 pub(crate) fn check_cql_query_type<I: SerializeRow, O: FromRow>(statement: Statement<impl TypedStatement<I, O>>) {
     let statement = statement.0;
     
@@ -94,6 +95,7 @@ pub(crate) fn check_cql_query_type<I: SerializeRow, O: FromRow>(statement: State
     assert_eq!(columns, column_count);
 }
 
+#[allow(unused)]
 pub(crate) fn check_cql_statement_type<I: SerializeRow>(statement: Statement<impl TypedStatement<I, Unit>>) {
     let value_count = statement.0.matches('?')
         .count();
