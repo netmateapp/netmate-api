@@ -108,3 +108,25 @@ impl<'a> TypedStatement<(&'a OneTimeToken, ), Unit> for DeleteAccountCreationApp
             .map_err(anyhow::Error::from)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::helper::scylla::{check_cql_query_type, check_cql_statement_type};
+
+    use super::{DELETE_ACCOUNT_CREATION_APPLICATION, INSERT_ACCOUNT, SELECT_ACCOUNT_CREATION_APPLICATION};
+
+    #[test]
+    fn check_select_account_creation_application_type() {
+        check_cql_query_type(SELECT_ACCOUNT_CREATION_APPLICATION);
+    }
+
+    #[test]
+    fn check_insert_account() {
+        check_cql_statement_type(INSERT_ACCOUNT);
+    }
+
+    #[test]
+    fn check_delete_account_creation_application() {
+        check_cql_statement_type(DELETE_ACCOUNT_CREATION_APPLICATION);
+    }
+}
