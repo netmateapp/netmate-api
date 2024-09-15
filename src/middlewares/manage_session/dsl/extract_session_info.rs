@@ -32,13 +32,11 @@ pub(crate) trait ExtractSessionInformation {
         let mut refresh_pair_cookie = None;
     
         // セッション管理クッキーとログインクッキーがあれば取得する
-        for cookie in cookies {
-            if let Ok(cookie) = cookie { 
-                match cookie.name() {
-                    SESSION_COOKIE_KEY => session_id_cookie = Some(cookie),
-                    REFRESH_PAIR_COOKIE_KEY => refresh_pair_cookie = Some(cookie),
-                    _ => ()
-                }
+        for cookie in cookies.flatten() {
+            match cookie.name() {
+                SESSION_COOKIE_KEY => session_id_cookie = Some(cookie),
+                REFRESH_PAIR_COOKIE_KEY => refresh_pair_cookie = Some(cookie),
+                _ => ()
             }
         }
     
