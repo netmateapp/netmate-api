@@ -1,12 +1,12 @@
 use redis::ToRedisArgs;
 
-pub const SESSION_EXPIRATION: SessionExpirationSeconds = SessionExpirationSeconds::new(30 * 60);
+pub const SESSION_EXPIRATION: SessionExpiration = SessionExpiration::secs(30 * 60);
 
 #[derive(Debug, Clone, Copy)]
-pub struct SessionExpirationSeconds(u32);
+pub struct SessionExpiration(u32);
 
-impl SessionExpirationSeconds {
-    pub const fn new(seconds: u32) -> Self {
+impl SessionExpiration {
+    pub const fn secs(seconds: u32) -> Self {
         Self(seconds)
     }
 
@@ -15,7 +15,7 @@ impl SessionExpirationSeconds {
     }
 }
 
-impl ToRedisArgs for SessionExpirationSeconds {
+impl ToRedisArgs for SessionExpiration {
     fn write_redis_args<W>(&self, out: &mut W)
     where
         W: ?Sized + redis::RedisWrite

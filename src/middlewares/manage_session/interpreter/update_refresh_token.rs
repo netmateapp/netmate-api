@@ -1,12 +1,12 @@
 use bb8_redis::redis::cmd;
 use redis::ToRedisArgs;
 
-use crate::{common::{fallible::Fallible, id::AccountId, session::{refresh_pair_expiration::RefreshPairExpirationSeconds, refresh_token::RefreshToken, session_series::SessionSeries}}, helper::redis::{Connection, TypedCommand, EX_OPTION, NAMESPACE_SEPARATOR, SET_COMMAND}, middlewares::manage_session::{dsl::update_refresh_token::{UpdateRefreshToken, UpdateRefreshTokenError}, interpreter::{REFRESH_PAIR_NAMESPACE, REFRESH_PAIR_VALUE_SEPARATOR}}};
+use crate::{common::{fallible::Fallible, id::AccountId, session::{refresh_pair_expiration::RefreshPairExpiration, refresh_token::RefreshToken, session_series::SessionSeries}}, helper::redis::{Connection, TypedCommand, EX_OPTION, NAMESPACE_SEPARATOR, SET_COMMAND}, middlewares::manage_session::{dsl::update_refresh_token::{UpdateRefreshToken, UpdateRefreshTokenError}, interpreter::{REFRESH_PAIR_NAMESPACE, REFRESH_PAIR_VALUE_SEPARATOR}}};
 
 use super::ManageSessionImpl;
 
 impl UpdateRefreshToken for ManageSessionImpl {
-    async fn assign_new_refresh_token_with_expiration(&self, new_refresh_token: &RefreshToken, session_series: &SessionSeries, session_account_id: AccountId, expiration: RefreshPairExpirationSeconds) -> Fallible<(), UpdateRefreshTokenError> {
+    async fn assign_new_refresh_token_with_expiration(&self, new_refresh_token: &RefreshToken, session_series: &SessionSeries, session_account_id: AccountId, expiration: RefreshPairExpiration) -> Fallible<(), UpdateRefreshTokenError> {
         let key = Key(session_series);
         let value = Value(new_refresh_token, session_account_id);
 
@@ -48,8 +48,8 @@ impl<'a> ToRedisArgs for Value<'a> {
     }
 }
 
-impl<'a, 'b> TypedCommand<(Key<'a>, Value<'b>, RefreshPairExpirationSeconds), ()> for SetNewRefreshTokenCommand {
-    async fn execute(&self, mut conn: Connection<'_>, (key, value, expiration): (Key<'a>, Value<'b>, RefreshPairExpirationSeconds)) -> anyhow::Result<()> {
+impl<'a, 'b> TypedCommand<(Key<'a>, Value<'b>, RefreshPairExpiration), ()> for SetNewRefreshTokenCommand {
+    async fn execute(&self, mut conn: Connection<'_>, (key, value, expiration): (Key<'a>, Value<'b>, RefreshPairExpiration)) -> anyhow::Result<()> {
         cmd(SET_COMMAND)
             .arg(key)
             .arg(value)

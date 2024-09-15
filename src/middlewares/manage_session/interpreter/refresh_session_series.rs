@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use scylla::{prepared_statement::PreparedStatement, FromRow, Session};
 
-use crate::{common::{fallible::Fallible, id::AccountId, session::{refresh_pair_expiration::RefreshPairExpirationSeconds, session_series::SessionSeries}, unixtime::UnixtimeMillis}, helper::scylla::{Statement, TypedStatement, Unit}, middlewares::manage_session::dsl::refresh_session_series::{LastSessionSeriesRefreshedAt, RefreshSessionSeries, RefreshSessionSeriesError, SessionSeriesRefreshThereshold}};
+use crate::{common::{fallible::Fallible, id::AccountId, session::{refresh_pair_expiration::RefreshPairExpiration, session_series::SessionSeries}, unixtime::UnixtimeMillis}, helper::scylla::{Statement, TypedStatement, Unit}, middlewares::manage_session::dsl::refresh_session_series::{LastSessionSeriesRefreshedAt, RefreshSessionSeries, RefreshSessionSeriesError, SessionSeriesRefreshThereshold}};
 
 use super::ManageSessionImpl;
 
@@ -21,7 +21,7 @@ impl RefreshSessionSeries for ManageSessionImpl {
         &REFRESH_SESSION_SERIES_THERESHOLD
     }
 
-    async fn refresh_session_series(&self, session_series: &SessionSeries, session_account_id: AccountId, new_expiration: RefreshPairExpirationSeconds) -> Fallible<(), RefreshSessionSeriesError> {
+    async fn refresh_session_series(&self, session_series: &SessionSeries, session_account_id: AccountId, new_expiration: RefreshPairExpiration) -> Fallible<(), RefreshSessionSeriesError> {
         let values = (session_account_id, session_series, UnixtimeMillis::now(), new_expiration);
 
         self.update_session_series_ttl
@@ -56,10 +56,10 @@ pub const UPDATE_SESSION_SERIES_TTL: Statement<UpdateSessionSeriesTtl>
 #[derive(Debug)]
 pub struct UpdateSessionSeriesTtl(pub PreparedStatement);
 
-impl<'a> TypedStatement<(AccountId, &'a SessionSeries, UnixtimeMillis, RefreshPairExpirationSeconds), Unit> for UpdateSessionSeriesTtl {
+impl<'a> TypedStatement<(AccountId, &'a SessionSeries, UnixtimeMillis, RefreshPairExpiration), Unit> for UpdateSessionSeriesTtl {
     type Result<U> = U where U: FromRow;
 
-    async fn query(&self, db: &Arc<Session>, values: (AccountId, &'a SessionSeries, UnixtimeMillis, RefreshPairExpirationSeconds)) -> anyhow::Result<Self::Result<Unit>> {
+    async fn query(&self, db: &Arc<Session>, values: (AccountId, &'a SessionSeries, UnixtimeMillis, RefreshPairExpiration)) -> anyhow::Result<Self::Result<Unit>> {
         db.execute_unpaged(&self.0, values)
             .await
             .map_err(anyhow::Error::from)?
