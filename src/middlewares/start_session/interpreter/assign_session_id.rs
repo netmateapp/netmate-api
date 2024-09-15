@@ -8,7 +8,7 @@ impl AssignSessionId for StartSessionImpl {
 
         SetSessionIdCommand.run(&self.cache, (key, session_account_id, expiration))
             .await
-            .map_err(|e| AssignSessionIdError::AssignNewSessionIdFailed(e.into()))?
+            .map_err(AssignSessionIdError::AssignNewSessionIdFailed)?
             .map_or_else(|| Err(AssignSessionIdError::SessionIdAlreadyUsed), |_| Ok(()))
     }
 }

@@ -7,15 +7,15 @@ use crate::{common::{email::{address::Email, resend::ResendEmailSender, send::{B
 
 use super::ManageSessionImpl;
 
-const SECURITY_EMAIL_ADDRESS: LazyLock<NetmateEmail> = LazyLock::new(|| NetmateEmail::try_from(Email::from_str("security@account.netmate.app").unwrap()).unwrap());
-const SECURITY_NOTIFICATION_SUBJECT: LazyLock<Subject> = LazyLock::new(|| Subject::from_str(ja::session::SECURITY_NOTIFICATION_SUBJECT).unwrap());
+static SECURITY_EMAIL_ADDRESS: LazyLock<NetmateEmail> = LazyLock::new(|| NetmateEmail::try_from(Email::from_str("security@account.netmate.app").unwrap()).unwrap());
+static SECURITY_NOTIFICATION_SUBJECT: LazyLock<Subject> = LazyLock::new(|| Subject::from_str(ja::session::SECURITY_NOTIFICATION_SUBJECT).unwrap());
 
 impl MitigateSessionTheft for ManageSessionImpl {
     async fn fetch_email_and_language(&self, account_id: AccountId) -> Fallible<(Email, Language), MitigateSessionTheftError> {
         self.select_email_and_language
             .query(&self.db, (account_id, ))
             .await
-            .map_err(|e| MitigateSessionTheftError::FetchEmailAndLanguageFailed(e.into()))
+            .map_err(MitigateSessionTheftError::FetchEmailAndLanguageFailed)
     }
 
     async fn send_security_notification(&self, email: &Email, language: Language) -> Fallible<(), MitigateSessionTheftError> {
@@ -25,7 +25,7 @@ impl MitigateSessionTheft for ManageSessionImpl {
 
         let body = Body::new(HtmlContent::new(html_content), PlainText::new(plain_text));
 
-        ResendEmailSender::send(&*SECURITY_EMAIL_ADDRESS, email, &SenderName::by(language), subject, &body)
+        ResendEmailSender::send(&SECURITY_EMAIL_ADDRESS, email, &SenderName::by(language), subject, &body)
             .await
             .map_err(|e| MitigateSessionTheftError::SendSecurityNotificationFailed(e.into()))
     }
@@ -42,7 +42,7 @@ impl MitigateSessionTheft for ManageSessionImpl {
 
         let keys: Vec<Key<'_>> = all_session_series
             .iter()
-            .map(|(session_series, )| Key(&session_series))
+            .map(|(session_series, )| Key(session_series))
             .collect();
 
         DeleteAllSessionSeriesCommand.run(&self.cache, keys)
@@ -92,8 +92,7 @@ impl TypedStatement<(AccountId, ), (SessionSeries, )> for SelectAllSessionSeries
             .map_err(anyhow::Error::from)?
             .rows_typed()
             .map(|rows| {
-                rows.filter(Result::is_ok)
-                    .map(Result::unwrap)
+                rows.flatten()
                     .collect::<Vec<(SessionSeries, )>>()
         })
             .map_err(anyhow::Error::from)

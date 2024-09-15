@@ -27,7 +27,7 @@ impl SetLanaguage for SetLanguageImpl {
             .query(&self.db, (language, account_id))
             .await
             .map(|_| ()) // execute -ize
-            .map_err(|e| SetLanguageError::SetLanguageFailed(e.into()))
+            .map_err(SetLanguageError::SetLanguageFailed)
     }
 }
 

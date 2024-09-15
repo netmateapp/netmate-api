@@ -37,7 +37,7 @@ impl FromStr for SessionSeries {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Token::from_str(s)
-            .map(|t| Self(t))
+            .map(Self)
             .map_err(|e| ParseSessionSeriesError(e.into()))
     }
 }
@@ -50,6 +50,6 @@ impl SerializeValue for SessionSeries {
 
 impl FromCqlVal<Option<CqlValue>> for SessionSeries {
     fn from_cql(cql_val: Option<CqlValue>) -> Result<Self, FromCqlValError> {
-        Token::from_cql(cql_val).map(|t| Self(t))
+        Token::from_cql(cql_val).map(Self)
     }
 }

@@ -92,7 +92,7 @@ mod tests {
 
     use super::{LastApiKeyRefreshedAt, RateLimit, RateLimitError};
 
-    static VALID_API_KEY: LazyLock<ApiKey> = LazyLock::new(|| ApiKey::gen());
+    static VALID_API_KEY: LazyLock<ApiKey> = LazyLock::new(ApiKey::gen);
 
     struct MockRateLimit;
 
@@ -170,7 +170,7 @@ mod tests {
 
     async fn test_rate_limit(api_key: &ApiKey) -> Fallible<Response<()>, RateLimitError> {
         let request = Request::builder()
-            .header("Authorization", format!("Bearer {}", api_key.to_string()))
+            .header("Authorization", format!("Bearer {}", api_key))
             .body(())
             .unwrap();
         MockRateLimit.rate_limit(&mut MockService, request).await
@@ -178,7 +178,7 @@ mod tests {
 
     #[tokio::test]
     async fn valid_api_key() {
-        let result = test_rate_limit(&*VALID_API_KEY).await;
+        let result = test_rate_limit(&VALID_API_KEY).await;
         assert!(result.is_ok());
     }
 

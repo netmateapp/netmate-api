@@ -24,10 +24,9 @@ impl SetRegionImpl {
 impl SetRegion for SetRegionImpl {
     async fn set_region(&self, account_id: AccountId, region: Region) -> Fallible<(), SetRegionError> {
         self.update_region
-            .query(&self.db, (region, account_id))
+            .execute(&self.db, (region, account_id))
             .await
-            .map(|_| ()) // execute -ize
-            .map_err(|e| SetRegionError::SetRegionFailed(e.into()))
+            .map_err(SetRegionError::SetRegionFailed)
     }
 }
 

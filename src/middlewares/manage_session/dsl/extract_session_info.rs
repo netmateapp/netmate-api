@@ -24,7 +24,7 @@ pub(crate) trait ExtractSessionInformation {
         headers.get(COOKIE)
             .and_then(|v| v.to_str().ok())
             .filter(|&s| s.len() <= MAX_COOKIE_BYTES)
-            .map(|s| Cookie::split_parse(s))
+            .map(Cookie::split_parse)
     }
 
     fn extract_session_cookies(cookies: SplitCookies<'_>) -> (Option<Cookie<'_>>, Option<Cookie<'_>>) {
@@ -33,13 +33,12 @@ pub(crate) trait ExtractSessionInformation {
     
         // セッション管理クッキーとログインクッキーがあれば取得する
         for cookie in cookies {
-            match cookie {
-                Ok(cookie) => match cookie.name() {
+            if let Ok(cookie) = cookie { 
+                match cookie.name() {
                     SESSION_COOKIE_KEY => session_id_cookie = Some(cookie),
                     REFRESH_PAIR_COOKIE_KEY => refresh_pair_cookie = Some(cookie),
                     _ => ()
-                },
-                _ => ()
+                }
             }
         }
     
@@ -86,7 +85,7 @@ mod tests {
         }
 
         if let Some((series_id, token)) = &refresh_pair {
-            cookie_header_value.push_str(&format!("{}={}", REFRESH_PAIR_COOKIE_KEY, to_cookie_value(&series_id, &token)));
+            cookie_header_value.push_str(&format!("{}={}", REFRESH_PAIR_COOKIE_KEY, to_cookie_value(series_id, token)));
         }
 
         let value = cookie_header_value

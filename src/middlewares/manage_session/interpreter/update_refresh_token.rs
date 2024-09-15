@@ -11,7 +11,7 @@ impl UpdateRefreshToken for ManageSessionImpl {
 
         SetNewRefreshTokenCommand.run(&self.cache, (key, value, expiration))
             .await
-            .map_err(|e| UpdateRefreshTokenError::AssignNewRefreshTokenFailed(e.into()))
+            .map_err(UpdateRefreshTokenError::AssignNewRefreshTokenFailed)
     }
 }
 

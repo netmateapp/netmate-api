@@ -10,7 +10,7 @@ pub const MIN_BIRTH_YEAR: u16 = 1900;
 
 // 年越し時や長期稼働時に最新の年に対応できないが、
 // 生年は統計目的の情報であり、数才の人間はユーザーとして想定されない
-pub const MAX_BIRTH_YEAR: LazyLock<u16> = LazyLock::new(current_year);
+pub static MAX_BIRTH_YEAR: LazyLock<u16> = LazyLock::new(current_year);
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct BirthYear(Option<NonZeroU16>);
@@ -103,7 +103,7 @@ fn civil_year_from_unixtime(unixtime_as_secs: u64) -> u16 {
     const DAYS_OFFSET: u32 = 719468;
     let z: u32 = (unixtime_as_secs / 86400) as u32 + DAYS_OFFSET; // 改変: 引数が秒であるため日数に変換
     let era = z / 146097; // 改変: zは常に0以上であるためelse節を省略
-    let doe = (z - era * 146097) as u32; // [0, 146096]
+    let doe = z - era * 146097; // [0, 146096]
     let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365; // [0, 399]
     let y = yoe + era * 400;
     let doy = doe - (365 * yoe + yoe / 4 - yoe / 100); // [0, 365]

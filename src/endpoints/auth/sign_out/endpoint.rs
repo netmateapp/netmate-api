@@ -39,7 +39,7 @@ async fn handler(
     mut jar: CookieJar,
 ) -> Result<CookieJar, StatusCode> {
     let session_series: SessionSeries = extract_session_series(&jar)
-        .ok_or_else(|| StatusCode::INTERNAL_SERVER_ERROR)?;
+        .ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
 
     // ログアウトの成否にかかわらず、クッキーを削除する
     jar = jar.remove(Cookie::build(SESSION_COOKIE_KEY));
@@ -64,9 +64,8 @@ fn extract_session_series(jar: &CookieJar) -> Option<SessionSeries> {
     jar.get(REFRESH_PAIR_COOKIE_KEY)
         .and_then(|cookie| {
             cookie.value()
-                .splitn(2, REFRESH_PAIR_SEPARATOR)
+                .split(REFRESH_PAIR_SEPARATOR)
                 .next()
-                .map(|series| series.parse().ok())
-                .flatten()
+                .and_then(|series| series.parse().ok())
         })
 }

@@ -9,7 +9,7 @@ impl AuthenticateSession for ManageSessionImpl {
     async fn resolve_session_id_to_account_id(&self, session_id: &SessionId) -> Fallible<Option<AccountId>, AuthenticateSessionError> {
         GetAccountIdCommand.run(&self.cache, Key(session_id))
             .await
-            .map_err(|e| AuthenticateSessionError::ResolveSessionIdFailed(e.into()))
+            .map_err(AuthenticateSessionError::ResolveSessionIdFailed)
     }
 }
 

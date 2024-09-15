@@ -73,8 +73,8 @@ mod tests {
 
     use super::{LastSessionSeriesRefreshedAt, RefreshSessionSeries, RefreshSessionSeriesError, SessionSeriesRefreshThereshold};
 
-    const SESSION_SERIES_TO_BE_REFRESHED: LazyLock<SessionSeries> = LazyLock::new(|| SessionSeries::gen());
-    const REFRESH_THERESHOLD: SessionSeriesRefreshThereshold = SessionSeriesRefreshThereshold::days(1);
+    static SESSION_SERIES_TO_BE_REFRESHED: LazyLock<SessionSeries> = LazyLock::new(SessionSeries::gen);
+    static REFRESH_THERESHOLD: SessionSeriesRefreshThereshold = SessionSeriesRefreshThereshold::days(1);
 
     struct MockRefreshSessionSeries;
 
@@ -100,7 +100,7 @@ mod tests {
     #[tokio::test]
     async fn session_series_to_be_refreshed() {
         let result = MockRefreshSessionSeries.try_refresh_session_series(
-            &*SESSION_SERIES_TO_BE_REFRESHED,
+            &SESSION_SERIES_TO_BE_REFRESHED,
             AccountId::gen(),
             RefreshPairExpirationSeconds::secs(1),
         ).await;

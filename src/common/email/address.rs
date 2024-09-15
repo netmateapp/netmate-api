@@ -11,7 +11,7 @@ pub struct Email(String);
 
 impl Email {
     pub fn value(&self) -> &String {
-        return &self.0;
+        &self.0
     }
 }
 

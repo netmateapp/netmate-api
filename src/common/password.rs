@@ -34,7 +34,7 @@ impl Password {
     pub fn hashed(&self) -> PasswordHash {
         let salt = SaltString::generate(&mut OsRng);
 
-        let phc_format_hash = ARGON2_CONTEXT.hash_password(&self.value().as_bytes(), &salt).unwrap().to_string();
+        let phc_format_hash = ARGON2_CONTEXT.hash_password(self.value().as_bytes(), &salt).unwrap().to_string();
     
         PasswordHash(phc_format_hash)
     }

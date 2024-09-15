@@ -15,7 +15,7 @@ impl ReAuthenticateSession for ManageSessionImpl {
         GetRefreshPairCommand.run(&self.cache, key)
             .await
             .map(|o| o.map(|p| (p.0, p.1)))
-            .map_err(|e| ReAuthenticateSessionError::FetchRefreshTokenAndAccountIdFailed(e.into()))
+            .map_err(ReAuthenticateSessionError::FetchRefreshTokenAndAccountIdFailed)
     }
 }
 

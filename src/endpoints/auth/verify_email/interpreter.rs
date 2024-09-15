@@ -40,7 +40,7 @@ impl VerifyEmail for VerifyEmailImpl {
         self.select_account_creation_application
             .query(&self.db, (token, ))
             .await
-            .map_err(|e| VerifyEmailError::RetrieveAccountCreationApplicationFailed(e.into()))
+            .map_err(VerifyEmailError::RetrieveAccountCreationApplicationFailed)
     }
 
     async fn create_account(&self, account_id: AccountId, email: &Email, password_hash: &PasswordHash, birth_year: BirthYear, region: Region, language: Language) -> Fallible<(), VerifyEmailError> {
@@ -48,7 +48,7 @@ impl VerifyEmail for VerifyEmailImpl {
             .execute(&self.db, (account_id, email, password_hash, birth_year, region, language))
             .await
             .map(|_| ())
-            .map_err(|e| VerifyEmailError::CreateAccountFailed(e.into()))
+            .map_err(VerifyEmailError::CreateAccountFailed)
     }
 
     async fn delete_account_creation_application_by(&self, token: &OneTimeToken) -> Fallible<(), VerifyEmailError> {
@@ -56,7 +56,7 @@ impl VerifyEmail for VerifyEmailImpl {
             .execute(&self.db, (token, ))
             .await
             .map(|_| ())
-            .map_err(|e| VerifyEmailError::DeleteAccountCreationApplicationFailed(e.into()))
+            .map_err(VerifyEmailError::DeleteAccountCreationApplicationFailed)
     }
 }
 

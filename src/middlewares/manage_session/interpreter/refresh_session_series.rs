@@ -14,7 +14,7 @@ impl RefreshSessionSeries for ManageSessionImpl {
             .query(&self.db, (session_account_id, session_series))
             .await
             .map(|(refreshed_at, )| refreshed_at)
-            .map_err(|e| RefreshSessionSeriesError::FetchLastSessionSeriesRefreshedAtFailed(e.into()))
+            .map_err(RefreshSessionSeriesError::FetchLastSessionSeriesRefreshedAtFailed)
     }
 
     fn refresh_thereshold() -> &'static SessionSeriesRefreshThereshold {
@@ -27,7 +27,7 @@ impl RefreshSessionSeries for ManageSessionImpl {
         self.update_session_series_ttl
             .execute(&self.db, values)
             .await
-            .map_err(|e| RefreshSessionSeriesError::RefreshSessionSeriesFailed(e.into()))
+            .map_err(RefreshSessionSeriesError::RefreshSessionSeriesFailed)
     }
 }
 

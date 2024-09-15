@@ -104,10 +104,7 @@ impl<const ENTROPY_BYTES: usize> FromStr for Token<ENTROPY_BYTES> {
 }
 
 fn is_valid_char(c: char) -> bool {
-    match c {
-        'A'..='Z' | 'a'..='z' | '0'..='9' | '-' | '_' => true,
-        _ => false,
-    }
+    matches!(c, 'A'..='Z' | 'a'..='z' | '0'..='9' | '-' | '_')
 }
 
 impl<'de, const BYTES: usize> Deserialize<'de> for Token<BYTES> {

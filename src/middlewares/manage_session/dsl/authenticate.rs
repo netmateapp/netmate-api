@@ -4,7 +4,7 @@ use crate::common::{fallible::Fallible, id::account_id::AccountId, session::sess
 
 pub(crate) trait AuthenticateSession {
     async fn authenticate_session(&self, session_id: &SessionId) -> Fallible<AccountId, AuthenticateSessionError> {
-        self.resolve_session_id_to_account_id(&session_id)
+        self.resolve_session_id_to_account_id(session_id)
             .await?
             .ok_or_else(|| AuthenticateSessionError::InvalidSessionId)
     }
@@ -28,7 +28,7 @@ mod tests {
 
     use super::{AuthenticateSession, AuthenticateSessionError};
 
-    static VALID_SESSION_ID: LazyLock<SessionId> = LazyLock::new(|| SessionId::gen());
+    static VALID_SESSION_ID: LazyLock<SessionId> = LazyLock::new(SessionId::gen);
 
     struct MockAuthenticateUser;
 
@@ -44,7 +44,7 @@ mod tests {
 
     #[tokio::test]
     async fn valid_session_id() {
-        let result = MockAuthenticateUser.authenticate_session(&*VALID_SESSION_ID).await;
+        let result = MockAuthenticateUser.authenticate_session(&VALID_SESSION_ID).await;
         assert!(result.is_ok());
     }
 

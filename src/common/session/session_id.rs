@@ -36,7 +36,7 @@ impl FromStr for SessionId {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Token::from_str(s)
-            .map(|t| Self(t))
+            .map(Self)
             .map_err(|e| ParseSessionIdError(e.into()))
     }
 }

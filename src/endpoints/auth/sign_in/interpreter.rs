@@ -26,7 +26,7 @@ impl SignIn for SignInImpl {
         self.select_password_hash_and_account_id
             .query(&self.db, (email, ))
             .await
-            .map_err(|e| SignInError::FetchPasswordHashAndAccountIdFailed(e.into()))
+            .map_err(SignInError::FetchPasswordHashAndAccountIdFailed)
     }
 }
 

@@ -5,7 +5,7 @@ use crate::common::{api_key::ApiKey, fallible::Fallible};
 
 pub(crate) trait IncrementRate {
     async fn try_increment_rate(&self, api_key: &ApiKey) -> Fallible<(), IncrementRateError> {
-        let rate = self.increment_rate_within_window(api_key, &self.time_window()).await?;
+        let rate = self.increment_rate_within_window(api_key, self.time_window()).await?;
         if self.is_limit_over(&rate) {
             return Err(IncrementRateError::RateLimitOver)
         }
@@ -101,7 +101,7 @@ mod tests {
 
     use super::{IncrementRate, IncrementRateError, InculsiveLimit, Rate, TimeWindow};
 
-    static WITHIN_LIMIT: LazyLock<ApiKey> = LazyLock::new(|| ApiKey::gen());
+    static WITHIN_LIMIT: LazyLock<ApiKey> = LazyLock::new(ApiKey::gen);
 
     const TIME_WINDOW: TimeWindow = TimeWindow::secs(60);
     const INCLUSIVE_LIMIT: InculsiveLimit = InculsiveLimit::new(100);

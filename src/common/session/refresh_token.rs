@@ -37,13 +37,13 @@ impl FromStr for RefreshToken {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Token::from_str(s)
-            .map(|t| Self(t))
+            .map(Self)
             .map_err(|e| ParseRefreshTokenError(e.into()))
     }
 }
 
 impl FromRedisValue for RefreshToken {
     fn from_redis_value(v: &redis::Value) -> redis::RedisResult<Self> {
-        Token::from_redis_value(v).map(|t| Self(t))
+        Token::from_redis_value(v).map(Self)
     }
 }

@@ -12,8 +12,8 @@ impl EmailSender for ResendEmailSender {
         let to = [to.value()];
 
         let email = CreateEmailBaseOptions::new(from, to, subject.value())
-            .with_html(&body.html_content().value())
-            .with_text(&body.plain_text().value());
+            .with_html(body.html_content().value())
+            .with_text(body.plain_text().value());
 
         resend.emails
             .send(email)

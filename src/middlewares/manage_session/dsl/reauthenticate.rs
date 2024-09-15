@@ -4,7 +4,7 @@ use crate::common::{fallible::Fallible, id::account_id::AccountId, session::{ref
 
 pub(crate) trait ReAuthenticateSession {
     async fn reauthenticate_session(&self, session_series: &SessionSeries, refresh_token: RefreshToken) -> Fallible<AccountId, ReAuthenticateSessionError> {
-        match self.fetch_refresh_token_and_account_id(&session_series).await? {
+        match self.fetch_refresh_token_and_account_id(session_series).await? {
             Some((stored_refresh_token, account_id)) => {
                 if refresh_token == stored_refresh_token {
                     Ok(account_id)
@@ -37,8 +37,8 @@ mod tests {
 
     use super::{ReAuthenticateSession, ReAuthenticateSessionError};
 
-    static REAUTHENTICATED: LazyLock<SessionSeries> = LazyLock::new(|| SessionSeries::gen());
-    static POTENTIAL_SESSION_THEFT: LazyLock<SessionSeries> = LazyLock::new(|| SessionSeries::gen());
+    static REAUTHENTICATED: LazyLock<SessionSeries> = LazyLock::new(SessionSeries::gen);
+    static POTENTIAL_SESSION_THEFT: LazyLock<SessionSeries> = LazyLock::new(SessionSeries::gen);
 
     struct MockReauthenticateSession;
 
@@ -56,13 +56,13 @@ mod tests {
 
     #[tokio::test]
     async fn reauthenticated() {
-        let result = MockReauthenticateSession.fetch_refresh_token_and_account_id(&*REAUTHENTICATED).await;
+        let result = MockReauthenticateSession.fetch_refresh_token_and_account_id(&REAUTHENTICATED).await;
         assert!(result.is_ok());
     }
 
     #[tokio::test]
     async fn potential_session_theft() {
-        let result = MockReauthenticateSession.fetch_refresh_token_and_account_id(&*POTENTIAL_SESSION_THEFT).await;
+        let result = MockReauthenticateSession.fetch_refresh_token_and_account_id(&POTENTIAL_SESSION_THEFT).await;
         match result.err() {
             Some(ReAuthenticateSessionError::PotentialSessionTheft(_)) => (),
             _ => panic!()

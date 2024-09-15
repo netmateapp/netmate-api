@@ -26,7 +26,7 @@ impl GetLanguage for GetLanguageImpl {
         self.select_language.query(&self.db, (account_id, ))
             .await
             .map(|(language, )| language)
-            .map_err(|e| GetLanguageError::GetLanguageFailed(e.into()))
+            .map_err(GetLanguageError::GetLanguageFailed)
     }
 }
 

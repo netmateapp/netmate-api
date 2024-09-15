@@ -12,7 +12,7 @@ impl IncrementRate for RateLimitImpl {
         self.incr_and_expire_if_first
                 .run(&self.cache, (key, time_window))
                 .await
-                .map_err(|e| IncrementRateError::IncrementRateFailed(e.into()))
+                .map_err(IncrementRateError::IncrementRateFailed)
     }
 
     fn time_window(&self) -> &TimeWindow {

@@ -88,7 +88,7 @@ mod tests {
         fn call(&mut self, request: Request<()>) -> Self::Future {
             if let Some(account_id) = request.extensions().get::<AccountId>() {
                 let mut response = Response::new(());
-                response.extensions_mut().insert(account_id.clone());
+                response.extensions_mut().insert(*account_id);
                 ready(Ok(response))
             } else {
                 let response = Response::builder()

@@ -22,7 +22,7 @@ impl RefreshApiKey for RateLimitImpl {
         self.insert_api_key_with_ttl_refresh
             .execute(&self.db, (api_key, UnixtimeMillis::now(), expiration))
             .await
-            .map_err(|e| RefreshApiKeyError::RefreshApiKeyFailed(e.into()))
+            .map_err(RefreshApiKeyError::RefreshApiKeyFailed)
     }
 }
 

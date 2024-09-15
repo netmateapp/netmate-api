@@ -40,7 +40,7 @@ impl SignUp for SignUpImpl {
             .query(&self.db, (email, ))
             .await
             .map(|v| v.is_some())
-            .map_err(|e| SignUpError::PotentiallyUnavailableEmail(e.into()))
+            .map_err(SignUpError::PotentiallyUnavailableEmail)
     }
 
     async fn apply_to_create_account(&self, email: &Email, pw_hash: &PasswordHash, birth_year: BirthYear, region: Region, language: Language, token: &OneTimeToken) -> Result<(), SignUpError> {
@@ -48,7 +48,7 @@ impl SignUp for SignUpImpl {
             .execute(&self.db, (token, email, pw_hash, birth_year, region, language))
             .await
             .map(|_| ())
-            .map_err(|e| SignUpError::ApplicationFailed(e.into()))
+            .map_err(SignUpError::ApplicationFailed)
     }
 
     async fn send_verification_email(&self, email: &Email, language: Language, token: &OneTimeToken) -> Result<(), SignUpError> {
@@ -65,7 +65,7 @@ impl SignUp for SignUpImpl {
             PlainText::new(&plain_text.replace("{token}", token.value()))
         );
 
-        ResendEmailSender::send(&*AUTHENTICATION_EMAIL_ADDRESS, email, &sender_name, &subject, &body)
+        ResendEmailSender::send(&AUTHENTICATION_EMAIL_ADDRESS, email, &sender_name, subject, &body)
             .await
             .map_err(|e| SignUpError::AuthenticationEmailSendFailed(e.into()))
     }

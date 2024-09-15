@@ -5,7 +5,7 @@ use crate::common::{fallible::Fallible, id::account_id::AccountId, session::{ref
 pub(crate) trait UpdateRefreshToken {
     async fn update_refresh_token(&self, session_series: &SessionSeries, account_id: AccountId, expiration: RefreshPairExpirationSeconds) -> Fallible<RefreshToken, UpdateRefreshTokenError> {
         let new_refresh_token = RefreshToken::gen();
-        self.assign_new_refresh_token_with_expiration(&new_refresh_token, &session_series, account_id, expiration).await?;
+        self.assign_new_refresh_token_with_expiration(&new_refresh_token, session_series, account_id, expiration).await?;
         Ok(new_refresh_token)
     }
 

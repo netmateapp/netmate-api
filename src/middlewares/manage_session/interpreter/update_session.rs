@@ -8,7 +8,7 @@ impl UpdateSession for ManageSessionImpl {
 
         SetSessionIdCommand.run(&self.cache, (key, session_account_id, new_expiration))
             .await
-            .map_err(|e| UpdateSessionError::AssignNewSessionIdFailed(e.into()))?
+            .map_err(UpdateSessionError::AssignNewSessionIdFailed)?
             .map_or_else(|| Err(UpdateSessionError::SessionIdAlreadyUsed), |_| Ok(()))
     }
 }

@@ -14,11 +14,11 @@ pub const SESSION_TIMEOUT_MINUTES: Duration = Duration::minutes(30);
 pub const REFRESH_PAIR_EXPIRATION_DAYS: Duration = Duration::days(400);
 
 pub fn set_session_cookie_with_expiration<B>(response: &mut Response<B>, session_id: &SessionId) {
-    set_cookie(response, &SESSION_COOKIE_KEY, String::from(session_id.value().value()), SESSION_TIMEOUT_MINUTES)
+    set_cookie(response, SESSION_COOKIE_KEY, String::from(session_id.value().value()), SESSION_TIMEOUT_MINUTES)
 }
 
 pub fn set_refresh_pair_cookie_with_expiration<B>(response: &mut Response<B>, session_series: &SessionSeries, refresh_token: &RefreshToken) {
-    set_cookie(response, &REFRESH_PAIR_COOKIE_KEY, to_cookie_value(session_series, refresh_token), REFRESH_PAIR_EXPIRATION_DAYS)
+    set_cookie(response, REFRESH_PAIR_COOKIE_KEY, to_cookie_value(session_series, refresh_token), REFRESH_PAIR_EXPIRATION_DAYS)
 }
 
 fn set_cookie<B>(response: &mut Response<B>, key: &'static str, value: String, max_age: Duration) {
@@ -79,7 +79,7 @@ mod tests {
         let mut response = Response::new(());
         let session_id = SessionId::gen();
         set_session_cookie_with_expiration(&mut response, &session_id);
-        test_set_cookie(response, &SESSION_COOKIE_KEY, session_id.to_string(), SESSION_TIMEOUT_MINUTES);
+        test_set_cookie(response, SESSION_COOKIE_KEY, session_id.to_string(), SESSION_TIMEOUT_MINUTES);
     }
 
     #[test]
@@ -88,7 +88,7 @@ mod tests {
         let session_series = SessionSeries::gen();
         let refresh_token = RefreshToken::gen();
         set_refresh_pair_cookie_with_expiration(&mut response, &session_series, &refresh_token);
-        test_set_cookie(response, &REFRESH_PAIR_COOKIE_KEY, to_cookie_value(&session_series, &refresh_token), REFRESH_PAIR_EXPIRATION_DAYS);
+        test_set_cookie(response, REFRESH_PAIR_COOKIE_KEY, to_cookie_value(&session_series, &refresh_token), REFRESH_PAIR_EXPIRATION_DAYS);
     }
 
     #[test]
@@ -103,10 +103,10 @@ mod tests {
         let cookie = secure_cookie_builder("key", "value".to_string()).build();
         assert_eq!(cookie.name(), "key");
         assert_eq!(cookie.value(), "value");
-        assert_eq!(cookie.http_only().unwrap(), true);
-        assert_eq!(cookie.secure().unwrap(), true);
+        assert!(cookie.http_only().unwrap());
+        assert!(cookie.secure().unwrap());
         assert_eq!(cookie.same_site().unwrap(), SameSite::Strict);
         assert_eq!(cookie.path().unwrap(), "/");
-        assert_eq!(cookie.partitioned().unwrap(), true);
+        assert!(cookie.partitioned().unwrap());
     }
 }
