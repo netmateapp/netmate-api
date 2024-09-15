@@ -1,4 +1,4 @@
-use std::{str::FromStr, sync::LazyLock};
+use std::{fmt::{self, Display}, str::FromStr, sync::LazyLock};
 
 use idna::domain_to_ascii;
 use regex::Regex;
@@ -28,6 +28,12 @@ impl FromStr for Email {
         } else {
             Err(ParseEmailError)
         }
+    }
+}
+
+impl Display for Email {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 

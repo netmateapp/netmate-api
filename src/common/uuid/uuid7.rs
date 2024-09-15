@@ -9,6 +9,10 @@ use uuid::Uuid;
 pub struct Uuid7(Uuid);
 
 impl Uuid7 {
+    pub const fn new_unchecked(uuid: Uuid) -> Self {
+        Uuid7(uuid)
+    }
+
     pub fn now() -> Uuid7 {
         Uuid7(Uuid::now_v7())
     }

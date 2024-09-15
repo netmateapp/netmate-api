@@ -2,8 +2,11 @@ use std::fmt::{self, Display};
 
 use redis::{FromRedisValue, RedisResult, ToRedisArgs};
 use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::{ColumnType, CqlValue}, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
+use uuid::Uuid;
 
 use crate::common::uuid::uuid7::Uuid7;
+
+pub const EMPTY_ACCOUNT_ID: AccountId = AccountId::of(Uuid7::new_unchecked(Uuid::from_fields(0x00, 0x00, 0x7000, &[0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])));
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct AccountId(Uuid7);
@@ -52,5 +55,18 @@ impl ToRedisArgs for AccountId {
 impl FromRedisValue for AccountId {
     fn from_redis_value(v: &redis::Value) -> RedisResult<Self> {
         Uuid7::from_redis_value(v).map(AccountId)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use uuid::Variant;
+
+    use crate::common::id::account_id::EMPTY_ACCOUNT_ID;
+
+    #[test]
+    fn check_top_tag_id_format() {
+        assert_eq!(EMPTY_ACCOUNT_ID.value().value().get_version_num(), 7);
+        assert_eq!(EMPTY_ACCOUNT_ID.value().value().get_variant(), Variant::RFC4122);
     }
 }
