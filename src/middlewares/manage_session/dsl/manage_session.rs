@@ -100,9 +100,6 @@ mod tests {
     static AUTHENTICATION_SUCCEEDED: LazyLock<SessionId> = LazyLock::new(|| SessionId::gen());
     static REAUTHENTICATION_SUCCEDED: LazyLock<(SessionSeries, RefreshToken)> = LazyLock::new(|| (SessionSeries::gen(), RefreshToken::gen()));
 
-    const SESSION_EXPIRATION: SessionExpirationSeconds = SessionExpirationSeconds::secs(1800);
-    const REFRESH_PAIR_EXPIRATION: RefreshPairExpirationSeconds = RefreshPairExpirationSeconds::secs(2592000);
-
     struct MockManageSession;
 
     impl ManageSession for MockManageSession {}
