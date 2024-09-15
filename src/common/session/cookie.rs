@@ -22,6 +22,7 @@ pub fn set_refresh_pair_cookie_with_expiration<B>(response: &mut Response<B>, se
 }
 
 fn set_cookie<B>(response: &mut Response<B>, key: &'static str, value: String, max_age: Duration) {
+    // `insert`は同一ヘッダーを上書きするため、`append`を使用しなければならない
     response.headers_mut().append(SET_COOKIE, create_cookie_value(key, value, max_age));
 }
 
