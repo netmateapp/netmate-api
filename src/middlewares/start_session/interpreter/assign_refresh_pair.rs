@@ -48,6 +48,7 @@ impl<'a, 'b> TypedCommand<(RefreshPairKey<'a>, RefreshPairValue<'b>, RefreshPair
 pub const INSERT_SESSION_SERIES: Statement<InsertSessionSeries>
     = Statement::of("INSERT INTO session_series (account_id, series, refreshed_at) VALUES (?, ?, ?) USING TTL 34560000");
 
+#[derive(Debug)]
 pub struct InsertSessionSeries(pub PreparedStatement);
 
 impl<'a> TypedStatement<(AccountId, &'a SessionSeries, UnixtimeMillis), Unit> for InsertSessionSeries {

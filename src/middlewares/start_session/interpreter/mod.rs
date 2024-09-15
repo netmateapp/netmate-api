@@ -10,6 +10,7 @@ use super::dsl::start_session::StartSession;
 mod assign_refresh_pair;
 mod assign_session_id;
 
+#[derive(Debug)]
 pub struct StartSessionImpl {
     db: Arc<Session>,
     cache: Arc<Pool>,
