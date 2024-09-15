@@ -6,25 +6,25 @@ use crate::common::{api_key::ApiKey, fallible::Fallible, unixtime::UnixtimeMilli
 use super::rate_limit::LastApiKeyRefreshedAt;
 
 pub(crate) trait RefreshApiKey {
-    async fn try_refresh_api_key(&self, last_api_key_refreshed_at: &LastApiKeyRefreshedAt, api_key: &ApiKey) -> Fallible<(), RefreshApiKeyError> {
-        if self.should_refresh_api_key(&last_api_key_refreshed_at) {
+    async fn try_refresh_api_key(&self, last_api_key_refreshed_at: LastApiKeyRefreshedAt, api_key: &ApiKey) -> Fallible<(), RefreshApiKeyError> {
+        if self.should_refresh_api_key(last_api_key_refreshed_at) {
             self.refresh_api_key(api_key, self.api_key_expiration()).await
         } else {
             Err(RefreshApiKeyError::NoNeedToRefreshApiKey)
         }
     }
 
-    fn should_refresh_api_key(&self, last_api_key_refreshed_at: &LastApiKeyRefreshedAt) -> bool {
+    fn should_refresh_api_key(&self, last_api_key_refreshed_at: LastApiKeyRefreshedAt) -> bool {
         let now = UnixtimeMillis::now();
         let last_refreshed_at = last_api_key_refreshed_at.value();
         now.value() - last_refreshed_at.value() >= self.api_key_refresh_thereshold().as_millis()
     }
 
-    fn api_key_refresh_thereshold(&self) -> &ApiKeyRefreshThereshold;
+    fn api_key_refresh_thereshold(&self) -> ApiKeyRefreshThereshold;
 
-    fn api_key_expiration(&self) -> &ApiKeyExpirationSeconds;
+    fn api_key_expiration(&self) -> ApiKeyExpirationSeconds;
 
-    async fn refresh_api_key(&self, api_key: &ApiKey, expiration: &ApiKeyExpirationSeconds) -> Fallible<(), RefreshApiKeyError>;
+    async fn refresh_api_key(&self, api_key: &ApiKey, expiration: ApiKeyExpirationSeconds) -> Fallible<(), RefreshApiKeyError>;
 }
 
 #[derive(Debug, Error)]
@@ -35,6 +35,7 @@ pub enum RefreshApiKeyError {
     RefreshApiKeyFailed(#[source] anyhow::Error),
 }
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct ApiKeyRefreshThereshold(u64);
 
 impl ApiKeyRefreshThereshold {
@@ -47,7 +48,7 @@ impl ApiKeyRefreshThereshold {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct ApiKeyExpirationSeconds(u64);
 
 impl ApiKeyExpirationSeconds {
@@ -84,15 +85,15 @@ mod tests {
     struct MockRefreshApiKey;
 
     impl RefreshApiKey for MockRefreshApiKey {
-        fn api_key_refresh_thereshold(&self) -> &ApiKeyRefreshThereshold {
-            &API_KEY_REFRESH_THERESHOLD
+        fn api_key_refresh_thereshold(&self) -> ApiKeyRefreshThereshold {
+            API_KEY_REFRESH_THERESHOLD
         }
 
-        fn api_key_expiration(&self) -> &ApiKeyExpirationSeconds {
-            &API_KEY_EXPIRATION
+        fn api_key_expiration(&self) -> ApiKeyExpirationSeconds {
+            API_KEY_EXPIRATION
         }
 
-        async fn refresh_api_key(&self, _api_key: &ApiKey, _expiration: &ApiKeyExpirationSeconds) -> Fallible<(), RefreshApiKeyError> {
+        async fn refresh_api_key(&self, _api_key: &ApiKey, _expiration: ApiKeyExpirationSeconds) -> Fallible<(), RefreshApiKeyError> {
             Ok(())
         }
     }
@@ -102,7 +103,7 @@ mod tests {
         let last_api_key_refreshed_at = UnixtimeMillis::now().value() - API_KEY_REFRESH_THERESHOLD.as_millis();
         let last_api_key_refreshed_at = LastApiKeyRefreshedAt::new(UnixtimeMillis::new(last_api_key_refreshed_at));
         let api_key = ApiKey::gen();
-        let result = MockRefreshApiKey.try_refresh_api_key(&last_api_key_refreshed_at, &api_key).await;
+        let result = MockRefreshApiKey.try_refresh_api_key(last_api_key_refreshed_at, &api_key).await;
         assert!(result.is_ok());
     }
 
@@ -110,7 +111,7 @@ mod tests {
     async fn api_key_not_to_be_refreshed() {
         let last_api_key_refreshed_at = LastApiKeyRefreshedAt::new(UnixtimeMillis::now());
         let api_key = ApiKey::gen();
-        let result = MockRefreshApiKey.try_refresh_api_key(&last_api_key_refreshed_at, &api_key).await;
+        let result = MockRefreshApiKey.try_refresh_api_key(last_api_key_refreshed_at, &api_key).await;
         assert!(result.is_err());
     }
 }

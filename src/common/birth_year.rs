@@ -12,7 +12,7 @@ pub const MIN_BIRTH_YEAR: u16 = 1900;
 // 生年は統計目的の情報であり、数才の人間はユーザーとして想定されない
 pub const MAX_BIRTH_YEAR: LazyLock<u16> = LazyLock::new(current_year);
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct BirthYear(Option<NonZeroU16>);
 
 impl BirthYear {

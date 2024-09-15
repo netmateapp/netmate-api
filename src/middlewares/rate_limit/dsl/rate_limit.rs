@@ -24,7 +24,7 @@ pub(crate) trait RateLimit {
                                 // `Error`は`Infallible`であるため`unwrap()`で問題ない
                                 let response = inner.call(request).await.unwrap();
 
-                                let _ = self.try_refresh_api_key(&last_api_key_refreshed_at, &api_key).await;
+                                let _ = self.try_refresh_api_key(last_api_key_refreshed_at, &api_key).await;
 
                                 Ok(response)
                             },
@@ -63,6 +63,7 @@ pub enum RateLimitError {
     RateLimitFailed,
 }
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct LastApiKeyRefreshedAt(UnixtimeMillis);
 
 impl LastApiKeyRefreshedAt {
@@ -136,15 +137,15 @@ mod tests {
     const API_KEY_EXPIRATION: ApiKeyExpirationSeconds = ApiKeyExpirationSeconds::secs(60);
 
     impl RefreshApiKey for MockRateLimit {
-        fn api_key_refresh_thereshold(&self) -> &ApiKeyRefreshThereshold {
-            &API_KEY_REFRESH_THERESHOLD
+        fn api_key_refresh_thereshold(&self) -> ApiKeyRefreshThereshold {
+            API_KEY_REFRESH_THERESHOLD
         }
 
-        fn api_key_expiration(&self) -> &ApiKeyExpirationSeconds {
-            &API_KEY_EXPIRATION
+        fn api_key_expiration(&self) -> ApiKeyExpirationSeconds {
+            API_KEY_EXPIRATION
         }
 
-        async fn refresh_api_key(&self, api_key: &ApiKey, _expiration: &ApiKeyExpirationSeconds) -> Fallible<(), RefreshApiKeyError> {
+        async fn refresh_api_key(&self, api_key: &ApiKey, _expiration: ApiKeyExpirationSeconds) -> Fallible<(), RefreshApiKeyError> {
             if api_key == &*VALID_API_KEY {
                 Ok(())
             } else {

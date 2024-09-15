@@ -31,7 +31,7 @@ pub enum IncrementRateError {
     RateLimitOver,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct TimeWindow(u32);
 
 impl TimeWindow {
@@ -61,7 +61,7 @@ impl ToRedisArgs for TimeWindow {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Rate(u32);
 
 impl Rate {
@@ -80,7 +80,7 @@ impl FromRedisValue for Rate {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct InculsiveLimit(Rate);
 
 impl InculsiveLimit {

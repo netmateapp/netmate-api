@@ -43,7 +43,7 @@ impl SignUp for SignUpImpl {
             .map_err(|e| SignUpError::PotentiallyUnavailableEmail(e.into()))
     }
 
-    async fn apply_to_create_account(&self, email: &Email, pw_hash: &PasswordHash, birth_year: &BirthYear, region: &Region, language: &Language, token: &OneTimeToken) -> Result<(), SignUpError> {
+    async fn apply_to_create_account(&self, email: &Email, pw_hash: &PasswordHash, birth_year: BirthYear, region: Region, language: Language, token: &OneTimeToken) -> Result<(), SignUpError> {
         self.insert_account_creation_application
             .execute(&self.db, (token, email, pw_hash, birth_year, region, language))
             .await
@@ -51,7 +51,7 @@ impl SignUp for SignUpImpl {
             .map_err(|e| SignUpError::ApplicationFailed(e.into()))
     }
 
-    async fn send_verification_email(&self, email: &Email, language: &Language, token: &OneTimeToken) -> Result<(), SignUpError> {
+    async fn send_verification_email(&self, email: &Email, language: Language, token: &OneTimeToken) -> Result<(), SignUpError> {
         let sender_name = SenderName::by(language);
 
         // ユーザーの設定言語に応じたテキストを取得する
@@ -92,10 +92,10 @@ const INSERT_ACCOUNT_CREATION_APPLICATION: Statement<InsertAccountCreationApplic
 
 struct InsertAccountCreationApplication(PreparedStatement);
 
-impl<'a, 'b, 'c, 'd, 'e, 'f> TypedStatement<(&'a OneTimeToken, &'b Email, &'c PasswordHash, &'d BirthYear, &'e Region, &'f Language), Unit> for InsertAccountCreationApplication {
+impl<'a, 'b, 'c> TypedStatement<(&'a OneTimeToken, &'b Email, &'c PasswordHash, BirthYear, Region, Language), Unit> for InsertAccountCreationApplication {
     type Result<U> = U where U: FromRow;
 
-    async fn query(&self, session: &Arc<Session>, values: (&'a OneTimeToken, &'b Email, &'c PasswordHash, &'d BirthYear, &'e Region, &'f Language)) -> anyhow::Result<Unit> {
+    async fn query(&self, session: &Arc<Session>, values: (&'a OneTimeToken, &'b Email, &'c PasswordHash, BirthYear, Region, Language)) -> anyhow::Result<Unit> {
         session.execute_unpaged(&self.0, values)
             .await
             .map(|_| Unit)

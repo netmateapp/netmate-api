@@ -3,7 +3,7 @@ use thiserror::Error;
 use crate::{common::{birth_year::BirthYear, email::address::Email, fallible::Fallible, language::Language, password::{Password, PasswordHash}, region::Region}, routes::accounts::creation::value::OneTimeToken};
 
 pub(crate) trait SignUp {
-    async fn sign_up(&self, email: &Email, password: &Password, birth_year: &BirthYear, region: &Region, language: &Language) -> Fallible<(), SignUpError> {
+    async fn sign_up(&self, email: &Email, password: &Password, birth_year: BirthYear, region: Region, language: Language) -> Fallible<(), SignUpError> {
         if self.is_available_email(email).await? {
             // この位置でパスワードのハッシュ化が行われ高い負荷が発生するため、
             // `sign_up`は自動化されたリクエストから特に保護されなければならない
@@ -18,9 +18,9 @@ pub(crate) trait SignUp {
 
     async fn is_available_email(&self, email: &Email) -> Fallible<bool, SignUpError>;
 
-    async fn apply_to_create_account(&self, email: &Email, pw_hash: &PasswordHash, birth_year: &BirthYear, region: &Region, language: &Language, token: &OneTimeToken) -> Fallible<(), SignUpError>;
+    async fn apply_to_create_account(&self, email: &Email, pw_hash: &PasswordHash, birth_year: BirthYear, region: Region, language: Language, token: &OneTimeToken) -> Fallible<(), SignUpError>;
 
-    async fn send_verification_email(&self, email: &Email, language: &Language, token: &OneTimeToken) -> Result<(), SignUpError>;
+    async fn send_verification_email(&self, email: &Email, language: Language, token: &OneTimeToken) -> Result<(), SignUpError>;
 }
 
 #[derive(Debug, Error)]
@@ -67,14 +67,14 @@ mod tests {
             }
         }
 
-        async fn apply_to_create_account(&self, case: &Email, _: &PasswordHash, _: &BirthYear, _: &Region, _: &Language, _: &OneTimeToken) -> Fallible<(), SignUpError> {
+        async fn apply_to_create_account(&self, case: &Email, _: &PasswordHash, _: BirthYear, _: Region, _: Language, _: &OneTimeToken) -> Fallible<(), SignUpError> {
             match case.value().as_str() {
                 APPLIED_BUT_SEND_FAILED | SIGN_UP => Ok(()),
                 _ => Err(SignUpError::ApplicationFailed(MockError.into()))
             }
         }
     
-        async fn send_verification_email(&self, case: &Email, _: &Language, _: &OneTimeToken) -> Fallible<(), SignUpError> {
+        async fn send_verification_email(&self, case: &Email, _: Language, _: &OneTimeToken) -> Fallible<(), SignUpError> {
             match case.value().as_str() {
                 SIGN_UP => Ok(()),
                 _ => Err(SignUpError::AuthenticationEmailSendFailed(MockError.into()))
@@ -86,9 +86,9 @@ mod tests {
         MockSignUp.sign_up(
             &Email::from_str(case).unwrap(),
             &Password::from_str("vK,tOiHyLsehvnv").unwrap(),
-            &BirthYear::try_from(2000u16).unwrap(),
-            &Region::Japan,
-            &Language::Japanese,
+            BirthYear::try_from(2000u16).unwrap(),
+            Region::Japan,
+            Language::Japanese,
         ).await
     }
 

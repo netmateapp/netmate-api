@@ -41,7 +41,7 @@ pub async fn handler(
 
     // 非 quick exit パターンを採用し、攻撃者に処理時間の差を計測させない
     task::spawn(async move {
-        match routine.sign_up(&payload.email, &payload.password, &payload.birth_year, &payload.region, &payload.language).await {
+        match routine.sign_up(&payload.email, &payload.password, payload.birth_year, payload.region, payload.language).await {
             // パスワードハッシュと生年は出力しない
             Ok(_) => info!(
                 ip_address = %addr.ip(),

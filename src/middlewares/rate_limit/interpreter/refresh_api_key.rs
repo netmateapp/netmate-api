@@ -10,17 +10,17 @@ const API_KEY_REFRESH_THERESHOLD: ApiKeyRefreshThereshold = ApiKeyRefreshTheresh
 const API_KEY_EXPIRATION: ApiKeyExpirationSeconds = ApiKeyExpirationSeconds::secs(2592000);
 
 impl RefreshApiKey for RateLimitImpl {
-    fn api_key_refresh_thereshold(&self) -> &ApiKeyRefreshThereshold {
-        &API_KEY_REFRESH_THERESHOLD
+    fn api_key_refresh_thereshold(&self) -> ApiKeyRefreshThereshold {
+        API_KEY_REFRESH_THERESHOLD
     }
 
-    fn api_key_expiration(&self) -> &ApiKeyExpirationSeconds {
-        &API_KEY_EXPIRATION
+    fn api_key_expiration(&self) -> ApiKeyExpirationSeconds {
+        API_KEY_EXPIRATION
     }
 
-    async fn refresh_api_key(&self, api_key: &ApiKey, expiration: &ApiKeyExpirationSeconds) -> Fallible<(), RefreshApiKeyError> {
+    async fn refresh_api_key(&self, api_key: &ApiKey, expiration: ApiKeyExpirationSeconds) -> Fallible<(), RefreshApiKeyError> {
         self.insert_api_key_with_ttl_refresh
-            .execute(&self.db, (api_key, &UnixtimeMillis::now(), expiration))
+            .execute(&self.db, (api_key, UnixtimeMillis::now(), expiration))
             .await
             .map_err(|e| RefreshApiKeyError::RefreshApiKeyFailed(e.into()))
     }
@@ -32,10 +32,10 @@ pub const INSERT_API_KEY_WITH_TTL_REFRESH: Statement<InsertApiKeyWithTtlRefresh>
 #[derive(Debug)]
 pub struct InsertApiKeyWithTtlRefresh(pub PreparedStatement);
 
-impl<'a, 'b, 'c> TypedStatement<(&'a ApiKey, &'b UnixtimeMillis, &'c ApiKeyExpirationSeconds), Unit> for InsertApiKeyWithTtlRefresh {
+impl<'a> TypedStatement<(&'a ApiKey, UnixtimeMillis, ApiKeyExpirationSeconds), Unit> for InsertApiKeyWithTtlRefresh {
     type Result<U> = U where U: FromRow;
 
-    async fn query(&self, session: &Arc<Session>, values: (&'a ApiKey, &'b UnixtimeMillis, &'c ApiKeyExpirationSeconds)) -> anyhow::Result<Unit> {
+    async fn query(&self, session: &Arc<Session>, values: (&'a ApiKey, UnixtimeMillis, ApiKeyExpirationSeconds)) -> anyhow::Result<Unit> {
         session.execute_unpaged(&self.0, values)
             .await
             .map(|_| Unit)
