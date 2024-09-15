@@ -4,9 +4,9 @@ use mitigate_session_theft::{DeleteAllSessionSeries, SelectAllSessionSeries, Sel
 use refresh_session_series::{SelectLastSessionSeriesRefreshedAt, UpdateSessionSeriesTtl, SELECT_LAST_API_KEY_REFRESHED_AT, UPDATE_SESSION_SERIES_TTL};
 use scylla::Session;
 
-use crate::helper::{error::InitError, redis::{Namespace, Pool}};
+use crate::{common::session::{refresh_pair_expiration::RefreshPairExpirationSeconds, session_expiration::SessionExpirationSeconds}, helper::{error::InitError, redis::{Namespace, Pool}}};
 
-use super::dsl::{extract_session_info::ExtractSessionInformation, manage_session::{ManageSession, RefreshPairExpirationSeconds, SessionExpirationSeconds}, set_cookie::SetSessionCookie};
+use super::dsl::{extract_session_info::ExtractSessionInformation, manage_session::ManageSession, set_cookie::SetSessionCookie};
 
 mod authenticate;
 mod mitigate_session_theft;

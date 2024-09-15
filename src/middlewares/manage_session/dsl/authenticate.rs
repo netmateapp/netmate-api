@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::common::{fallible::Fallible, id::AccountId, session::value::SessionId};
+use crate::common::{fallible::Fallible, id::AccountId, session::session_id::SessionId};
 
 pub(crate) trait AuthenticateSession {
     async fn authenticate_session(&self, session_id: &SessionId) -> Fallible<AccountId, AuthenticateSessionError> {
@@ -24,7 +24,7 @@ pub enum AuthenticateSessionError {
 mod tests {
     use std::sync::LazyLock;
 
-    use crate::common::{fallible::Fallible, id::{uuid7::Uuid7, AccountId}, session::value::SessionId};
+    use crate::common::{fallible::Fallible, id::{uuid7::Uuid7, AccountId}, session::session_id::SessionId};
 
     use super::{AuthenticateSession, AuthenticateSessionError};
 

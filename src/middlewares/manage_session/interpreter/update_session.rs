@@ -1,7 +1,7 @@
 use bb8_redis::redis::cmd;
 use redis::ToRedisArgs;
 
-use crate::{common::{fallible::Fallible, id::AccountId, session::value::SessionId}, helper::redis::{Connection, TypedCommand, EX_OPTION, NAMESPACE_SEPARATOR, NX_OPTION, SET_COMMAND}, middlewares::manage_session::{dsl::{manage_session::SessionExpirationSeconds, update_session::{UpdateSession, UpdateSessionError}}, interpreter::SESSION_ID_NAMESPACE}};
+use crate::{common::{fallible::Fallible, id::AccountId, session::{session_expiration::SessionExpirationSeconds, session_id::SessionId}}, helper::redis::{Connection, TypedCommand, EX_OPTION, NAMESPACE_SEPARATOR, NX_OPTION, SET_COMMAND}, middlewares::manage_session::{dsl::update_session::{UpdateSession, UpdateSessionError}, interpreter::SESSION_ID_NAMESPACE}};
 
 use super::ManageSessionImpl;
 
@@ -49,7 +49,7 @@ impl<'a, 'b, 'c> TypedCommand<(Key<'a>, &'b AccountId, &'c SessionExpirationSeco
 
 #[cfg(test)]
 mod tests {
-    use crate::{common::session::value::SessionId, helper::redis::NAMESPACE_SEPARATOR, middlewares::manage_session::interpreter::SESSION_ID_NAMESPACE};
+    use crate::{common::session::session_id::SessionId, helper::redis::NAMESPACE_SEPARATOR, middlewares::manage_session::interpreter::SESSION_ID_NAMESPACE};
 
     use super::format_key;
 

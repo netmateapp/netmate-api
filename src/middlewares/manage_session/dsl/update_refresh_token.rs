@@ -1,8 +1,6 @@
 use thiserror::Error;
 
-use crate::common::{fallible::Fallible, id::AccountId, session::value::{RefreshToken, SessionSeries}};
-
-use super::manage_session::RefreshPairExpirationSeconds;
+use crate::common::{fallible::Fallible, id::AccountId, session::{refresh_pair_expiration::RefreshPairExpirationSeconds, refresh_token::RefreshToken, session_series::SessionSeries}};
 
 pub(crate) trait UpdateRefreshToken {
     async fn update_refresh_token(&self, session_series: &SessionSeries, account_id: &AccountId, expiration: &RefreshPairExpirationSeconds) -> Fallible<RefreshToken, UpdateRefreshTokenError> {

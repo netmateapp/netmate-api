@@ -1,7 +1,7 @@
 use bb8_redis::redis::cmd;
 use redis::ToRedisArgs;
 
-use crate::{common::{fallible::Fallible, id::AccountId, session::value::SessionId}, helper::redis::{Connection, TypedCommand, NAMESPACE_SEPARATOR}, middlewares::manage_session::{dsl::authenticate::{AuthenticateSession, AuthenticateSessionError}, interpreter::SESSION_ID_NAMESPACE}};
+use crate::{common::{fallible::Fallible, id::AccountId, session::session_id::SessionId}, helper::redis::{Connection, TypedCommand, NAMESPACE_SEPARATOR}, middlewares::manage_session::{dsl::authenticate::{AuthenticateSession, AuthenticateSessionError}, interpreter::SESSION_ID_NAMESPACE}};
 
 use super::ManageSessionImpl;
 
@@ -42,7 +42,7 @@ impl<'a> TypedCommand<Key<'a>, Option<AccountId>> for GetAccountIdCommand {
 
 #[cfg(test)]
 mod tests {
-    use crate::{common::session::value::SessionId, helper::redis::NAMESPACE_SEPARATOR, middlewares::manage_session::interpreter::SESSION_ID_NAMESPACE};
+    use crate::{common::session::session_id::SessionId, helper::redis::NAMESPACE_SEPARATOR, middlewares::manage_session::interpreter::SESSION_ID_NAMESPACE};
 
     use super::format_key;
 

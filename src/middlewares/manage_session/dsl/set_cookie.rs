@@ -1,7 +1,7 @@
 use http::{header::SET_COOKIE, HeaderValue, Response};
 use time::Duration;
 
-use crate::common::session::value::{secure_cookie_builder, to_cookie_value, SessionSeries, RefreshToken, SessionId, REFRESH_PAIR_COOKIE_KEY, REFRESH_PAIR_EXPIRATION_DAYS, SESSION_COOKIE_KEY, SESSION_TIMEOUT_MINUTES};
+use crate::common::session::{cookie::{secure_cookie_builder, to_cookie_value, REFRESH_PAIR_COOKIE_KEY, REFRESH_PAIR_EXPIRATION_DAYS, SESSION_COOKIE_KEY, SESSION_TIMEOUT_MINUTES}, refresh_token::RefreshToken, session_id::SessionId, session_series::SessionSeries};
 
 pub(crate) trait SetSessionCookie {
     fn refresh_session_cookie_expiration<B>(response: &mut Response<B>, session_id: &SessionId) {
@@ -36,7 +36,7 @@ mod tests {
     use http::{header::SET_COOKIE, Response};
     use time::Duration;
 
-    use crate::common::session::value::{to_cookie_value, RefreshToken, SessionId, SessionSeries, REFRESH_PAIR_COOKIE_KEY, REFRESH_PAIR_EXPIRATION_DAYS, SESSION_COOKIE_KEY, SESSION_TIMEOUT_MINUTES};
+    use crate::common::session::{cookie::{to_cookie_value, REFRESH_PAIR_COOKIE_KEY, REFRESH_PAIR_EXPIRATION_DAYS, SESSION_COOKIE_KEY, SESSION_TIMEOUT_MINUTES}, refresh_token::RefreshToken, session_id::SessionId, session_series::SessionSeries};
 
     use super::SetSessionCookie;
 

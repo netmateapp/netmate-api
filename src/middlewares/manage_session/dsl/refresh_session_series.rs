@@ -1,9 +1,7 @@
 use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::CqlValue};
 use thiserror::Error;
 
-use crate::common::{fallible::Fallible, id::AccountId, session::value::SessionSeries, unixtime::UnixtimeMillis};
-
-use super::manage_session::RefreshPairExpirationSeconds;
+use crate::common::{fallible::Fallible, id::AccountId, session::{refresh_pair_expiration::RefreshPairExpirationSeconds, session_series::SessionSeries}, unixtime::UnixtimeMillis};
 
 pub(crate) trait RefreshSessionSeries {
     // 指定されたセッション系列が存在している前提で実行される
@@ -71,7 +69,7 @@ impl SessionSeriesRefreshThereshold {
 mod tests {
     use std::sync::LazyLock;
 
-    use crate::{common::{fallible::Fallible, id::{uuid7::Uuid7, AccountId}, session::value::SessionSeries, unixtime::UnixtimeMillis}, middlewares::manage_session::dsl::manage_session::RefreshPairExpirationSeconds};
+    use crate::common::{fallible::Fallible, id::{uuid7::Uuid7, AccountId}, session::{refresh_pair_expiration::RefreshPairExpirationSeconds, session_series::SessionSeries}, unixtime::UnixtimeMillis};
 
     use super::{LastSessionSeriesRefreshedAt, RefreshSessionSeries, RefreshSessionSeriesError, SessionSeriesRefreshThereshold};
 

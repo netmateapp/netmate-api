@@ -1,7 +1,7 @@
 use bb8_redis::redis::cmd;
 use redis::ToRedisArgs;
 
-use crate::{common::{fallible::Fallible, id::AccountId, session::value::{RefreshToken, SessionSeries}}, helper::redis::{Connection, TypedCommand, EX_OPTION, NAMESPACE_SEPARATOR, SET_COMMAND}, middlewares::manage_session::{dsl::{manage_session::RefreshPairExpirationSeconds, update_refresh_token::{UpdateRefreshToken, UpdateRefreshTokenError}}, interpreter::{REFRESH_PAIR_NAMESPACE, REFRESH_PAIR_VALUE_SEPARATOR}}};
+use crate::{common::{fallible::Fallible, id::AccountId, session::{refresh_pair_expiration::RefreshPairExpirationSeconds, refresh_token::RefreshToken, session_series::SessionSeries}}, helper::redis::{Connection, TypedCommand, EX_OPTION, NAMESPACE_SEPARATOR, SET_COMMAND}, middlewares::manage_session::{dsl::update_refresh_token::{UpdateRefreshToken, UpdateRefreshTokenError}, interpreter::{REFRESH_PAIR_NAMESPACE, REFRESH_PAIR_VALUE_SEPARATOR}}};
 
 use super::ManageSessionImpl;
 
@@ -63,7 +63,7 @@ impl<'a, 'b, 'c, 'd> TypedCommand<(Key<'a>, Value<'b, 'c>, &'d RefreshPairExpira
 
 #[cfg(test)]
 mod tests {
-    use crate::{common::{id::AccountId, session::value::{RefreshToken, SessionSeries}}, helper::redis::NAMESPACE_SEPARATOR, middlewares::manage_session::interpreter::{update_refresh_token::format_value, REFRESH_PAIR_NAMESPACE, REFRESH_PAIR_VALUE_SEPARATOR}};
+    use crate::{common::{id::AccountId, session::{refresh_token::RefreshToken, session_series::SessionSeries}}, helper::redis::NAMESPACE_SEPARATOR, middlewares::manage_session::interpreter::{update_refresh_token::format_value, REFRESH_PAIR_NAMESPACE, REFRESH_PAIR_VALUE_SEPARATOR}};
 
     use super::format_key;
 

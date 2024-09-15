@@ -3,7 +3,7 @@ use std::str::FromStr;
 use cookie::{Cookie, SplitCookies};
 use http::{header::COOKIE, HeaderMap, Request};
 
-use crate::common::session::value::{SessionSeries, RefreshToken, SessionId, REFRESH_PAIR_COOKIE_KEY, SESSION_COOKIE_KEY};
+use crate::common::session::{cookie::{REFRESH_PAIR_COOKIE_KEY, SESSION_COOKIE_KEY}, refresh_token::RefreshToken, session_id::SessionId, session_series::SessionSeries};
 
 pub(crate) trait ExtractSessionInformation {
     fn extract_session_information<B>(request: &Request<B>) -> (Option<SessionId>, Option<(SessionSeries, RefreshToken)>) {
@@ -70,7 +70,7 @@ pub(crate) trait ExtractSessionInformation {
 mod tests {
     use http::{header::COOKIE, HeaderValue};
 
-    use crate::common::session::value::{to_cookie_value, SessionSeries, RefreshToken, SessionId, REFRESH_PAIR_COOKIE_KEY, SESSION_COOKIE_KEY};
+    use crate::common::session::{cookie::{to_cookie_value, REFRESH_PAIR_COOKIE_KEY, SESSION_COOKIE_KEY}, refresh_token::RefreshToken, session_id::SessionId, session_series::SessionSeries};
 
     use super::ExtractSessionInformation;
 

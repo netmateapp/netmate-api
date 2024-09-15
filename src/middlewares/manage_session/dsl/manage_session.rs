@@ -1,12 +1,10 @@
 use std::convert::Infallible;
 
 use http::{header::SET_COOKIE, Request, Response};
-use redis::ToRedisArgs;
-use scylla::{frame::response::result::ColumnType, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
 use thiserror::Error;
 use tower::Service;
 
-use crate::common::fallible::Fallible;
+use crate::common::{fallible::Fallible, session::{refresh_pair_expiration::RefreshPairExpirationSeconds, session_expiration::SessionExpirationSeconds}};
 
 use super::{authenticate::AuthenticateSession, extract_session_info::ExtractSessionInformation, mitigate_session_theft::MitigateSessionTheft, reauthenticate::{ReAuthenticateSession, ReAuthenticateSessionError}, refresh_session_series::RefreshSessionSeries, set_cookie::SetSessionCookie, update_refresh_token::UpdateRefreshToken, update_session::UpdateSession};
 
@@ -91,8 +89,6 @@ pub enum ManageSessionError {
     AuthenticationFailed,
 }
 
-
-
 #[cfg(test)]
 mod tests {
     use std::{convert::Infallible, future::{ready, Ready}, str::FromStr, sync::LazyLock, task::{Context, Poll}};
@@ -100,9 +96,9 @@ mod tests {
     use http::{header::COOKIE, Request, Response};
     use tower::Service;
 
-    use crate::{common::{email::address::Email, fallible::Fallible, id::{uuid7::Uuid7, AccountId}, language::Language, session::value::{to_cookie_value, RefreshToken, SessionId, SessionSeries, REFRESH_PAIR_COOKIE_KEY, SESSION_COOKIE_KEY}, unixtime::UnixtimeMillis}, middlewares::manage_session::dsl::{authenticate::{AuthenticateSession, AuthenticateSessionError}, extract_session_info::ExtractSessionInformation, mitigate_session_theft::{MitigateSessionTheft, MitigateSessionTheftError}, reauthenticate::{ReAuthenticateSession, ReAuthenticateSessionError}, refresh_session_series::{LastSessionSeriesRefreshedAt, RefreshSessionSeries, RefreshSessionSeriesError, SessionSeriesRefreshThereshold}, set_cookie::SetSessionCookie, update_refresh_token::{UpdateRefreshToken, UpdateRefreshTokenError}, update_session::{UpdateSession, UpdateSessionError}}};
+    use crate::{common::{email::address::Email, fallible::Fallible, id::{uuid7::Uuid7, AccountId}, language::Language, session::{cookie::{to_cookie_value, REFRESH_PAIR_COOKIE_KEY, SESSION_COOKIE_KEY}, refresh_pair_expiration::RefreshPairExpirationSeconds, refresh_token::RefreshToken, session_expiration::SessionExpirationSeconds, session_id::SessionId, session_series::SessionSeries}, unixtime::UnixtimeMillis}, middlewares::manage_session::dsl::{authenticate::{AuthenticateSession, AuthenticateSessionError}, extract_session_info::ExtractSessionInformation, mitigate_session_theft::{MitigateSessionTheft, MitigateSessionTheftError}, reauthenticate::{ReAuthenticateSession, ReAuthenticateSessionError}, refresh_session_series::{LastSessionSeriesRefreshedAt, RefreshSessionSeries, RefreshSessionSeriesError, SessionSeriesRefreshThereshold}, set_cookie::SetSessionCookie, update_refresh_token::{UpdateRefreshToken, UpdateRefreshTokenError}, update_session::{UpdateSession, UpdateSessionError}}};
 
-    use super::{ManageSession, ManageSessionError, RefreshPairExpirationSeconds, SessionExpirationSeconds};
+    use super::{ManageSession, ManageSessionError};
 
     static AUTHENTICATION_SUCCEEDED: LazyLock<SessionId> = LazyLock::new(|| SessionId::gen());
     static REAUTHENTICATION_SUCCEDED: LazyLock<(SessionSeries, RefreshToken)> = LazyLock::new(|| (SessionSeries::gen(), RefreshToken::gen()));
