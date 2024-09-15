@@ -60,3 +60,15 @@ impl<'a> TypedStatement<(AccountId, &'a SessionSeries, UnixtimeMillis), Unit> fo
             .map_err(anyhow::Error::from)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::helper::scylla::check_cql_statement_type;
+
+    use super::INSERT_SESSION_SERIES;
+
+    #[test]
+    fn check_insert_session_series_type() {
+        check_cql_statement_type(INSERT_SESSION_SERIES);
+    }
+}

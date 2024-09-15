@@ -1,6 +1,6 @@
 use std::{net::SocketAddr, sync::Arc};
 
-use axum::{extract::{ConnectInfo, State}, http::StatusCode, routing::post, Json, Router};
+use axum::{extract::{ConnectInfo, State}, http::StatusCode, response::{IntoResponse, Response}, routing::post, Json, Router};
 use axum_macros::debug_handler;
 use scylla::Session;
 use serde::Serialize;
@@ -25,15 +25,19 @@ pub async fn handler(
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     State(routine): State<Arc<VerifyEmailImpl>>,
     Json(token): Json<OneTimeToken>
-) -> Result<Json<Body>, StatusCode> {
+) -> Result<Response, StatusCode> {
     match routine.verify_email(&token).await {
-        Ok(top_tag_id) => {
+        Ok((account_id, top_tag_id)) => {
             info!(
                 ip_address = %addr.ip(),
                 "メールアドレスの認証に成功しました。"
             );
 
-            Ok(Json(Body { top_tag_id }))
+            // セッション開始ミドルウェアにアカウントIDを渡す
+            let mut response = Json(Body { top_tag_id }).into_response();
+            response.extensions_mut().insert(account_id);
+
+            Ok(response)
         },
         Err(e) => {
             info!(
