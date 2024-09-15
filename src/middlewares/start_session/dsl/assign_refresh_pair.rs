@@ -1,9 +1,9 @@
 use thiserror::Error;
 
-use crate::common::{fallible::Fallible, id::AccountId, session::{refresh_pair_expiration::RefreshPairExpirationSeconds, refresh_token::RefreshToken, session_expiration::SessionExpirationSeconds, session_id::SessionId, session_series::SessionSeries}};
+use crate::common::{fallible::Fallible, id::AccountId, session::{refresh_pair_expiration::RefreshPairExpirationSeconds, refresh_token::RefreshToken, session_series::SessionSeries}};
 
 pub(crate)  trait AssignRefreshPair {
-    async fn assign_refresh_pair(&self, session_account_id: &AccountId, expiration: &RefreshPairExpirationSeconds) -> Fallible<(SessionSeries, RefreshToken), AssignRefreshPairError> {
+    async fn assign_refresh_pair(&self, session_account_id: AccountId, expiration: RefreshPairExpirationSeconds) -> Fallible<(SessionSeries, RefreshToken), AssignRefreshPairError> {
         let mut session_series = SessionSeries::gen();
         let refresh_token = RefreshToken::gen();
 
@@ -17,7 +17,7 @@ pub(crate)  trait AssignRefreshPair {
         }
     }
 
-    async fn try_assign_refresh_pair_with_expiration_if_unused(&self, session_series: &SessionSeries, refresh_token: &RefreshToken, session_account_id: &AccountId, expiration: &RefreshPairExpirationSeconds) -> Fallible<(), AssignRefreshPairError>;
+    async fn try_assign_refresh_pair_with_expiration_if_unused(&self, session_series: &SessionSeries, refresh_token: &RefreshToken, session_account_id: AccountId, expiration: RefreshPairExpirationSeconds) -> Fallible<(), AssignRefreshPairError>;
 }
 
 #[derive(Debug, Error)]
