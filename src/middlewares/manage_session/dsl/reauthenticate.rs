@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::common::{fallible::Fallible, id::AccountId, session::{refresh_token::RefreshToken, session_series::SessionSeries}};
+use crate::common::{fallible::Fallible, id::account_id::AccountId, session::{refresh_token::RefreshToken, session_series::SessionSeries}};
 
 pub(crate) trait ReAuthenticateSession {
     async fn reauthenticate_session(&self, session_series: &SessionSeries, refresh_token: RefreshToken) -> Fallible<AccountId, ReAuthenticateSessionError> {
@@ -33,7 +33,7 @@ pub enum ReAuthenticateSessionError {
 mod tests {
     use std::sync::LazyLock;
 
-    use crate::common::{fallible::Fallible, id::{uuid7::Uuid7, AccountId}, session::{refresh_token::RefreshToken, session_series::SessionSeries}};
+    use crate::common::{fallible::Fallible, id::account_id::AccountId, session::{refresh_token::RefreshToken, session_series::SessionSeries}};
 
     use super::{ReAuthenticateSession, ReAuthenticateSessionError};
 
@@ -45,9 +45,9 @@ mod tests {
     impl ReAuthenticateSession for MockReauthenticateSession {
         async fn fetch_refresh_token_and_account_id(&self, session_series: &SessionSeries) -> Fallible<Option<(RefreshToken, AccountId)>, ReAuthenticateSessionError> {
             if session_series == &*REAUTHENTICATED {
-                Ok(Some((RefreshToken::gen(), AccountId::of(Uuid7::now()))))
+                Ok(Some((RefreshToken::gen(), AccountId::gen())))
             } else if session_series == &*POTENTIAL_SESSION_THEFT {
-                Err(ReAuthenticateSessionError::PotentialSessionTheft(AccountId::of(Uuid7::now())))
+                Err(ReAuthenticateSessionError::PotentialSessionTheft(AccountId::gen()))
             } else {
                 Err(ReAuthenticateSessionError::InvalidRefreshToken)
             }

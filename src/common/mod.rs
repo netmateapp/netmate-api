@@ -10,3 +10,4 @@ pub mod session;
 pub mod tag;
 pub mod token;
 pub mod unixtime;
+pub mod uuid;

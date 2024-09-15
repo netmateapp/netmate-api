@@ -6,7 +6,7 @@ use scylla::Session;
 use serde::Serialize;
 use tracing::info;
 
-use crate::{common::id::TagId, helper::error::InitError, routes::accounts::creation::value::OneTimeToken};
+use crate::{common::id::tag_id::TagId, helper::error::InitError, routes::accounts::creation::value::OneTimeToken};
 
 use super::{dsl::{VerifyEmail, VerifyEmailError}, interpreter::VerifyEmailImpl};
 

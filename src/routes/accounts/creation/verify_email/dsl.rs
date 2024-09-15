@@ -1,11 +1,11 @@
 use thiserror::Error;
 
-use crate::{common::{birth_year::BirthYear, email::address::Email, fallible::Fallible, id::{uuid7::Uuid7, AccountId, TagId}, language::Language, password::PasswordHash, region::Region, tag::top_tag_id_by_language}, routes::accounts::creation::value::OneTimeToken};
+use crate::{common::{birth_year::BirthYear, email::address::Email, fallible::Fallible, id::{account_id::AccountId, tag_id::TagId}, language::Language, password::PasswordHash, region::Region, tag::top_tag_id_by_language}, routes::accounts::creation::value::OneTimeToken};
 
 pub(crate) trait VerifyEmail {
     async fn verify_email(&self, token: &OneTimeToken) -> Fallible<TagId, VerifyEmailError> {
         let (email, password_hash, birth_year, region, language) = self.retrieve_account_creation_application_by(token).await?;
-        let account_id = AccountId::of(Uuid7::now());
+        let account_id = AccountId::gen();
         match self.create_account(account_id, &email, &password_hash, birth_year, region, language).await {
             Ok(_) => {
                 // 失敗してもTTLにより削除されるため続行
@@ -47,7 +47,7 @@ mod tests {
 
     use thiserror::Error;
 
-    use crate::{common::{birth_year::BirthYear, email::address::Email, fallible::Fallible, id::{AccountId, TagId}, language::Language, password::PasswordHash, region::Region}, routes::accounts::creation::value::OneTimeToken};
+    use crate::{common::{birth_year::BirthYear, email::address::Email, fallible::Fallible, id::{account_id::AccountId, tag_id::TagId}, language::Language, password::PasswordHash, region::Region}, routes::accounts::creation::value::OneTimeToken};
 
     use super::{VerifyEmail, VerifyEmailError};
 

@@ -1,6 +1,6 @@
 use uuid::Uuid;
 
-use super::{id::{uuid4::Uuid4, TagId}, language::Language};
+use super::{id::tag_id::TagId, language::Language, uuid::uuid4::Uuid4};
 
 const JAPANESE_TOP_TAG: TagId = TagId::new(Uuid4::new_unchecked(Uuid::from_fields(0x00, 0x00, 0x4000, &[0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])));
 

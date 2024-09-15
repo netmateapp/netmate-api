@@ -1,7 +1,7 @@
 use bb8_redis::redis::cmd;
 use redis::ToRedisArgs;
 
-use crate::{common::{fallible::Fallible, id::AccountId, session::session_id::SessionId}, helper::redis::{Connection, TypedCommand, NAMESPACE_SEPARATOR}, middlewares::manage_session::{dsl::authenticate::{AuthenticateSession, AuthenticateSessionError}, interpreter::SESSION_ID_NAMESPACE}};
+use crate::{common::{fallible::Fallible, id::account_id::AccountId, session::session_id::SessionId}, helper::redis::{Connection, TypedCommand, NAMESPACE_SEPARATOR}, middlewares::manage_session::{dsl::authenticate::{AuthenticateSession, AuthenticateSessionError}, interpreter::SESSION_ID_NAMESPACE}};
 
 use super::ManageSessionImpl;
 

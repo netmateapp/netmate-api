@@ -1,7 +1,7 @@
 use thiserror::Error;
 use tracing::info;
 
-use crate::common::{email::address::Email, fallible::Fallible, id::AccountId, language::Language};
+use crate::common::{email::address::Email, fallible::Fallible, id::account_id::AccountId, language::Language};
 
 pub(crate) trait MitigateSessionTheft {
     async fn mitigate_session_theft(&self, account_id: AccountId) {
@@ -15,7 +15,7 @@ pub(crate) trait MitigateSessionTheft {
         let is_all_session_series_deleted = self.purge_all_session_series(account_id).await.is_ok();
 
         info!(
-            account_id = %account_id.value().value(),
+            account_id = %account_id,
             is_email_sent = is_email_sent,
             is_all_session_series_deleted = is_all_session_series_deleted,
             "セッション識別子の盗用の可能性を検出しました"

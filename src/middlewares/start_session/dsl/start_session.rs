@@ -1,7 +1,7 @@
 use http::Response;
 use thiserror::Error;
 
-use crate::common::{fallible::Fallible, id::AccountId, session::{cookie::{set_refresh_pair_cookie_with_expiration, set_session_cookie_with_expiration}, refresh_pair_expiration::REFRESH_PAIR_EXPIRATION, session_expiration::SESSION_EXPIRATION}};
+use crate::common::{fallible::Fallible, id::account_id::AccountId, session::{cookie::{set_refresh_pair_cookie_with_expiration, set_session_cookie_with_expiration}, refresh_pair_expiration::REFRESH_PAIR_EXPIRATION, session_expiration::SESSION_EXPIRATION}};
 
 use super::{assign_refresh_pair::AssignRefreshPair, assign_session_id::AssignSessionId};
 

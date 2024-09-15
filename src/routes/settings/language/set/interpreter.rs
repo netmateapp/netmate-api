@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use scylla::{prepared_statement::PreparedStatement, FromRow, Session};
 
-use crate::{common::{fallible::Fallible, id::AccountId, language::Language}, helper::{error::InitError, scylla::{Statement, TypedStatement, Unit}}};
+use crate::{common::{fallible::Fallible, id::account_id::AccountId, language::Language}, helper::{error::InitError, scylla::{Statement, TypedStatement, Unit}}};
 
 use super::dsl::{SetLanaguage, SetLanguageError};
 

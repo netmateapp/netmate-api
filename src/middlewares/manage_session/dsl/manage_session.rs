@@ -93,7 +93,7 @@ mod tests {
     use http::{header::COOKIE, Request, Response};
     use tower::Service;
 
-    use crate::{common::{email::address::Email, fallible::Fallible, id::{uuid7::Uuid7, AccountId}, language::Language, session::{cookie::{to_cookie_value, REFRESH_PAIR_COOKIE_KEY, SESSION_COOKIE_KEY}, refresh_pair_expiration::RefreshPairExpirationSeconds, refresh_token::RefreshToken, session_expiration::SessionExpirationSeconds, session_id::SessionId, session_series::SessionSeries}, unixtime::UnixtimeMillis}, middlewares::manage_session::dsl::{authenticate::{AuthenticateSession, AuthenticateSessionError}, extract_session_info::ExtractSessionInformation, mitigate_session_theft::{MitigateSessionTheft, MitigateSessionTheftError}, reauthenticate::{ReAuthenticateSession, ReAuthenticateSessionError}, refresh_session_series::{LastSessionSeriesRefreshedAt, RefreshSessionSeries, RefreshSessionSeriesError, SessionSeriesRefreshThereshold}, update_refresh_token::{UpdateRefreshToken, UpdateRefreshTokenError}, update_session::{UpdateSession, UpdateSessionError}}};
+    use crate::{common::{email::address::Email, fallible::Fallible, id::account_id::AccountId, language::Language, session::{cookie::{to_cookie_value, REFRESH_PAIR_COOKIE_KEY, SESSION_COOKIE_KEY}, refresh_pair_expiration::RefreshPairExpirationSeconds, refresh_token::RefreshToken, session_expiration::SessionExpirationSeconds, session_id::SessionId, session_series::SessionSeries}, unixtime::UnixtimeMillis}, middlewares::manage_session::dsl::{authenticate::{AuthenticateSession, AuthenticateSessionError}, extract_session_info::ExtractSessionInformation, mitigate_session_theft::{MitigateSessionTheft, MitigateSessionTheftError}, reauthenticate::{ReAuthenticateSession, ReAuthenticateSessionError}, refresh_session_series::{LastSessionSeriesRefreshedAt, RefreshSessionSeries, RefreshSessionSeriesError, SessionSeriesRefreshThereshold}, update_refresh_token::{UpdateRefreshToken, UpdateRefreshTokenError}, update_session::{UpdateSession, UpdateSessionError}}};
 
     use super::{ManageSession, ManageSessionError};
 
@@ -112,7 +112,7 @@ mod tests {
     impl AuthenticateSession for MockManageSession {
         async fn resolve_session_id_to_account_id(&self, session_id: &SessionId) -> Fallible<Option<AccountId>, AuthenticateSessionError> {
             if session_id == &*AUTHENTICATION_SUCCEEDED {
-                Ok(Some(AccountId::of(Uuid7::now())))
+                Ok(Some(AccountId::gen()))
             } else {
                 Ok(None)
             }
@@ -122,7 +122,7 @@ mod tests {
     impl ReAuthenticateSession for MockManageSession {
         async fn fetch_refresh_token_and_account_id(&self, session_series: &SessionSeries) -> Fallible<Option<(RefreshToken, AccountId)>, ReAuthenticateSessionError> {
             if session_series == &(*REAUTHENTICATION_SUCCEDED).0 {
-                Ok(Some((REAUTHENTICATION_SUCCEDED.1.clone(), AccountId::of(Uuid7::now()))))
+                Ok(Some((REAUTHENTICATION_SUCCEDED.1.clone(), AccountId::gen())))
             } else {
                 Ok(None)
             }

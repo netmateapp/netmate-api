@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::common::{fallible::Fallible, id::AccountId, session::{session_expiration::SessionExpirationSeconds, session_id::SessionId}};
+use crate::common::{fallible::Fallible, id::account_id::AccountId, session::{session_expiration::SessionExpirationSeconds, session_id::SessionId}};
 
 pub(crate)  trait AssignSessionId {
     async fn assign_session_id(&self, session_account_id: AccountId, expiration: SessionExpirationSeconds) -> Fallible<SessionId, AssignSessionIdError> {
