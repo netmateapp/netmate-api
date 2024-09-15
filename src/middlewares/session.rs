@@ -32,7 +32,7 @@ impl<'a> TypedCommand<(SessionIdKey<'a>, AccountId, SessionExpirationSeconds), O
             .arg(NX_OPTION)
             .query_async::<Option<()>>(&mut *conn) // 重複が無ければSome(())、あればNone
             .await
-            .map_err(Into::into)
+            .map_err(anyhow::Error::from)
     }
 }
 
