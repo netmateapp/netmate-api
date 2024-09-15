@@ -6,7 +6,7 @@ use scylla::Session;
 
 use crate::{common::session::{refresh_pair_expiration::RefreshPairExpirationSeconds, session_expiration::SessionExpirationSeconds}, helper::{error::InitError, redis::{Namespace, Pool}}};
 
-use super::dsl::{extract_session_info::ExtractSessionInformation, manage_session::ManageSession, set_cookie::SetSessionCookie};
+use super::dsl::{extract_session_info::ExtractSessionInformation, manage_session::ManageSession};
 
 mod authenticate;
 mod mitigate_session_theft;
@@ -74,5 +74,3 @@ impl ManageSession for ManageSessionImpl {
 }
 
 impl ExtractSessionInformation for ManageSessionImpl {}
-
-impl SetSessionCookie for ManageSessionImpl {}

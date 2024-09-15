@@ -4,14 +4,14 @@ use http::{header::SET_COOKIE, Request, Response};
 use thiserror::Error;
 use tower::Service;
 
-use crate::common::{fallible::Fallible, session::{refresh_pair_expiration::RefreshPairExpirationSeconds, session_expiration::SessionExpirationSeconds}};
+use crate::common::{fallible::Fallible, session::{cookie::{set_refresh_pair_cookie_with_expiration, set_session_cookie_with_expiration}, refresh_pair_expiration::RefreshPairExpirationSeconds, session_expiration::SessionExpirationSeconds}};
 
-use super::{authenticate::AuthenticateSession, extract_session_info::ExtractSessionInformation, mitigate_session_theft::MitigateSessionTheft, reauthenticate::{ReAuthenticateSession, ReAuthenticateSessionError}, refresh_session_series::RefreshSessionSeries, set_cookie::SetSessionCookie, update_refresh_token::UpdateRefreshToken, update_session::UpdateSession};
+use super::{authenticate::AuthenticateSession, extract_session_info::ExtractSessionInformation, mitigate_session_theft::MitigateSessionTheft, reauthenticate::{ReAuthenticateSession, ReAuthenticateSessionError}, refresh_session_series::RefreshSessionSeries, update_refresh_token::UpdateRefreshToken, update_session::UpdateSession};
 
 pub(crate) trait ManageSession {
     async fn manage_session<S, B>(&self, inner: &mut S, mut request: Request<B>) -> Fallible<S::Response, ManageSessionError>
     where
-        Self: ExtractSessionInformation + SetSessionCookie + AuthenticateSession + ReAuthenticateSession + UpdateSession + UpdateRefreshToken + RefreshSessionSeries + MitigateSessionTheft,
+        Self: ExtractSessionInformation + AuthenticateSession + ReAuthenticateSession + UpdateSession + UpdateRefreshToken + RefreshSessionSeries + MitigateSessionTheft,
         S: Service<Request<B>, Error = Infallible, Response = Response<B>>,
     {
         let (session_id, pair) = Self::extract_session_information(&request);
@@ -30,7 +30,8 @@ pub(crate) trait ManageSession {
 
                     // パスワード変更やログアウトによるSet-Cookieヘッダが無い場合のみセッションを延長
                     if !response.headers().contains_key(SET_COOKIE) {
-                        Self::refresh_session_cookie_expiration(&mut response, &session_id);
+                        // 同じセッションIDをセットすることで有効期限をリフレッシュ
+                        set_session_cookie_with_expiration(&mut response, &session_id);
                     }
                     
                     return Ok(response)
@@ -53,12 +54,12 @@ pub(crate) trait ManageSession {
                         // 基本的に最低30分は間隔を空けて更新処理を行うようにし負荷を抑える
                         // ※セッションIDを破棄して送信されるリクエストへの耐性は無い
                         if let Ok(new_session_id) = self.update_session(&account_id, Self::session_expiration()).await {
-                            Self::set_session_cookie_with_expiration(&mut response, &new_session_id);
+                            set_session_cookie_with_expiration(&mut response, &new_session_id);
 
                             // リフレッシュトークンの発行が失敗した場合は、現在のトークンを使用し続ける
                             // これはセキュリティリスクを多少増加させるが許容の範囲内である
                             match self.update_refresh_token(&session_series, &account_id, Self::refresh_pair_expiration()).await {
-                                Ok(new_refresh_token) => Self::set_refresh_pair_cookie_with_expiration(&mut response, &session_series, &new_refresh_token),
+                                Ok(new_refresh_token) => set_refresh_pair_cookie_with_expiration(&mut response, &session_series, &new_refresh_token),
                                 _ => (),
                             }
 
@@ -96,7 +97,7 @@ mod tests {
     use http::{header::COOKIE, Request, Response};
     use tower::Service;
 
-    use crate::{common::{email::address::Email, fallible::Fallible, id::{uuid7::Uuid7, AccountId}, language::Language, session::{cookie::{to_cookie_value, REFRESH_PAIR_COOKIE_KEY, SESSION_COOKIE_KEY}, refresh_pair_expiration::RefreshPairExpirationSeconds, refresh_token::RefreshToken, session_expiration::SessionExpirationSeconds, session_id::SessionId, session_series::SessionSeries}, unixtime::UnixtimeMillis}, middlewares::manage_session::dsl::{authenticate::{AuthenticateSession, AuthenticateSessionError}, extract_session_info::ExtractSessionInformation, mitigate_session_theft::{MitigateSessionTheft, MitigateSessionTheftError}, reauthenticate::{ReAuthenticateSession, ReAuthenticateSessionError}, refresh_session_series::{LastSessionSeriesRefreshedAt, RefreshSessionSeries, RefreshSessionSeriesError, SessionSeriesRefreshThereshold}, set_cookie::SetSessionCookie, update_refresh_token::{UpdateRefreshToken, UpdateRefreshTokenError}, update_session::{UpdateSession, UpdateSessionError}}};
+    use crate::{common::{email::address::Email, fallible::Fallible, id::{uuid7::Uuid7, AccountId}, language::Language, session::{cookie::{to_cookie_value, REFRESH_PAIR_COOKIE_KEY, SESSION_COOKIE_KEY}, refresh_pair_expiration::RefreshPairExpirationSeconds, refresh_token::RefreshToken, session_expiration::SessionExpirationSeconds, session_id::SessionId, session_series::SessionSeries}, unixtime::UnixtimeMillis}, middlewares::manage_session::dsl::{authenticate::{AuthenticateSession, AuthenticateSessionError}, extract_session_info::ExtractSessionInformation, mitigate_session_theft::{MitigateSessionTheft, MitigateSessionTheftError}, reauthenticate::{ReAuthenticateSession, ReAuthenticateSessionError}, refresh_session_series::{LastSessionSeriesRefreshedAt, RefreshSessionSeries, RefreshSessionSeriesError, SessionSeriesRefreshThereshold}, update_refresh_token::{UpdateRefreshToken, UpdateRefreshTokenError}, update_session::{UpdateSession, UpdateSessionError}}};
 
     use super::{ManageSession, ManageSessionError};
 
@@ -119,8 +120,6 @@ mod tests {
     }
 
     impl ExtractSessionInformation for MockManageSession {}
-
-    impl SetSessionCookie for MockManageSession {}
 
     impl AuthenticateSession for MockManageSession {
         async fn resolve_session_id_to_account_id(&self, session_id: &SessionId) -> Fallible<Option<AccountId>, AuthenticateSessionError> {
