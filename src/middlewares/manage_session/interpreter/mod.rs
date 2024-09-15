@@ -4,7 +4,7 @@ use mitigate_session_theft::{DeleteAllSessionSeries, SelectAllSessionSeries, Sel
 use refresh_session_series::{SelectLastSessionSeriesRefreshedAt, UpdateSessionSeriesTtl, SELECT_LAST_API_KEY_REFRESHED_AT, UPDATE_SESSION_SERIES_TTL};
 use scylla::Session;
 
-use crate::{common::session::{refresh_pair_expiration::RefreshPairExpirationSeconds, session_expiration::SessionExpirationSeconds}, helper::{error::InitError, redis::{Namespace, Pool}}};
+use crate::helper::{error::InitError, redis::{Namespace, Pool}};
 
 use super::dsl::{extract_session_info::ExtractSessionInformation, manage_session::ManageSession};
 
@@ -57,20 +57,10 @@ impl ManageSessionImpl {
 }
 
 const SESSION_ID_NAMESPACE: Namespace = Namespace::of("sid");
-const SESSION_EXPIRATION: SessionExpirationSeconds = SessionExpirationSeconds::new(30 * 60);
 
 const REFRESH_PAIR_NAMESPACE: Namespace = Namespace::of("rfp");
-const REFRESH_PAIR_EXPIRATION: RefreshPairExpirationSeconds = RefreshPairExpirationSeconds::new(400 * 24 * 60 * 60);
 const REFRESH_PAIR_VALUE_SEPARATOR: char = '$';
 
-impl ManageSession for ManageSessionImpl {
-    fn session_expiration() -> &'static SessionExpirationSeconds {
-        &SESSION_EXPIRATION
-    }
-
-    fn refresh_pair_expiration() -> &'static RefreshPairExpirationSeconds {
-        &REFRESH_PAIR_EXPIRATION
-    }
-}
+impl ManageSession for ManageSessionImpl {}
 
 impl ExtractSessionInformation for ManageSessionImpl {}

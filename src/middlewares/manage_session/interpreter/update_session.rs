@@ -6,7 +6,7 @@ use crate::{common::{fallible::Fallible, id::AccountId, session::{session_expira
 use super::ManageSessionImpl;
 
 impl UpdateSession for ManageSessionImpl {
-    async fn try_assign_new_session_id_with_expiration_if_unused(&self, new_session_id: &SessionId, session_account_id: &AccountId, new_expiration: &SessionExpirationSeconds) -> Fallible<(), UpdateSessionError> {
+    async fn try_assign_new_session_id_with_expiration_if_unused(&self, new_session_id: &SessionId, session_account_id: AccountId, new_expiration: SessionExpirationSeconds) -> Fallible<(), UpdateSessionError> {
         let key = Key(new_session_id);
 
         SetNewSessionIdCommand.run(&self.cache, (key, session_account_id, new_expiration))
@@ -33,8 +33,8 @@ impl<'a> ToRedisArgs for Key<'a> {
     }
 }
 
-impl<'a, 'b, 'c> TypedCommand<(Key<'a>, &'b AccountId, &'c SessionExpirationSeconds), Option<()>> for SetNewSessionIdCommand {
-    async fn execute(&self, mut conn: Connection<'_>, (key, session_account_id, new_expiration): (Key<'a>, &'b AccountId, &'c SessionExpirationSeconds)) -> anyhow::Result<Option<()>> {
+impl<'a> TypedCommand<(Key<'a>, AccountId, SessionExpirationSeconds), Option<()>> for SetNewSessionIdCommand {
+    async fn execute(&self, mut conn: Connection<'_>, (key, session_account_id, new_expiration): (Key<'a>, AccountId, SessionExpirationSeconds)) -> anyhow::Result<Option<()>> {
         cmd(SET_COMMAND)
             .arg(key)
             .arg(session_account_id.to_string())

@@ -2,7 +2,7 @@ use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result
 use serde::{de, Deserialize, Serialize};
 use thiserror::Error;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum Language {
   AmericanEnglish = 0,
   Japanese = 1,

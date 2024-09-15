@@ -1,5 +1,8 @@
 use redis::ToRedisArgs;
 
+pub const SESSION_EXPIRATION: SessionExpirationSeconds = SessionExpirationSeconds::new(30 * 60);
+
+#[derive(Debug, Clone, Copy)]
 pub struct SessionExpirationSeconds(u32);
 
 impl SessionExpirationSeconds {

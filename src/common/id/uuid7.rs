@@ -5,7 +5,7 @@ use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result
 use thiserror::Error;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Uuid7(Uuid);
 
 impl Uuid7 {

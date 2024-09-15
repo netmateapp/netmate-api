@@ -3,7 +3,7 @@ use thiserror::Error;
 use crate::common::{fallible::Fallible, id::AccountId, session::{session_expiration::SessionExpirationSeconds, session_id::SessionId}};
 
 pub(crate) trait UpdateSession {
-    async fn update_session(&self, session_account_id: &AccountId, new_expiration: &SessionExpirationSeconds) -> Fallible<SessionId, UpdateSessionError> {
+    async fn update_session(&self, session_account_id: AccountId, new_expiration: SessionExpirationSeconds) -> Fallible<SessionId, UpdateSessionError> {
         let mut new_session_id = SessionId::gen();
         
         // このループは奇跡が起きない限りO(1)となる
@@ -16,7 +16,7 @@ pub(crate) trait UpdateSession {
         }
     }
 
-    async fn try_assign_new_session_id_with_expiration_if_unused(&self, new_session_id: &SessionId, session_account_id: &AccountId, new_expiration: &SessionExpirationSeconds) -> Fallible<(), UpdateSessionError>;
+    async fn try_assign_new_session_id_with_expiration_if_unused(&self, new_session_id: &SessionId, session_account_id: AccountId, new_expiration: SessionExpirationSeconds) -> Fallible<(), UpdateSessionError>;
 }
 
 #[derive(Debug, Error)]

@@ -2,6 +2,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::{response::result::{ColumnType, CqlValue}, value::CqlTimestamp}, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct UnixtimeMillis(u64);
 
 impl UnixtimeMillis {

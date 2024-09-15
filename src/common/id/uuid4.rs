@@ -2,6 +2,7 @@ use serde::Serialize;
 use thiserror::Error;
 use uuid::Uuid;
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Uuid4(Uuid);
 
 impl Uuid4 {

@@ -13,10 +13,6 @@ pub const REFRESH_PAIR_SEPARATOR: char = '$';
 pub const SESSION_TIMEOUT_MINUTES: Duration = Duration::minutes(30);
 pub const REFRESH_PAIR_EXPIRATION_DAYS: Duration = Duration::days(400);
 
-fn refresh_session_cookie_expiration<B>(response: &mut Response<B>, session_id: &SessionId) {
-    set_session_cookie_with_expiration(response, session_id);
-}
-
 pub fn set_session_cookie_with_expiration<B>(response: &mut Response<B>, session_id: &SessionId) {
     set_cookie(response, &SESSION_COOKIE_KEY, String::from(session_id.value().value()), SESSION_TIMEOUT_MINUTES)
 }

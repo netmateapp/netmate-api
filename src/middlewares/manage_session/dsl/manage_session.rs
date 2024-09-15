@@ -4,7 +4,7 @@ use http::{header::SET_COOKIE, Request, Response};
 use thiserror::Error;
 use tower::Service;
 
-use crate::common::{fallible::Fallible, session::{cookie::{set_refresh_pair_cookie_with_expiration, set_session_cookie_with_expiration}, refresh_pair_expiration::RefreshPairExpirationSeconds, session_expiration::SessionExpirationSeconds}};
+use crate::common::{fallible::Fallible, session::{cookie::{set_refresh_pair_cookie_with_expiration, set_session_cookie_with_expiration}, refresh_pair_expiration::REFRESH_PAIR_EXPIRATION, session_expiration::SESSION_EXPIRATION}};
 
 use super::{authenticate::AuthenticateSession, extract_session_info::ExtractSessionInformation, mitigate_session_theft::MitigateSessionTheft, reauthenticate::{ReAuthenticateSession, ReAuthenticateSessionError}, refresh_session_series::RefreshSessionSeries, update_refresh_token::UpdateRefreshToken, update_session::UpdateSession};
 
@@ -53,33 +53,29 @@ pub(crate) trait ManageSession {
                         // セッションIDの更新に成功した場合のみに限定することで、
                         // 基本的に最低30分は間隔を空けて更新処理を行うようにし負荷を抑える
                         // ※セッションIDを破棄して送信されるリクエストへの耐性は無い
-                        if let Ok(new_session_id) = self.update_session(&account_id, Self::session_expiration()).await {
+                        if let Ok(new_session_id) = self.update_session(account_id, SESSION_EXPIRATION).await {
                             set_session_cookie_with_expiration(&mut response, &new_session_id);
 
                             // リフレッシュトークンの発行が失敗した場合は、現在のトークンを使用し続ける
                             // これはセキュリティリスクを多少増加させるが許容の範囲内である
-                            match self.update_refresh_token(&session_series, &account_id, Self::refresh_pair_expiration()).await {
+                            match self.update_refresh_token(&session_series, account_id, REFRESH_PAIR_EXPIRATION).await {
                                 Ok(new_refresh_token) => set_refresh_pair_cookie_with_expiration(&mut response, &session_series, &new_refresh_token),
                                 _ => (),
                             }
 
-                            let _ = self.try_refresh_session_series(&session_series, &account_id, Self::refresh_pair_expiration()).await;
+                            let _ = self.try_refresh_session_series(&session_series, account_id, REFRESH_PAIR_EXPIRATION).await;
                         }
                     }
 
                     return Ok(response);
                 },
-                Err(ReAuthenticateSessionError::PotentialSessionTheft(account_id)) => self.mitigate_session_theft(&account_id).await,
+                Err(ReAuthenticateSessionError::PotentialSessionTheft(account_id)) => self.mitigate_session_theft(account_id).await,
                 _ => (),
             }
         }
 
         Err(ManageSessionError::AuthenticationFailed)
     }
-
-    fn session_expiration() -> &'static SessionExpirationSeconds;
-
-    fn refresh_pair_expiration() -> &'static RefreshPairExpirationSeconds;
 }
 
 #[derive(Debug, Error)]
@@ -109,15 +105,7 @@ mod tests {
 
     struct MockManageSession;
 
-    impl ManageSession for MockManageSession {
-        fn session_expiration() -> &'static SessionExpirationSeconds {
-            &SESSION_EXPIRATION
-        }
-
-        fn refresh_pair_expiration() -> &'static RefreshPairExpirationSeconds {
-            &REFRESH_PAIR_EXPIRATION
-        }
-    }
+    impl ManageSession for MockManageSession {}
 
     impl ExtractSessionInformation for MockManageSession {}
 
@@ -142,13 +130,13 @@ mod tests {
     }
 
     impl UpdateSession for MockManageSession {
-        async fn try_assign_new_session_id_with_expiration_if_unused(&self, _: &SessionId, _: &AccountId, _: &SessionExpirationSeconds) -> Fallible<(), UpdateSessionError> {
+        async fn try_assign_new_session_id_with_expiration_if_unused(&self, _: &SessionId, _: AccountId, _: SessionExpirationSeconds) -> Fallible<(), UpdateSessionError> {
             Ok(())
         }
     }
 
     impl UpdateRefreshToken for MockManageSession {
-        async fn assign_new_refresh_token_with_expiration(&self, _: &RefreshToken, _: &SessionSeries, _: &AccountId, _: &RefreshPairExpirationSeconds) -> Fallible<(), UpdateRefreshTokenError> {
+        async fn assign_new_refresh_token_with_expiration(&self, _: &RefreshToken, _: &SessionSeries, _: AccountId, _: RefreshPairExpirationSeconds) -> Fallible<(), UpdateRefreshTokenError> {
             Ok(())
         }
     }
@@ -156,7 +144,7 @@ mod tests {
     const REFRESH_THERESHOLD: SessionSeriesRefreshThereshold = SessionSeriesRefreshThereshold::days(1);
 
     impl RefreshSessionSeries for MockManageSession {
-        async fn fetch_last_session_series_refreshed_at(&self, _: &SessionSeries, _: &AccountId) -> Fallible<LastSessionSeriesRefreshedAt, RefreshSessionSeriesError> {
+        async fn fetch_last_session_series_refreshed_at(&self, _: &SessionSeries, _: AccountId) -> Fallible<LastSessionSeriesRefreshedAt, RefreshSessionSeriesError> {
             Ok(LastSessionSeriesRefreshedAt::new(UnixtimeMillis::now()))
         }
 
@@ -164,21 +152,21 @@ mod tests {
             &REFRESH_THERESHOLD
         }
     
-        async fn refresh_session_series(&self, _: &SessionSeries, _: &AccountId, _: &RefreshPairExpirationSeconds) -> Fallible<(), RefreshSessionSeriesError> {
+        async fn refresh_session_series(&self, _: &SessionSeries, _: AccountId, _: RefreshPairExpirationSeconds) -> Fallible<(), RefreshSessionSeriesError> {
             Ok(())
         }
     }
 
     impl MitigateSessionTheft for MockManageSession {
-        async fn fetch_email_and_language(&self, _: &AccountId) -> Fallible<(Email, Language), MitigateSessionTheftError> {
+        async fn fetch_email_and_language(&self, _: AccountId) -> Fallible<(Email, Language), MitigateSessionTheftError> {
             Ok((Email::from_str("email@example.com").unwrap(), Language::Japanese))
         }
 
-        async fn send_security_notification(&self, _: &Email, _: &Language) -> Fallible<(), MitigateSessionTheftError> {
+        async fn send_security_notification(&self, _: &Email, _: Language) -> Fallible<(), MitigateSessionTheftError> {
             Ok(())
         }
     
-        async fn purge_all_session_series(&self, _: &AccountId) -> Fallible<(), MitigateSessionTheftError> {
+        async fn purge_all_session_series(&self, _: AccountId) -> Fallible<(), MitigateSessionTheftError> {
             Ok(())
         }
     }

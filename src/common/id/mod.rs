@@ -9,7 +9,7 @@ use uuid7::Uuid7;
 pub mod uuid4;
 pub mod uuid7;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct AccountId(Uuid7);
 
 impl AccountId {
@@ -59,6 +59,7 @@ impl FromRedisValue for AccountId {
     }
 }
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct TagId(Uuid4);
 
 impl TagId {

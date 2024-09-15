@@ -4,15 +4,15 @@ use tracing::info;
 use crate::common::{email::address::Email, fallible::Fallible, id::AccountId, language::Language};
 
 pub(crate) trait MitigateSessionTheft {
-    async fn mitigate_session_theft(&self, account_id: &AccountId) {
-        let is_email_sent = match self.fetch_email_and_language(&account_id).await {
-            Ok((email, language)) => self.send_security_notification(&email, &language)
+    async fn mitigate_session_theft(&self, account_id: AccountId) {
+        let is_email_sent = match self.fetch_email_and_language(account_id).await {
+            Ok((email, language)) => self.send_security_notification(&email, language)
                 .await
                 .is_ok(),
             _ => false
         };
 
-        let is_all_session_series_deleted = self.purge_all_session_series(&account_id).await.is_ok();
+        let is_all_session_series_deleted = self.purge_all_session_series(account_id).await.is_ok();
 
         info!(
             account_id = %account_id.value().value(),
@@ -22,11 +22,11 @@ pub(crate) trait MitigateSessionTheft {
         );
     }
 
-    async fn fetch_email_and_language(&self, account_id: &AccountId) -> Fallible<(Email, Language), MitigateSessionTheftError>;
+    async fn fetch_email_and_language(&self, account_id: AccountId) -> Fallible<(Email, Language), MitigateSessionTheftError>;
 
-    async fn send_security_notification(&self, email: &Email, language: &Language) -> Fallible<(), MitigateSessionTheftError>;
+    async fn send_security_notification(&self, email: &Email, language: Language) -> Fallible<(), MitigateSessionTheftError>;
 
-    async fn purge_all_session_series(&self, account_id: &AccountId) -> Fallible<(), MitigateSessionTheftError>;
+    async fn purge_all_session_series(&self, account_id: AccountId) -> Fallible<(), MitigateSessionTheftError>;
 }
 
 #[derive(Debug, Error)]

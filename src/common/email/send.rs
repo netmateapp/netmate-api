@@ -9,7 +9,7 @@ use super::address::Email;
 pub struct SenderName(String);
 
 impl SenderName {
-    pub fn by(language: &Language) -> Self {
+    pub fn by(language: Language) -> Self {
         let sender_name = match language {
             Language::Japanese => ja::email::SENDER_NAME,
             _ => us_en::email::SENDER_NAME,

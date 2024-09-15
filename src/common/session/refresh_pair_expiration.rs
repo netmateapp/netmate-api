@@ -1,6 +1,8 @@
 use redis::ToRedisArgs;
 use scylla::{frame::response::result::ColumnType, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
 
+pub const REFRESH_PAIR_EXPIRATION: RefreshPairExpirationSeconds = RefreshPairExpirationSeconds::new(400 * 24 * 60 * 60);
+
 #[derive(Debug, Clone, Copy)]
 pub struct RefreshPairExpirationSeconds(u32);
 

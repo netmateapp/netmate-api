@@ -11,14 +11,14 @@ const SECURITY_EMAIL_ADDRESS: LazyLock<NetmateEmail> = LazyLock::new(|| NetmateE
 const SECURITY_NOTIFICATION_SUBJECT: LazyLock<Subject> = LazyLock::new(|| Subject::from_str(ja::session::SECURITY_NOTIFICATION_SUBJECT).unwrap());
 
 impl MitigateSessionTheft for ManageSessionImpl {
-    async fn fetch_email_and_language(&self, account_id: &AccountId) -> Fallible<(Email, Language), MitigateSessionTheftError> {
+    async fn fetch_email_and_language(&self, account_id: AccountId) -> Fallible<(Email, Language), MitigateSessionTheftError> {
         self.select_email_and_language
             .query(&self.db, (account_id, ))
             .await
             .map_err(|e| MitigateSessionTheftError::FetchEmailAndLanguageFailed(e.into()))
     }
 
-    async fn send_security_notification(&self, email: &Email, language: &Language) -> Fallible<(), MitigateSessionTheftError> {
+    async fn send_security_notification(&self, email: &Email, language: Language) -> Fallible<(), MitigateSessionTheftError> {
         let (subject, html_content, plain_text) = match language {
             _ => (&*SECURITY_NOTIFICATION_SUBJECT, ja::session::SECURITY_NOTIFICATION_BODY_HTML, ja::session::SECURITY_NOTIFICATION_BODY_PLAIN)
         };
@@ -30,7 +30,7 @@ impl MitigateSessionTheft for ManageSessionImpl {
             .map_err(|e| MitigateSessionTheftError::SendSecurityNotificationFailed(e.into()))
     }
 
-    async fn purge_all_session_series(&self, account_id: &AccountId) -> Fallible<(), MitigateSessionTheftError> {
+    async fn purge_all_session_series(&self, account_id: AccountId) -> Fallible<(), MitigateSessionTheftError> {
         fn handle_error<E: Into<anyhow::Error>>(e: E) -> MitigateSessionTheftError {
             MitigateSessionTheftError::DeleteAllSessionSeriesFailed(e.into())
         }
@@ -65,10 +65,10 @@ pub const SELECT_EMAIL_AND_LANGUAGE: Statement<SelectEmailAndLanguage>
 #[derive(Debug)]
 pub struct SelectEmailAndLanguage(pub PreparedStatement);
 
-impl<'a> TypedStatement<(&'a AccountId, ), (Email, Language)> for SelectEmailAndLanguage {
+impl TypedStatement<(AccountId, ), (Email, Language)> for SelectEmailAndLanguage {
     type Result<U> = U where U: FromRow;
 
-    async fn query(&self, db: &Arc<Session>, values: (&'a AccountId, )) -> anyhow::Result<(Email, Language)> {
+    async fn query(&self, db: &Arc<Session>, values: (AccountId, )) -> anyhow::Result<(Email, Language)> {
         db.execute_unpaged(&self.0, values)
             .await
             .map_err(anyhow::Error::from)?
@@ -83,10 +83,10 @@ pub const SELECT_ALL_SESSION_SERIES: Statement<SelectAllSessionSeries>
 #[derive(Debug)]
 pub struct SelectAllSessionSeries(pub PreparedStatement);
 
-impl<'a> TypedStatement<(&'a AccountId, ), (SessionSeries, )> for SelectAllSessionSeries {
+impl TypedStatement<(AccountId, ), (SessionSeries, )> for SelectAllSessionSeries {
     type Result<U> = Vec<U> where U: FromRow;
 
-    async fn query(&self, db: &Arc<Session>, values: (&'a AccountId, )) -> anyhow::Result<Self::Result<(SessionSeries, )>> {
+    async fn query(&self, db: &Arc<Session>, values: (AccountId, )) -> anyhow::Result<Self::Result<(SessionSeries, )>> {
         db.execute_unpaged(&self.0, values)
             .await
             .map_err(anyhow::Error::from)?
@@ -106,10 +106,10 @@ pub const DELETE_ALL_SESSION_SERIES: Statement<DeleteAllSessionSeries>
 #[derive(Debug)]
 pub struct DeleteAllSessionSeries(pub PreparedStatement);
 
-impl<'a> TypedStatement<(&'a AccountId, ), Unit> for DeleteAllSessionSeries {
+impl TypedStatement<(AccountId, ), Unit> for DeleteAllSessionSeries {
     type Result<U> = U where U: FromRow;
 
-    async fn query(&self, db: &Arc<Session>, values: (&'a AccountId, )) -> anyhow::Result<Unit> {
+    async fn query(&self, db: &Arc<Session>, values: (AccountId, )) -> anyhow::Result<Unit> {
         db.execute_unpaged(&self.0, values)
             .await
             .map(|_| Unit)

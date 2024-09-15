@@ -5,7 +5,7 @@ use crate::common::{fallible::Fallible, id::AccountId, session::{refresh_pair_ex
 
 pub(crate) trait RefreshSessionSeries {
     // 指定されたセッション系列が存在している前提で実行される
-    async fn try_refresh_session_series(&self, session_series: &SessionSeries, session_account_id: &AccountId, new_expiration: &RefreshPairExpirationSeconds) -> Fallible<(), RefreshSessionSeriesError> {
+    async fn try_refresh_session_series(&self, session_series: &SessionSeries, session_account_id: AccountId, new_expiration: RefreshPairExpirationSeconds) -> Fallible<(), RefreshSessionSeriesError> {
         let last_refreshed_at = self.fetch_last_session_series_refreshed_at(session_series, session_account_id).await?;
         if Self::should_refresh_session_series(&last_refreshed_at) {
             self.refresh_session_series(session_series, session_account_id, new_expiration).await
@@ -14,7 +14,7 @@ pub(crate) trait RefreshSessionSeries {
         }
     }
 
-    async fn fetch_last_session_series_refreshed_at(&self, session_series: &SessionSeries, session_account_id: &AccountId) -> Fallible<LastSessionSeriesRefreshedAt, RefreshSessionSeriesError>;
+    async fn fetch_last_session_series_refreshed_at(&self, session_series: &SessionSeries, session_account_id: AccountId) -> Fallible<LastSessionSeriesRefreshedAt, RefreshSessionSeriesError>;
 
     fn should_refresh_session_series(last_refreshed_at: &LastSessionSeriesRefreshedAt) -> bool {
         let now = UnixtimeMillis::now();
@@ -24,7 +24,7 @@ pub(crate) trait RefreshSessionSeries {
 
     fn refresh_thereshold() -> &'static SessionSeriesRefreshThereshold;
 
-    async fn refresh_session_series(&self, session_series: &SessionSeries, session_account_id: &AccountId, new_expiration: &RefreshPairExpirationSeconds) -> Fallible<(), RefreshSessionSeriesError>;
+    async fn refresh_session_series(&self, session_series: &SessionSeries, session_account_id: AccountId, new_expiration: RefreshPairExpirationSeconds) -> Fallible<(), RefreshSessionSeriesError>;
 }
 
 #[derive(Debug, Error)]
@@ -79,7 +79,7 @@ mod tests {
     struct MockRefreshSessionSeries;
 
     impl RefreshSessionSeries for MockRefreshSessionSeries {
-        async fn fetch_last_session_series_refreshed_at(&self, session_series: &SessionSeries, _session_account_id: &AccountId) -> Fallible<LastSessionSeriesRefreshedAt, RefreshSessionSeriesError> {
+        async fn fetch_last_session_series_refreshed_at(&self, session_series: &SessionSeries, _session_account_id: AccountId) -> Fallible<LastSessionSeriesRefreshedAt, RefreshSessionSeriesError> {
             if session_series == &*SESSION_SERIES_TO_BE_REFRESHED {
                 let last_refreshed_at = UnixtimeMillis::now().value() - REFRESH_THERESHOLD.as_millis();
                 Ok(LastSessionSeriesRefreshedAt::new(UnixtimeMillis::new(last_refreshed_at)))
@@ -92,7 +92,7 @@ mod tests {
             &REFRESH_THERESHOLD
         }
 
-        async fn refresh_session_series(&self, _session_series: &SessionSeries, _session_account_id: &AccountId, _new_expiration: &RefreshPairExpirationSeconds) -> Fallible<(), RefreshSessionSeriesError> {
+        async fn refresh_session_series(&self, _session_series: &SessionSeries, _session_account_id: AccountId, _new_expiration: RefreshPairExpirationSeconds) -> Fallible<(), RefreshSessionSeriesError> {
             Ok(())
         }
     }
@@ -101,8 +101,8 @@ mod tests {
     async fn session_series_to_be_refreshed() {
         let result = MockRefreshSessionSeries.try_refresh_session_series(
             &*SESSION_SERIES_TO_BE_REFRESHED,
-            &AccountId::of(Uuid7::now()),
-            &RefreshPairExpirationSeconds::new(1),
+            AccountId::of(Uuid7::now()),
+            RefreshPairExpirationSeconds::new(1),
         ).await;
         assert!(result.is_ok());
     }
@@ -111,8 +111,8 @@ mod tests {
     async fn session_series_to_not_be_refreshed() {
         let result = MockRefreshSessionSeries.try_refresh_session_series(
             &SessionSeries::gen(),
-            &AccountId::of(Uuid7::now()),
-            &RefreshPairExpirationSeconds::new(1),
+            AccountId::of(Uuid7::now()),
+            RefreshPairExpirationSeconds::new(1),
         ).await;
         assert!(result.is_ok());
     }
