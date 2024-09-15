@@ -11,7 +11,7 @@ pub(crate)  trait AssignRefreshPair {
         loop {
             match self.try_assign_refresh_pair_with_expiration_if_unused(&session_series, &refresh_token, session_account_id, expiration).await {
                 Ok(()) => return Ok((session_series, refresh_token)),
-                Err(AssignRefreshPairError::SessionIdAlreadyUsed) => session_series = SessionSeries::gen(),
+                Err(AssignRefreshPairError::SessionSeriesAlreadyUsed) => session_series = SessionSeries::gen(),
                 Err(e) => return Err(e),
             }
         }
@@ -22,8 +22,8 @@ pub(crate)  trait AssignRefreshPair {
 
 #[derive(Debug, Error)]
 pub enum AssignRefreshPairError {
-    #[error("セッションIDが既に使用されています")]
-    SessionIdAlreadyUsed,
-    #[error("新規セッションIDの割り当てに失敗しました")]
-    AssignNewSessionIdFailed(#[source] anyhow::Error),
+    #[error("セッションシリーズが既に使用されています")]
+    SessionSeriesAlreadyUsed,
+    #[error("セッションシリーズの割り当てに失敗しました")]
+    AssignRefreshPairFailed(#[source] anyhow::Error),
 }
