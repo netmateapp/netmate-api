@@ -50,7 +50,7 @@ impl RateLimitImpl {
 pub struct EndpointName(Namespace);
 
 impl EndpointName {
-    pub fn new(namespace: Namespace) -> Self {
+    pub const fn new(namespace: Namespace) -> Self {
         Self(namespace)
     }
 }

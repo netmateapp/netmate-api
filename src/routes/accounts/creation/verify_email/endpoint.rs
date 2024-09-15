@@ -4,17 +4,27 @@ use axum::{extract::{ConnectInfo, State}, http::StatusCode, response::{IntoRespo
 use axum_macros::debug_handler;
 use scylla::Session;
 use serde::Serialize;
+use tower::ServiceBuilder;
 use tracing::info;
 
-use crate::{common::id::tag_id::TagId, helper::error::InitError, routes::accounts::creation::value::OneTimeToken};
+use crate::{common::id::tag_id::TagId, helper::{error::InitError, middleware::{rate_limiter, session_starter}, redis::{Namespace, Pool}}, middlewares::rate_limit::{dsl::increment_rate::{InculsiveLimit, TimeWindow}, interpreter::EndpointName}, routes::accounts::creation::value::OneTimeToken};
 
 use super::{dsl::{VerifyEmail, VerifyEmailError}, interpreter::VerifyEmailImpl};
 
-pub async fn endpoint(db: Arc<Session>) -> Result<Router, InitError<VerifyEmailImpl>> {
+pub async fn endpoint(db: Arc<Session>, cache: Arc<Pool>) -> Result<Router, InitError<VerifyEmailImpl>> {
+    const ENDPOINT_NAME: EndpointName = EndpointName::new(Namespace::of("vrfem"));
+    const LIMIT: InculsiveLimit = InculsiveLimit::new(3);
+    const TIME_WINDOW: TimeWindow = TimeWindow::hours(1);
+
+    let services = ServiceBuilder::new()
+        .layer(rate_limiter(db.clone(), cache.clone(), ENDPOINT_NAME, LIMIT, TIME_WINDOW).await?)
+        .layer(session_starter(db.clone(), cache).await?);
+
     let verify_email = VerifyEmailImpl::try_new(db).await?;
 
     let router = Router::new()
         .route("/verify_email", post(handler))
+        .layer(services)
         .with_state(Arc::new(verify_email));
 
     Ok(router)
