@@ -47,14 +47,14 @@ where
 {
     type Response = S::Response;
     type Error = S::Error;
-    type Future = SessionFuture<S, B>;
+    type Future = ManageSessionFuture<S, B>;
 
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.inner.poll_ready(cx)
     }
 
     fn call(&mut self, req: Request<B>) -> Self::Future {
-        SessionFuture {
+        ManageSessionFuture {
             inner: self.inner.clone(), // 下記の都合で`Future::poll`内で`inner.call(req)`を呼ぶ必要があるため複製して渡す
             request: Some(req), // `inner.call(req)`が`req`の所有権を必要とするため渡す必要がある
             manage_session: self.manage_session.clone(),
@@ -63,7 +63,7 @@ where
 }
 
 #[pin_project]
-pub struct SessionFuture<S, B>
+pub struct ManageSessionFuture<S, B>
 where
     S: Service<Request<B>>,
     B: Default,
@@ -73,7 +73,7 @@ where
     manage_session: Arc<ManageSessionImpl>,
 }
 
-impl<S, B> Future for SessionFuture<S, B>
+impl<S, B> Future for ManageSessionFuture<S, B>
 where
     S: Service<Request<B>, Error = Infallible, Response = Response<B>>,
     S::Future: Future<Output = Result<Response<B>, S::Error>>,
