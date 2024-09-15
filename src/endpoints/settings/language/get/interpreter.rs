@@ -49,7 +49,9 @@ impl TypedStatement<(AccountId, ), (Language, )> for SelectLanguage {
 
 #[cfg(test)]
 mod tests {
-    use crate::{helper::scylla::check_cql_query_type, routes::settings::language::get::interpreter::SELECT_LANGUAGE};
+    use crate::helper::scylla::check_cql_query_type;
+
+    use super::SELECT_LANGUAGE;
     
     #[test]
     fn check_select_language_type() {

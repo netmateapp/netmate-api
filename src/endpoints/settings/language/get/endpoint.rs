@@ -7,7 +7,7 @@ use scylla::Session;
 use tower::ServiceBuilder;
 use tracing::info;
 
-use crate::{common::{id::account_id::AccountId, language::Language}, helper::{error::InitError, middleware::{rate_limiter, session_manager}, redis::{Namespace, Pool}}, middlewares::rate_limit::{dsl::increment_rate::{InculsiveLimit, TimeWindow}, interpreter::EndpointName}, routes::settings::language::get::dsl::GetLanguage};
+use crate::{common::{id::account_id::AccountId, language::Language}, endpoints::settings::language::get::dsl::GetLanguage, helper::{error::InitError, middleware::{rate_limiter, session_manager}, redis::{Namespace, Pool}}, middlewares::rate_limit::{dsl::increment_rate::{InculsiveLimit, TimeWindow}, interpreter::EndpointName}};
 
 use super::interpreter::GetLanguageImpl;
 
