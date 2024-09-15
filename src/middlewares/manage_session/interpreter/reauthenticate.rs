@@ -4,7 +4,7 @@ use bb8_redis::redis::cmd;
 use redis::{FromRedisValue, RedisError, RedisResult, ToRedisArgs};
 use uuid::Uuid;
 
-use crate::{common::{fallible::Fallible, id::account_id::AccountId, session::{refresh_token::RefreshToken, session_series::SessionSeries}, uuid::uuid7::Uuid7}, helper::redis::{Connection, TypedCommand, GET_COMMAND, NAMESPACE_SEPARATOR}, middlewares::manage_session::{dsl::reauthenticate::{ReAuthenticateSession, ReAuthenticateSessionError}, interpreter::{REFRESH_PAIR_NAMESPACE, REFRESH_PAIR_VALUE_SEPARATOR}}};
+use crate::{common::{fallible::Fallible, id::account_id::AccountId, session::{refresh_token::RefreshToken, session_series::SessionSeries}, uuid::uuid7::Uuid7}, helper::redis::{Connection, TypedCommand, GET_COMMAND}, middlewares::{manage_session::dsl::reauthenticate::{ReAuthenticateSession, ReAuthenticateSessionError}, value::{format_refresh_pair_key, REFRESH_PAIR_VALUE_SEPARATOR}}};
 
 use super::ManageSessionImpl;
 
@@ -23,16 +23,12 @@ struct GetRefreshPairCommand;
 
 struct Key<'a>(&'a SessionSeries);
 
-fn format_key(session_series: &SessionSeries) -> String {
-    format!("{}{}{}", REFRESH_PAIR_NAMESPACE, NAMESPACE_SEPARATOR, session_series)
-}
-
 impl<'a> ToRedisArgs for Key<'a> {
     fn write_redis_args<W>(&self, out: &mut W)
     where
         W: ?Sized + redis::RedisWrite
     {
-        format_key(self.0).write_redis_args(out);
+        format_refresh_pair_key(self.0).write_redis_args(out);
     }
 }
 
@@ -70,18 +66,5 @@ impl<'a> TypedCommand<Key<'a>, Option<RefreshPair>> for GetRefreshPairCommand {
             .query_async::<Option<RefreshPair>>(&mut *conn)
             .await
             .map_err(Into::into)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::{common::session::session_series::SessionSeries, helper::redis::NAMESPACE_SEPARATOR, middlewares::manage_session::interpreter::{reauthenticate::format_key, REFRESH_PAIR_NAMESPACE}};
-
-    #[test]
-    fn test_format_key() {
-        let series = SessionSeries::gen();
-        let key = format_key(&series);
-        let expected = format!("{}{}{}", REFRESH_PAIR_NAMESPACE, NAMESPACE_SEPARATOR, series);
-        assert_eq!(key, expected);
     }
 }

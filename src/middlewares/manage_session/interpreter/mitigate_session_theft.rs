@@ -3,7 +3,7 @@ use std::{str::FromStr, sync::{Arc, LazyLock}};
 use redis::{cmd, ToRedisArgs};
 use scylla::{prepared_statement::PreparedStatement, FromRow, Session};
 
-use crate::{common::{email::{address::Email, resend::ResendEmailSender, send::{Body, EmailSender, HtmlContent, NetmateEmail, PlainText, SenderName, Subject}}, fallible::Fallible, id::account_id::AccountId, language::Language, session::session_series::SessionSeries}, helper::{redis::{Connection, TypedCommand, DEL_COMMAND, NAMESPACE_SEPARATOR}, scylla::{Statement, TypedStatement, Unit}}, middlewares::manage_session::{dsl::mitigate_session_theft::{MitigateSessionTheft, MitigateSessionTheftError}, interpreter::SESSION_ID_NAMESPACE}, translation::ja};
+use crate::{common::{email::{address::Email, resend::ResendEmailSender, send::{Body, EmailSender, HtmlContent, NetmateEmail, PlainText, SenderName, Subject}}, fallible::Fallible, id::account_id::AccountId, language::Language, session::session_series::SessionSeries}, helper::{redis::{Connection, TypedCommand, DEL_COMMAND}, scylla::{Statement, TypedStatement, Unit}}, middlewares::{manage_session::dsl::mitigate_session_theft::{MitigateSessionTheft, MitigateSessionTheftError}, value::format_refresh_pair_key}, translation::ja};
 
 use super::ManageSessionImpl;
 
@@ -121,16 +121,12 @@ struct DeleteAllSessionSeriesCommand;
 
 struct Key<'a>(&'a SessionSeries);
 
-fn format_key(session_series: &SessionSeries) -> String {
-    format!("{}{}{}", SESSION_ID_NAMESPACE, NAMESPACE_SEPARATOR, session_series)
-}
-
 impl<'a> ToRedisArgs for Key<'a> {
     fn write_redis_args<W>(&self, out: &mut W)
     where
         W: ?Sized + redis::RedisWrite
     {
-        format_key(self.0).write_redis_args(out);
+        format_refresh_pair_key(self.0).write_redis_args(out);
     }
 }
 
@@ -145,9 +141,9 @@ impl<'a> TypedCommand<Vec<Key<'a>>, ()> for DeleteAllSessionSeriesCommand {
 
 #[cfg(test)]
 mod tests {
-    use crate::{common::session::session_series::SessionSeries, helper::{redis::NAMESPACE_SEPARATOR, scylla::{check_cql_query_type, check_cql_statement_type}}, middlewares::manage_session::interpreter::SELECT_EMAIL_AND_LANGUAGE};
+    use crate::{helper::scylla::{check_cql_query_type, check_cql_statement_type}, middlewares::manage_session::interpreter::SELECT_EMAIL_AND_LANGUAGE};
 
-    use super::{format_key, DELETE_ALL_SESSION_SERIES, SELECT_ALL_SESSION_SERIES};
+    use super::{DELETE_ALL_SESSION_SERIES, SELECT_ALL_SESSION_SERIES};
 
     #[test]
     fn check_select_email_and_language_type() {
@@ -162,13 +158,5 @@ mod tests {
     #[test]
     fn check_delete_all_session_series_type() {
         check_cql_statement_type(DELETE_ALL_SESSION_SERIES);
-    }
-
-    #[test]
-    fn test_format_key() {
-        let session_series = SessionSeries::gen();
-        let key = format_key(&session_series);
-        let expected = format!("{}{}{}", super::SESSION_ID_NAMESPACE, NAMESPACE_SEPARATOR, session_series);
-        assert_eq!(key, expected);
     }
 }

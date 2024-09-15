@@ -4,7 +4,7 @@ use mitigate_session_theft::{DeleteAllSessionSeries, SelectAllSessionSeries, Sel
 use refresh_session_series::{SelectLastSessionSeriesRefreshedAt, UpdateSessionSeriesTtl, SELECT_LAST_API_KEY_REFRESHED_AT, UPDATE_SESSION_SERIES_TTL};
 use scylla::Session;
 
-use crate::helper::{error::InitError, redis::{Namespace, Pool}};
+use crate::helper::{error::InitError, redis::Pool};
 
 use super::dsl::{extract_session_info::ExtractSessionInformation, manage_session::ManageSession};
 
@@ -55,11 +55,6 @@ impl ManageSessionImpl {
         Ok(Self { db, cache, select_last_session_series_refreshed_at, update_session_series_ttl, select_email_and_language, select_all_session_series, delete_all_session_series })
     }
 }
-
-const SESSION_ID_NAMESPACE: Namespace = Namespace::of("sid");
-
-const REFRESH_PAIR_NAMESPACE: Namespace = Namespace::of("rfp");
-const REFRESH_PAIR_VALUE_SEPARATOR: char = '$';
 
 impl ManageSession for ManageSessionImpl {}
 
