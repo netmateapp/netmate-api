@@ -1,12 +1,12 @@
 use redis::ToRedisArgs;
 use scylla::{frame::response::result::ColumnType, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
 
-pub const REFRESH_PAIR_EXPIRATION: RefreshPairExpiration = RefreshPairExpiration::secs(400 * 24 * 60 * 60);
+pub const REFRESH_PAIR_EXPIRATION: RefreshPairExpirationSeconds = RefreshPairExpirationSeconds::secs(400 * 24 * 60 * 60);
 
 #[derive(Debug, Clone, Copy)]
-pub struct RefreshPairExpiration(u32);
+pub struct RefreshPairExpirationSeconds(u32);
 
-impl RefreshPairExpiration {
+impl RefreshPairExpirationSeconds {
     pub const fn secs(seconds: u32) -> Self {
         Self(seconds)
     }
@@ -16,23 +16,17 @@ impl RefreshPairExpiration {
     }
 }
 
-impl From<RefreshPairExpiration> for i32 {
-    fn from(expiration: RefreshPairExpiration) -> Self {
-        expiration.0 as i32
-    }
-}
-
-impl SerializeValue for RefreshPairExpiration {
+impl SerializeValue for RefreshPairExpirationSeconds {
     fn serialize<'b>(&self, typ: &ColumnType, writer: CellWriter<'b>) -> Result<WrittenCellProof<'b>, SerializationError> {
-        (self.0 as i32).serialize(typ, writer)
+        (self.as_secs() as i32).serialize(typ, writer)
     }
 }
 
-impl ToRedisArgs for RefreshPairExpiration {
+impl ToRedisArgs for RefreshPairExpirationSeconds {
     fn write_redis_args<W>(&self, out: &mut W)
     where
         W: ?Sized + redis::RedisWrite
     {
-        self.0.write_redis_args(out);
+        self.as_secs().write_redis_args(out);
     }
 }

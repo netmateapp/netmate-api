@@ -1,11 +1,11 @@
 use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::CqlValue};
 use thiserror::Error;
 
-use crate::common::{fallible::Fallible, id::AccountId, session::{refresh_pair_expiration::RefreshPairExpiration, session_series::SessionSeries}, unixtime::UnixtimeMillis};
+use crate::common::{fallible::Fallible, id::AccountId, session::{refresh_pair_expiration::RefreshPairExpirationSeconds, session_series::SessionSeries}, unixtime::UnixtimeMillis};
 
 pub(crate) trait RefreshSessionSeries {
     // 指定されたセッション系列が存在している前提で実行される
-    async fn try_refresh_session_series(&self, session_series: &SessionSeries, session_account_id: AccountId, new_expiration: RefreshPairExpiration) -> Fallible<(), RefreshSessionSeriesError> {
+    async fn try_refresh_session_series(&self, session_series: &SessionSeries, session_account_id: AccountId, new_expiration: RefreshPairExpirationSeconds) -> Fallible<(), RefreshSessionSeriesError> {
         let last_refreshed_at = self.fetch_last_session_series_refreshed_at(session_series, session_account_id).await?;
         if Self::should_refresh_session_series(&last_refreshed_at) {
             self.refresh_session_series(session_series, session_account_id, new_expiration).await
@@ -24,7 +24,7 @@ pub(crate) trait RefreshSessionSeries {
 
     fn refresh_thereshold() -> &'static SessionSeriesRefreshThereshold;
 
-    async fn refresh_session_series(&self, session_series: &SessionSeries, session_account_id: AccountId, new_expiration: RefreshPairExpiration) -> Fallible<(), RefreshSessionSeriesError>;
+    async fn refresh_session_series(&self, session_series: &SessionSeries, session_account_id: AccountId, new_expiration: RefreshPairExpirationSeconds) -> Fallible<(), RefreshSessionSeriesError>;
 }
 
 #[derive(Debug, Error)]
@@ -69,7 +69,7 @@ impl SessionSeriesRefreshThereshold {
 mod tests {
     use std::sync::LazyLock;
 
-    use crate::common::{fallible::Fallible, id::{uuid7::Uuid7, AccountId}, session::{refresh_pair_expiration::RefreshPairExpiration, session_series::SessionSeries}, unixtime::UnixtimeMillis};
+    use crate::common::{fallible::Fallible, id::{uuid7::Uuid7, AccountId}, session::{refresh_pair_expiration::RefreshPairExpirationSeconds, session_series::SessionSeries}, unixtime::UnixtimeMillis};
 
     use super::{LastSessionSeriesRefreshedAt, RefreshSessionSeries, RefreshSessionSeriesError, SessionSeriesRefreshThereshold};
 
@@ -92,7 +92,7 @@ mod tests {
             &REFRESH_THERESHOLD
         }
 
-        async fn refresh_session_series(&self, _session_series: &SessionSeries, _session_account_id: AccountId, _new_expiration: RefreshPairExpiration) -> Fallible<(), RefreshSessionSeriesError> {
+        async fn refresh_session_series(&self, _session_series: &SessionSeries, _session_account_id: AccountId, _new_expiration: RefreshPairExpirationSeconds) -> Fallible<(), RefreshSessionSeriesError> {
             Ok(())
         }
     }
@@ -102,7 +102,7 @@ mod tests {
         let result = MockRefreshSessionSeries.try_refresh_session_series(
             &*SESSION_SERIES_TO_BE_REFRESHED,
             AccountId::of(Uuid7::now()),
-            RefreshPairExpiration::secs(1),
+            RefreshPairExpirationSeconds::secs(1),
         ).await;
         assert!(result.is_ok());
     }
@@ -112,7 +112,7 @@ mod tests {
         let result = MockRefreshSessionSeries.try_refresh_session_series(
             &SessionSeries::gen(),
             AccountId::of(Uuid7::now()),
-            RefreshPairExpiration::secs(1),
+            RefreshPairExpirationSeconds::secs(1),
         ).await;
         assert!(result.is_ok());
     }

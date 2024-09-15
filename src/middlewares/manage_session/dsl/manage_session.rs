@@ -93,15 +93,15 @@ mod tests {
     use http::{header::COOKIE, Request, Response};
     use tower::Service;
 
-    use crate::{common::{email::address::Email, fallible::Fallible, id::{uuid7::Uuid7, AccountId}, language::Language, session::{cookie::{to_cookie_value, REFRESH_PAIR_COOKIE_KEY, SESSION_COOKIE_KEY}, refresh_pair_expiration::RefreshPairExpiration, refresh_token::RefreshToken, session_expiration::SessionExpiration, session_id::SessionId, session_series::SessionSeries}, unixtime::UnixtimeMillis}, middlewares::manage_session::dsl::{authenticate::{AuthenticateSession, AuthenticateSessionError}, extract_session_info::ExtractSessionInformation, mitigate_session_theft::{MitigateSessionTheft, MitigateSessionTheftError}, reauthenticate::{ReAuthenticateSession, ReAuthenticateSessionError}, refresh_session_series::{LastSessionSeriesRefreshedAt, RefreshSessionSeries, RefreshSessionSeriesError, SessionSeriesRefreshThereshold}, update_refresh_token::{UpdateRefreshToken, UpdateRefreshTokenError}, update_session::{UpdateSession, UpdateSessionError}}};
+    use crate::{common::{email::address::Email, fallible::Fallible, id::{uuid7::Uuid7, AccountId}, language::Language, session::{cookie::{to_cookie_value, REFRESH_PAIR_COOKIE_KEY, SESSION_COOKIE_KEY}, refresh_pair_expiration::RefreshPairExpirationSeconds, refresh_token::RefreshToken, session_expiration::SessionExpirationSeconds, session_id::SessionId, session_series::SessionSeries}, unixtime::UnixtimeMillis}, middlewares::manage_session::dsl::{authenticate::{AuthenticateSession, AuthenticateSessionError}, extract_session_info::ExtractSessionInformation, mitigate_session_theft::{MitigateSessionTheft, MitigateSessionTheftError}, reauthenticate::{ReAuthenticateSession, ReAuthenticateSessionError}, refresh_session_series::{LastSessionSeriesRefreshedAt, RefreshSessionSeries, RefreshSessionSeriesError, SessionSeriesRefreshThereshold}, update_refresh_token::{UpdateRefreshToken, UpdateRefreshTokenError}, update_session::{UpdateSession, UpdateSessionError}}};
 
     use super::{ManageSession, ManageSessionError};
 
     static AUTHENTICATION_SUCCEEDED: LazyLock<SessionId> = LazyLock::new(|| SessionId::gen());
     static REAUTHENTICATION_SUCCEDED: LazyLock<(SessionSeries, RefreshToken)> = LazyLock::new(|| (SessionSeries::gen(), RefreshToken::gen()));
 
-    const SESSION_EXPIRATION: SessionExpiration = SessionExpiration::secs(1800);
-    const REFRESH_PAIR_EXPIRATION: RefreshPairExpiration = RefreshPairExpiration::secs(2592000);
+    const SESSION_EXPIRATION: SessionExpirationSeconds = SessionExpirationSeconds::secs(1800);
+    const REFRESH_PAIR_EXPIRATION: RefreshPairExpirationSeconds = RefreshPairExpirationSeconds::secs(2592000);
 
     struct MockManageSession;
 
@@ -130,13 +130,13 @@ mod tests {
     }
 
     impl UpdateSession for MockManageSession {
-        async fn try_assign_new_session_id_with_expiration_if_unused(&self, _: &SessionId, _: AccountId, _: SessionExpiration) -> Fallible<(), UpdateSessionError> {
+        async fn try_assign_new_session_id_with_expiration_if_unused(&self, _: &SessionId, _: AccountId, _: SessionExpirationSeconds) -> Fallible<(), UpdateSessionError> {
             Ok(())
         }
     }
 
     impl UpdateRefreshToken for MockManageSession {
-        async fn assign_new_refresh_token_with_expiration(&self, _: &RefreshToken, _: &SessionSeries, _: AccountId, _: RefreshPairExpiration) -> Fallible<(), UpdateRefreshTokenError> {
+        async fn assign_new_refresh_token_with_expiration(&self, _: &RefreshToken, _: &SessionSeries, _: AccountId, _: RefreshPairExpirationSeconds) -> Fallible<(), UpdateRefreshTokenError> {
             Ok(())
         }
     }
@@ -152,7 +152,7 @@ mod tests {
             &REFRESH_THERESHOLD
         }
     
-        async fn refresh_session_series(&self, _: &SessionSeries, _: AccountId, _: RefreshPairExpiration) -> Fallible<(), RefreshSessionSeriesError> {
+        async fn refresh_session_series(&self, _: &SessionSeries, _: AccountId, _: RefreshPairExpirationSeconds) -> Fallible<(), RefreshSessionSeriesError> {
             Ok(())
         }
     }
