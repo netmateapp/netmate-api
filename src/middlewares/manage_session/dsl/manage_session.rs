@@ -21,29 +21,26 @@ pub(crate) trait ManageSession {
         }
 
         if let Some(session_id) = session_id {
-            match self.authenticate_session(&session_id).await {
-                Ok(account_id) => {
-                    request.extensions_mut().insert(account_id);
+            if let Ok(account_id) = self.authenticate_session(&session_id).await {
+                request.extensions_mut().insert(account_id);
 
-                    // `Error`は`Infallible`で起こり得ないので`unwrap()`で問題ない
-                    let mut response = inner.call(request).await.unwrap();
+                // `Error`は`Infallible`で起こり得ないので`unwrap()`で問題ない
+                let mut response = inner.call(request).await.unwrap();
 
-                    // パスワード変更やログアウトによるSet-Cookieヘッダが無い場合のみセッションを延長
-                    if !response.headers().contains_key(SET_COOKIE) {
-                        // 同じセッションIDをセットすることで有効期限をリフレッシュ
-                        set_session_cookie_with_expiration(&mut response, &session_id);
-                    }
-                    
-                    return Ok(response)
-                },
-                _ => (),
+                // パスワード変更やログアウトによるSet-Cookieヘッダが無い場合のみセッションを延長
+                if !response.headers().contains_key(SET_COOKIE) {
+                    // 同じセッションIDをセットすることで有効期限をリフレッシュ
+                    set_session_cookie_with_expiration(&mut response, &session_id);
+                }
+                
+                return Ok(response)
             }
         }
     
         if let Some((session_series, refresh_token)) = pair {
             match self.reauthenticate_session(&session_series, refresh_token).await {
                 Ok(account_id) => {
-                    request.extensions_mut().insert(account_id.clone());
+                    request.extensions_mut().insert(account_id);
 
                     // `Error`は`Infallible`で起こり得ないので`unwrap()`で問題ない
                     let mut response = inner.call(request).await.unwrap();
@@ -58,9 +55,8 @@ pub(crate) trait ManageSession {
 
                             // リフレッシュトークンの発行が失敗した場合は、現在のトークンを使用し続ける
                             // これはセキュリティリスクを多少増加させるが許容の範囲内である
-                            match self.update_refresh_token(&session_series, account_id, REFRESH_PAIR_EXPIRATION).await {
-                                Ok(new_refresh_token) => set_refresh_pair_cookie_with_expiration(&mut response, &session_series, &new_refresh_token),
-                                _ => (),
+                            if let Ok(new_refresh_token) = self.update_refresh_token(&session_series, account_id, REFRESH_PAIR_EXPIRATION).await { 
+                                set_refresh_pair_cookie_with_expiration(&mut response, &session_series, &new_refresh_token)
                             }
 
                             let _ = self.try_refresh_session_series(&session_series, account_id, REFRESH_PAIR_EXPIRATION).await;
@@ -97,7 +93,7 @@ mod tests {
 
     use super::{ManageSession, ManageSessionError};
 
-    static AUTHENTICATION_SUCCEEDED: LazyLock<SessionId> = LazyLock::new(|| SessionId::gen());
+    static AUTHENTICATION_SUCCEEDED: LazyLock<SessionId> = LazyLock::new(SessionId::gen);
     static REAUTHENTICATION_SUCCEDED: LazyLock<(SessionSeries, RefreshToken)> = LazyLock::new(|| (SessionSeries::gen(), RefreshToken::gen()));
 
     struct MockManageSession;
@@ -118,7 +114,7 @@ mod tests {
 
     impl ReAuthenticateSession for MockManageSession {
         async fn fetch_refresh_token_and_account_id(&self, session_series: &SessionSeries) -> Fallible<Option<(RefreshToken, AccountId)>, ReAuthenticateSessionError> {
-            if session_series == &(*REAUTHENTICATION_SUCCEDED).0 {
+            if session_series == &REAUTHENTICATION_SUCCEDED.0 {
                 Ok(Some((REAUTHENTICATION_SUCCEDED.1.clone(), AccountId::gen())))
             } else {
                 Ok(None)
@@ -207,7 +203,7 @@ mod tests {
 
     #[tokio::test]
     async fn reauthentication_succeeded() {
-        let session_cookie_value = to_cookie_value(&(*REAUTHENTICATION_SUCCEDED).0, &(*REAUTHENTICATION_SUCCEDED).1);
+        let session_cookie_value = to_cookie_value(&REAUTHENTICATION_SUCCEDED.0, &REAUTHENTICATION_SUCCEDED.1);
         let result = test_manage_session(REFRESH_PAIR_COOKIE_KEY, &session_cookie_value).await;
         assert!(result.is_ok());
     }
