@@ -16,9 +16,15 @@ impl RefreshPairExpirationSeconds {
     }
 }
 
+impl From<RefreshPairExpirationSeconds> for i32 {
+    fn from(value: RefreshPairExpirationSeconds) -> Self {
+        value.as_secs() as i32
+    }
+}
+
 impl SerializeValue for RefreshPairExpirationSeconds {
     fn serialize<'b>(&self, typ: &ColumnType, writer: CellWriter<'b>) -> Result<WrittenCellProof<'b>, SerializationError> {
-        (self.as_secs() as i32).serialize(typ, writer)
+        i32::from(*self).serialize(typ, writer)
     }
 }
 
