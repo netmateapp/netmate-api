@@ -2,6 +2,7 @@ use std::fmt::{self, Display};
 
 use redis::{FromRedisValue, RedisResult, ToRedisArgs};
 use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::{ColumnType, CqlValue}, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
+use serde::Serialize;
 use uuid4::Uuid4;
 use uuid7::Uuid7;
 
@@ -69,5 +70,14 @@ impl TagId {
 impl TagId {
     pub const fn new(value: Uuid4) -> Self {
         TagId(value)
+    }
+}
+
+impl Serialize for TagId {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer
+    {
+        self.0.serialize(serializer)
     }
 }

@@ -1,3 +1,4 @@
+use serde::Serialize;
 use thiserror::Error;
 use uuid::Uuid;
 
@@ -26,5 +27,14 @@ impl TryFrom<Uuid> for Uuid4 {
         } else {
             Err(ParseUuid4Error)
         }
+    }
+}
+
+impl Serialize for Uuid4 {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer
+    {
+        self.0.serialize(serializer)
     }
 }

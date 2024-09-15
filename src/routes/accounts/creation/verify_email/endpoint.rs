@@ -3,9 +3,10 @@ use std::{net::SocketAddr, sync::Arc};
 use axum::{extract::{ConnectInfo, State}, http::StatusCode, routing::post, Json, Router};
 use axum_macros::debug_handler;
 use scylla::Session;
+use serde::Serialize;
 use tracing::info;
 
-use crate::{helper::error::InitError, routes::accounts::creation::value::OneTimeToken};
+use crate::{common::id::TagId, helper::error::InitError, routes::accounts::creation::value::OneTimeToken};
 
 use super::{dsl::{VerifyEmail, VerifyEmailError}, interpreter::VerifyEmailImpl};
 
@@ -24,7 +25,7 @@ pub async fn handler(
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     State(routine): State<Arc<VerifyEmailImpl>>,
     Json(token): Json<OneTimeToken>
-) -> Result<Json<String>, StatusCode> {
+) -> Result<Json<Body>, StatusCode> {
     match routine.verify_email(&token).await {
         Ok(top_tag_id) => {
             info!(
@@ -32,7 +33,9 @@ pub async fn handler(
                 "メールアドレスの認証に成功しました。"
             );
 
-            Ok(Json(top_tag_id.value().value().to_string()))
+            // セッションを追加 <- ミドルウェアでする
+
+            Ok(Json(Body { top_tag_id }))
         },
         Err(e) => {
             info!(
@@ -47,4 +50,9 @@ pub async fn handler(
             }
         }
     }
+}
+
+#[derive(Serialize)]
+pub struct Body {
+    top_tag_id: TagId,
 }
