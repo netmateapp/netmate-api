@@ -26,7 +26,10 @@ pub(crate) trait RateLimit {
             Ok(_) => {
                 // `Error`は`Infallible`であるため`unwrap()`で問題ない
                 let response = inner.call(request).await.unwrap();
+
+                // 失敗しても続行
                 let _ = self.try_refresh_api_key(last_api_key_refreshed_at, &api_key).await;
+                
                 Ok(response)
             },
             Err(IncrementRateError::RateLimitOver) => Err(RateLimitError::RateLimitOver),
