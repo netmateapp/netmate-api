@@ -1,12 +1,27 @@
 use std::{collections::HashSet, fs::File, io::{BufRead, BufReader}, str::FromStr, sync::LazyLock};
 
-use argon2::{password_hash::{PasswordHasher, SaltString}, Algorithm, Argon2, ParamsBuilder, Version};
+use argon2::{password_hash::{self, PasswordHasher, SaltString}, Algorithm, Argon2, ParamsBuilder, PasswordVerifier, Version};
 use base64::{engine::general_purpose, Engine};
 use rand::rngs::OsRng;
 use regex::Regex;
 use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::{ColumnType, CqlValue}, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
 use serde::{de::{self}, Deserialize};
 use thiserror::Error;
+
+static ARGON2_CONTEXT: LazyLock<Argon2> = LazyLock::new(|| {
+    const MEMORY: u32 = 19 * 1024;
+    const ITERATIONS: u32 = 2;
+    const DEGREE_OF_PARALLELISM: u32 = 1;
+
+    let params = ParamsBuilder::new()
+        .m_cost(MEMORY)
+        .t_cost(ITERATIONS)
+        .p_cost(DEGREE_OF_PARALLELISM)
+        .build()
+        .unwrap();
+
+    Argon2::new_with_secret(&*PEPPER, Algorithm::Argon2id, Version::V0x13, params).unwrap()
+});
 
 #[derive(Debug, PartialEq)]
 pub struct Password(String);
@@ -19,19 +34,7 @@ impl Password {
     pub fn hashed(&self) -> PasswordHash {
         let salt = SaltString::generate(&mut OsRng);
 
-        const MEMORY: u32 = 19 * 1024;
-        const ITERATIONS: u32 = 2;
-        const DEGREE_OF_PARALLELISM: u32 = 1;
-    
-        let params = ParamsBuilder::new()
-            .m_cost(MEMORY)
-            .t_cost(ITERATIONS)
-            .p_cost(DEGREE_OF_PARALLELISM)
-            .build()
-            .unwrap();
-        let argon2 = Argon2::new_with_secret(&*PEPPER, Algorithm::Argon2id, Version::V0x13, params).unwrap();
-    
-        let phc_format_hash = argon2.hash_password(&self.value().as_bytes(), &salt).unwrap().to_string();
+        let phc_format_hash = ARGON2_CONTEXT.hash_password(&self.value().as_bytes(), &salt).unwrap().to_string();
     
         PasswordHash(phc_format_hash)
     }
@@ -70,6 +73,10 @@ pub enum ParsePasswordError {
 
 static PHC_FORMAT: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^\$[a-z0-9-]{1,32}(?:\$v=1[69])?(?:\$m=[1-9][0-9]{0,9},t=[1-9][0-9]{0,9},p=[1-9][0-9]{0,2}(?:,keyid=[a-zA-Z0-9\/+.-]{0,11})?(?:,data=[a-zA-Z0-9\/+.-]{0,43})?)?(?:\$[a-zA-Z0-9\/+.-]{11,64})?(?:\$[a-zA-Z0-9\/+.-]{16,86})?$").unwrap());
 
+// Password("".to_string()).hashed().0 と等価
+pub static EMPTY_PASSWORD_HASH: LazyLock<PasswordHash> = LazyLock::new(|| PasswordHash("$argon2id$v=19$m=19456,t=2,p=1$MicFwG/r8ASLXzDKEpvvrw$8f2+X/qZE8RpJT+ietxpWAEd/dIPRLKFDOjB4hlGrpA".to_owned()));
+
+#[derive(Debug, Clone)]
 pub struct PasswordHash(String);
 
 impl PasswordHash {
@@ -80,6 +87,13 @@ impl PasswordHash {
 
     pub fn value(&self) -> &String {
         &self.0
+    }
+
+    pub fn verify(&self, password: &Password) -> bool {
+        // PHCフォーマットを満たしたもののみがインスタンス化されるため`unwrap`は安全
+        let parsed_hash = password_hash::PasswordHash::new(&self.0).unwrap();
+
+        ARGON2_CONTEXT.verify_password(password.value().as_bytes(), &parsed_hash).is_ok()
     }
 }
 
