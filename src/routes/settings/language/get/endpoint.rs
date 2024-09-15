@@ -7,20 +7,20 @@ use scylla::Session;
 use tower::ServiceBuilder;
 use tracing::info;
 
-use crate::{common::{id::account_id::AccountId, language::Language}, helper::{error::InitError, middleware::{rate_limiter, session_manager}, redis::Pool}, middlewares::rate_limit::dsl::increment_rate::{InculsiveLimit, TimeWindow}, routes::settings::language::get::dsl::GetLanguage};
+use crate::{common::{id::account_id::AccountId, language::Language}, helper::{error::InitError, middleware::{rate_limiter, session_manager}, redis::{Namespace, Pool}}, middlewares::rate_limit::{dsl::increment_rate::{InculsiveLimit, TimeWindow}, interpreter::EndpointName}, routes::settings::language::get::dsl::GetLanguage};
 
 use super::interpreter::GetLanguageImpl;
 
-const ENDPOINT_NAME: &str = "getln";
-const LIMIT: InculsiveLimit = InculsiveLimit::new(5);
-const TIME_WINDOW: TimeWindow = TimeWindow::minutes(15);
-
 pub async fn endpoint(db: Arc<Session>, cache: Arc<Pool>) -> Result<Router, InitError<GetLanguageImpl>> {
-    let get_language = GetLanguageImpl::try_new(db.clone()).await?;
+    const ENDPOINT_NAME: EndpointName = EndpointName::new(Namespace::of("getln"));
+    const LIMIT: InculsiveLimit = InculsiveLimit::new(5);
+    const TIME_WINDOW: TimeWindow = TimeWindow::minutes(15);
 
     let services = ServiceBuilder::new()
         .layer(rate_limiter(db.clone(), cache.clone(), ENDPOINT_NAME, LIMIT, TIME_WINDOW).await?)
-        .layer(session_manager(db, cache).await?);
+        .layer(session_manager(db.clone(), cache).await?);
+
+    let get_language = GetLanguageImpl::try_new(db).await?;
 
     let router = Router::new()
         .route("/language", get(handler))
