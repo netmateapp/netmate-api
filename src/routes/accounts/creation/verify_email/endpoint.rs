@@ -33,8 +33,6 @@ pub async fn handler(
                 "メールアドレスの認証に成功しました。"
             );
 
-            // セッションを追加 <- ミドルウェアでする
-
             Ok(Json(Body { top_tag_id }))
         },
         Err(e) => {
