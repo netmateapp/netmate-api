@@ -7,7 +7,7 @@ use serde::Serialize;
 use tower::ServiceBuilder;
 use tracing::info;
 
-use crate::{common::id::tag_id::TagId, helper::{error::InitError, middleware::{rate_limiter, session_starter}, redis::{Namespace, Pool}}, middlewares::rate_limit::{dsl::increment_rate::{InculsiveLimit, TimeWindow}, interpreter::EndpointName}, routes::accounts::creation::value::OneTimeToken};
+use crate::{common::{id::tag_id::TagId, one_time_token::OneTimeToken}, helper::{error::InitError, middleware::{rate_limiter, session_starter}, redis::{Namespace, Pool}}, middlewares::rate_limit::{dsl::increment_rate::{InculsiveLimit, TimeWindow}, interpreter::EndpointName}};
 
 use super::{dsl::{VerifyEmail, VerifyEmailError}, interpreter::VerifyEmailImpl};
 
