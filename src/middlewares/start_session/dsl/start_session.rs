@@ -6,7 +6,7 @@ use tower::Service;
 
 use crate::common::{fallible::Fallible, id::account_id::AccountId, session::{cookie::{set_refresh_pair_cookie_with_expiration, set_session_cookie_with_expiration}, refresh_pair_expiration::REFRESH_PAIR_EXPIRATION, session_expiration::SESSION_EXPIRATION}};
 
-use super::{assign_refresh_pair::AssignRefreshPair, assign_session_id::AssignSessionId};
+use super::{assign_refresh_pair::{AssignRefreshPair, AssignRefreshPairError}, assign_session_id::{AssignSessionId, AssignSessionIdError}};
 
 pub(crate) trait StartSession {
     async fn start_session<S, B>(&self, inner: &mut S, request: Request<B>) -> Fallible<S::Response, StartSessionError>
@@ -14,10 +14,6 @@ pub(crate) trait StartSession {
         Self: AssignSessionId + AssignRefreshPair,
         S: Service<Request<B>, Error = Infallible, Response = Response<B>>,
     {
-        fn handle_error<E: Into<anyhow::Error>>(e: E) -> StartSessionError {
-            StartSessionError::StartSessionFailed(e.into())
-        }
-
         // `Infallible`であるため`unwrap`しても問題ない
         let mut response = inner.call(request)
             .await
@@ -29,14 +25,10 @@ pub(crate) trait StartSession {
 
         match session_account_id {
             Some(session_account_id) => {
-                let session_id = self.assign_session_id(session_account_id, SESSION_EXPIRATION)
-                    .await
-                    .map_err(handle_error)?;
+                let session_id = self.assign_session_id(session_account_id, SESSION_EXPIRATION).await?;
                 set_session_cookie_with_expiration(&mut response, &session_id);
         
-                let (session_series, refresh_token) = self.assign_refresh_pair(session_account_id, REFRESH_PAIR_EXPIRATION)
-                    .await
-                    .map_err(handle_error)?;
+                let (session_series, refresh_token) = self.assign_refresh_pair(session_account_id, REFRESH_PAIR_EXPIRATION).await?;
                 set_refresh_pair_cookie_with_expiration(&mut response, &session_series, &refresh_token);
                 
                 Ok(response)
@@ -48,8 +40,10 @@ pub(crate) trait StartSession {
 
 #[derive(Debug, Error)]
 pub enum StartSessionError {
-    #[error("セッションの開始に失敗しました")]
-    StartSessionFailed(#[source] anyhow::Error),
+    #[error("セッションIDの割り当てに失敗しました")]
+    AssignSessionIdFailed(#[from] AssignSessionIdError),
+    #[error("リフレッシュペアの割り当てに失敗しました")]
+    AssignRefreshPairFailed(#[from] AssignRefreshPairError),
 }
 
 #[cfg(test)]
