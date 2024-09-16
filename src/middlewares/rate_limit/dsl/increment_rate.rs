@@ -35,12 +35,12 @@ pub enum IncrementRateError {
 pub struct TimeWindow(u32);
 
 impl TimeWindow {
-    pub const fn secs(seconds: u32) -> Self {
+    pub const fn seconds(seconds: u32) -> Self {
         Self(seconds)
     }
 
     pub const fn minutes(minutes: u32) -> Self {
-        Self::secs(minutes * 60)
+        Self::seconds(minutes * 60)
     }
 
     pub const fn hours(hours: u32) -> Self {
@@ -107,7 +107,7 @@ mod tests {
 
     static WITHIN_LIMIT: LazyLock<ApiKey> = LazyLock::new(ApiKey::gen);
 
-    const TIME_WINDOW: TimeWindow = TimeWindow::secs(60);
+    const TIME_WINDOW: TimeWindow = TimeWindow::seconds(60);
     const INCLUSIVE_LIMIT: InculsiveLimit = InculsiveLimit::new(100);
 
     struct MockIncrementRate;

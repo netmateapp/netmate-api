@@ -8,17 +8,13 @@ use serde::Deserialize;
 use tower::ServiceBuilder;
 use tracing::info;
 
-use crate::{common::{id::account_id::AccountId, language::Language}, helper::{error::InitError, middleware::{rate_limiter, session_manager}, redis::{Namespace, Pool}}, middlewares::rate_limit::{dsl::increment_rate::{InculsiveLimit, TimeWindow}, interpreter::EndpointName}};
+use crate::{common::{id::account_id::AccountId, language::Language}, helper::{error::InitError, middleware::{rate_limiter, session_manager, TimeUnit}, redis::Pool}};
 
 use super::{dsl::SetLanaguage, interpreter::SetLanguageImpl};
 
 pub async fn endpoint(db: Arc<Session>, cache: Arc<Pool>) -> Result<Router, InitError<SetLanguageImpl>> {
-    const ENDPOINT_NAME: EndpointName = EndpointName::new(Namespace::of("setln"));
-    const LIMIT: InculsiveLimit = InculsiveLimit::new(30);
-    const TIME_WINDOW: TimeWindow = TimeWindow::hours(1);
-
     let services = ServiceBuilder::new()
-        .layer(rate_limiter(db.clone(), cache.clone(), ENDPOINT_NAME, LIMIT, TIME_WINDOW).await?)
+        .layer(rate_limiter(db.clone(), cache.clone(), "setln", 30, 1, TimeUnit::HOURS).await?)
         .layer(session_manager(db.clone(), cache).await?);
 
     let set_language = SetLanguageImpl::try_new(db).await?;

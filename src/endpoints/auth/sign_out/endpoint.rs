@@ -8,17 +8,13 @@ use scylla::Session;
 use tower::ServiceBuilder;
 use tracing::error;
 
-use crate::{common::{id::account_id::AccountId, session::{cookie::{REFRESH_PAIR_COOKIE_KEY, REFRESH_PAIR_SEPARATOR, SESSION_COOKIE_KEY}, session_series::SessionSeries}}, helper::{error::InitError, middleware::{rate_limiter, session_manager}, redis::{Namespace, Pool}}, middlewares::rate_limit::{dsl::increment_rate::{InculsiveLimit, TimeWindow}, interpreter::EndpointName}};
+use crate::{common::{id::account_id::AccountId, session::{cookie::{REFRESH_PAIR_COOKIE_KEY, REFRESH_PAIR_SEPARATOR, SESSION_COOKIE_KEY}, session_series::SessionSeries}}, helper::{error::InitError, middleware::{rate_limiter, session_manager, TimeUnit}, redis::Pool}};
 
 use super::{dsl::SignOut, interpreter::SignOutImpl};
 
 pub async fn endpoint(db: Arc<Session>, cache: Arc<Pool>) -> Result<Router, InitError<SignOutImpl>> {
-    const ENDPOINT_NAME: EndpointName = EndpointName::new(Namespace::of("sigot"));
-    const LIMIT: InculsiveLimit = InculsiveLimit::new(10);
-    const TIME_WINDOW: TimeWindow = TimeWindow::hours(1);
-
     let services = ServiceBuilder::new()
-        .layer(rate_limiter(db.clone(), cache.clone(), ENDPOINT_NAME, LIMIT, TIME_WINDOW).await?)
+        .layer(rate_limiter(db.clone(), cache.clone(), "sigot", 10, 1, TimeUnit::HOURS).await?)
         .layer(session_manager(db.clone(), cache.clone()).await?);
 
     let sign_out = SignOutImpl::try_new(db, cache).await?;

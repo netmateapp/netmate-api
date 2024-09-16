@@ -8,17 +8,13 @@ use serde::Deserialize;
 use tower::ServiceBuilder;
 use tracing::info;
 
-use crate::{common::{id::account_id::AccountId, region::Region}, helper::{error::InitError, middleware::{rate_limiter, session_manager}, redis::{Namespace, Pool}}, middlewares::rate_limit::{dsl::increment_rate::{InculsiveLimit, TimeWindow}, interpreter::EndpointName}};
+use crate::{common::{id::account_id::AccountId, region::Region}, helper::{error::InitError, middleware::{rate_limiter, session_manager, TimeUnit}, redis::Pool}};
 
 use super::{dsl::SetRegion, interpreter::SetRegionImpl};
 
 pub async fn endpoint(db: Arc<Session>, cache: Arc<Pool>) -> Result<Router, InitError<SetRegionImpl>> {
-    const ENDPOINT_NAME: EndpointName = EndpointName::new(Namespace::of("setrg"));
-    const LIMIT: InculsiveLimit = InculsiveLimit::new(5);
-    const TIME_WINDOW: TimeWindow = TimeWindow::hours(1);
-
     let services = ServiceBuilder::new()
-        .layer(rate_limiter(db.clone(), cache.clone(), ENDPOINT_NAME, LIMIT, TIME_WINDOW).await?)
+        .layer(rate_limiter(db.clone(), cache.clone(), "setrg", 5, 1, TimeUnit::HOURS).await?)
         .layer(session_manager(db.clone(), cache).await?);
 
     let set_region = SetRegionImpl::try_new(db).await?;

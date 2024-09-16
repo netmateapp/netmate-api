@@ -7,17 +7,13 @@ use serde::Deserialize;
 use tower::ServiceBuilder;
 use tracing::info;
 
-use crate::{common::{email::address::Email, password::Password}, helper::{error::InitError, middleware::{rate_limiter, session_starter}, redis::{Namespace, Pool}}, middlewares::rate_limit::{dsl::increment_rate::{InculsiveLimit, TimeWindow}, interpreter::EndpointName}};
+use crate::{common::{email::address::Email, password::Password}, helper::{error::InitError, middleware::{rate_limiter, session_starter, TimeUnit}, redis::Pool}};
 
 use super::{dsl::SignIn, interpreter::SignInImpl};
 
 pub async fn endpoint(db: Arc<Session>, cache: Arc<Pool>) -> Result<Router, InitError<SignInImpl>> {
-    const ENDPOINT_NAME: EndpointName = EndpointName::new(Namespace::of("sigin"));
-    const LIMIT: InculsiveLimit = InculsiveLimit::new(10);
-    const TIME_WINDOW: TimeWindow = TimeWindow::hours(1);
-
     let services = ServiceBuilder::new()
-        .layer(rate_limiter(db.clone(), cache.clone(), ENDPOINT_NAME, LIMIT, TIME_WINDOW).await?)
+        .layer(rate_limiter(db.clone(), cache.clone(), "sigin", 10, 1, TimeUnit::HOURS).await?)
         .layer(session_starter(db.clone(), cache).await?);
 
     let sign_in = SignInImpl::try_new(db).await?;

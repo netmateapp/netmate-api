@@ -106,7 +106,7 @@ mod tests {
         }
     }
 
-    const TIME_WINDOW: TimeWindow = TimeWindow::secs(60);
+    const TIME_WINDOW: TimeWindow = TimeWindow::seconds(60);
     const INCLUSIVE_LIMIT: InculsiveLimit = InculsiveLimit::new(100);
 
     impl IncrementRate for MockRateLimit {
