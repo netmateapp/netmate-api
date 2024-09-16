@@ -1,5 +1,6 @@
 use std::fmt::{self, Display};
 
+use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::CqlValue};
 use serde::Serialize;
 use thiserror::Error;
 use uuid::Uuid;
@@ -49,5 +50,11 @@ impl Serialize for Uuid4 {
         S: serde::Serializer
     {
         self.0.serialize(serializer)
+    }
+}
+
+impl FromCqlVal<Option<CqlValue>> for Uuid4 {
+    fn from_cql(cql_val: Option<CqlValue>) -> Result<Self, FromCqlValError> {
+        Uuid::from_cql(cql_val).and_then(|v| Uuid4::try_from(v).map_err(|_| FromCqlValError::BadVal))
     }
 }

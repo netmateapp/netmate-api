@@ -1,31 +1,9 @@
-use std::{fmt::{self, Display}, str::FromStr};
+use std::str::FromStr;
 
+use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::CqlValue};
 use thiserror::Error;
 
-use super::{character_count::calculate_character_cost, uuid::uuid4::Uuid4};
-
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub struct HandleId(Uuid4);
-
-impl HandleId {
-    pub fn gen() -> Self {
-        HandleId(Uuid4::gen())
-    }
-
-    pub const fn of(value: Uuid4) -> Self {
-        HandleId(value)
-    }
-
-    pub fn value(&self) -> Uuid4 {
-        self.0
-    }
-}
-
-impl Display for HandleId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
+use crate::common::character_count::calculate_character_cost;
 
 const HANDLE_NAME_MAX_CHARACTER_COST: usize = 100;
 
@@ -61,23 +39,16 @@ impl FromStr for HandleName {
     }
 }
 
+impl FromCqlVal<Option<CqlValue>> for HandleName {
+    fn from_cql(cql_val: Option<CqlValue>) -> Result<Self, FromCqlValError> {
+        String::from_cql(cql_val).map(HandleName)
+    }
+}
+
 #[derive(Debug, Error)]
 pub enum ParseHandleNameError {
     #[error("空の名義は許可されていません")]
     Empty,
     #[error("文字数が多すぎます")]
     CharacterCostOverflow,
-}
-
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub struct HandleShareCount(u32);
-
-impl HandleShareCount {
-    pub const fn of(value: u32) -> Self {
-        HandleShareCount(value)
-    }
-
-    pub fn value(&self) -> u32 {
-        self.0
-    }
 }
