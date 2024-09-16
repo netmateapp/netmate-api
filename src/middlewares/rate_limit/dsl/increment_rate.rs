@@ -47,6 +47,10 @@ impl TimeWindow {
         Self::minutes(hours * 60)
     }
 
+    pub const fn days(days: u32) -> Self {
+        Self::hours(days * 24)
+    }
+
     pub fn as_secs(&self) -> u32 {
         self.0
     }

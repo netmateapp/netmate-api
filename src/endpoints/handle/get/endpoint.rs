@@ -5,17 +5,27 @@ use axum_macros::debug_handler;
 use http::StatusCode;
 use scylla::Session;
 use serde::Serialize;
+use tower::ServiceBuilder;
 use tracing::error;
 
-use crate::{common::{handle::{id::HandleId, name::HandleName, share_count::HandleShareCount}, id::account_id::AccountId}, helper::error::InitError};
+use crate::{common::{handle::{id::HandleId, name::HandleName, share_count::HandleShareCount}, id::account_id::AccountId}, helper::{error::InitError, middleware::{rate_limiter, session_manager}, redis::{Namespace, Pool}}, middlewares::rate_limit::{dsl::increment_rate::{InculsiveLimit, TimeWindow}, interpreter::EndpointName}};
 
 use super::{dsl::GetHandles, interpreter::GetHandlesImpl};
 
-pub async fn endpoint(db: Arc<Session>) -> Result<Router, InitError<GetHandlesImpl>> {
+pub async fn endpoint(db: Arc<Session>, cache: Arc<Pool>) -> Result<Router, InitError<GetHandlesImpl>> {
+    const ENDPOINT_NAME: EndpointName = EndpointName::new(Namespace::of("gethds"));
+    const LIMIT: InculsiveLimit = InculsiveLimit::new(30);
+    const TIME_WINDOW: TimeWindow = TimeWindow::hours(1);
+
+    let services = ServiceBuilder::new()
+        .layer(rate_limiter(db.clone(), cache.clone(), ENDPOINT_NAME, LIMIT, TIME_WINDOW).await?)
+        .layer(session_manager(db.clone(), cache).await?);
+
     let get_handles = GetHandlesImpl::try_new(db).await?;
 
     let router = Router::new()
         .route("/handles", get(handler))
+        .layer(services)
         .with_state(Arc::new(get_handles));
 
     Ok(router)
