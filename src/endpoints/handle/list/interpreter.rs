@@ -93,13 +93,14 @@ impl TypedStatement<(AccountId, ), (HandleShareCount, )> for SelectHandleShareCo
 
 #[cfg(test)]
 mod tests {
-    use crate::helper::scylla::check_cql_query_type;
+    use crate::{common::db::account_handles::{ACCOUNT_HANDLES, ACCOUNT_ID, HANDLE_ID, HANDLE_NAME}, helper::scylla::{check_cql_query_type, check_cql_query_typed}};
 
     use super::{SELECT_HANDLES, SELECT_HANDLE_SHARE_COUNTS};
 
     #[test]
     fn check_select_handles_type() {
-        check_cql_query_type(SELECT_HANDLES);
+        //check_cql_query_type(SELECT_HANDLES);
+        check_cql_query_typed(SELECT_HANDLES, ACCOUNT_HANDLES, &[ACCOUNT_ID], &[HANDLE_ID, HANDLE_NAME]);
     }
 
     #[test]
