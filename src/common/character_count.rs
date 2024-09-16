@@ -1,3 +1,15 @@
+pub fn calculate_character_cost(s: &str) -> usize {
+    s.chars()
+        .map(|c| {
+            if is_cjk(c) {
+                2
+            } else {
+                1
+            }
+        })
+        .sum()
+}
+
 pub fn is_cjk(c: char) -> bool {
     // CJK文字のユニコード範囲を確認
     matches!(c,
