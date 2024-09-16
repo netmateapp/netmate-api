@@ -1,11 +1,11 @@
 use std::fmt::{self, Display};
 
 use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::CqlValue};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct Uuid4(Uuid);
 
 impl Uuid4 {
@@ -41,15 +41,6 @@ impl TryFrom<Uuid> for Uuid4 {
         } else {
             Err(ParseUuid4Error)
         }
-    }
-}
-
-impl Serialize for Uuid4 {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer
-    {
-        self.0.serialize(serializer)
     }
 }
 

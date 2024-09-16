@@ -1,10 +1,11 @@
 use std::fmt::{self, Display};
 
 use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::CqlValue};
+use serde::{Deserialize, Serialize};
 
 use crate::common::uuid::uuid4::Uuid4;
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct HandleId(Uuid4);
 
 impl HandleId {

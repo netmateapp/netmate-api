@@ -1,12 +1,14 @@
 use std::str::FromStr;
 
 use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::CqlValue};
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::common::character_count::calculate_character_cost;
 
 const HANDLE_NAME_MAX_CHARACTER_COST: usize = 100;
 
+#[derive(Debug, Serialize, Deserialize)]
 pub struct HandleName(String);
 
 impl HandleName {
@@ -39,16 +41,16 @@ impl FromStr for HandleName {
     }
 }
 
-impl FromCqlVal<Option<CqlValue>> for HandleName {
-    fn from_cql(cql_val: Option<CqlValue>) -> Result<Self, FromCqlValError> {
-        String::from_cql(cql_val).map(HandleName)
-    }
-}
-
 #[derive(Debug, Error)]
 pub enum ParseHandleNameError {
     #[error("空の名義は許可されていません")]
     Empty,
     #[error("文字数が多すぎます")]
     CharacterCostOverflow,
+}
+
+impl FromCqlVal<Option<CqlValue>> for HandleName {
+    fn from_cql(cql_val: Option<CqlValue>) -> Result<Self, FromCqlValError> {
+        String::from_cql(cql_val).map(HandleName)
+    }
 }

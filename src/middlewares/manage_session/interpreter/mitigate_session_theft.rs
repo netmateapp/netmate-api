@@ -94,7 +94,7 @@ impl TypedStatement<(AccountId, ), (SessionSeries, )> for SelectAllSessionSeries
             .map(|rows| {
                 rows.flatten()
                     .collect::<Vec<(SessionSeries, )>>()
-        })
+            })
             .map_err(anyhow::Error::from)
     }
 }
