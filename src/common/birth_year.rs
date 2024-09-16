@@ -1,7 +1,7 @@
 use std::{num::NonZeroU16, sync::LazyLock, time::SystemTime};
 
 use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::{ColumnType, CqlValue}, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
-use serde::{de, Deserialize};
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 /// `BirthYear`は、未指定又は1900年～現在の年を表す。
@@ -12,7 +12,7 @@ pub const MIN_BIRTH_YEAR: u16 = 1900;
 // 生年は統計目的の情報であり、数才の人間はユーザーとして想定されない
 pub static MAX_BIRTH_YEAR: LazyLock<u16> = LazyLock::new(current_year);
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct BirthYear(Option<NonZeroU16>);
 
 impl BirthYear {
@@ -59,20 +59,10 @@ impl TryFrom<i16> for BirthYear {
     }
 }
 
-impl<'de> Deserialize<'de> for BirthYear {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>
-    {
-        let n: u16 = Deserialize::deserialize(deserializer)?;
-        BirthYear::try_from(n).map_err(de::Error::custom)
-    }
-}
-
 impl SerializeValue for BirthYear {
     fn serialize<'b>(&self, typ: &ColumnType, writer: CellWriter<'b>) -> Result<WrittenCellProof<'b>, SerializationError> {
-        let value = self.0.map_or_else(|| 0, |v| v.get());
-        (value as i16).serialize(typ, writer)
+        let value = i16::from(*self);
+        SerializeValue::serialize(&value, typ, writer)
     }
 }
 
