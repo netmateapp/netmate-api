@@ -2,6 +2,7 @@ pub mod api_key;
 pub mod birth_year;
 pub mod character_count;
 pub mod email;
+pub mod db;
 pub mod fallible;
 pub mod id;
 pub mod language;
