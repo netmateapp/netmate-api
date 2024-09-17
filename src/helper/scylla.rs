@@ -1,9 +1,6 @@
-use std::{any::type_name, collections::HashSet, marker::PhantomData, sync::{Arc, LazyLock}};
+use std::{any::type_name, marker::PhantomData, sync::Arc};
 
-use regex::Regex;
 use scylla::{cql_to_rust::FromRowError, frame::response::result::Row, prepared_statement::PreparedStatement, serialize::row::SerializeRow, transport::errors::QueryError, FromRow, Session};
-
-use crate::common::db::{Column, Table};
 
 use super::error::InitError;
 
@@ -98,60 +95,6 @@ pub(crate) fn check_cql_query_type<I: SerializeRow, O: FromRow>(statement: State
 
     assert_eq!(values, value_count);
     assert_eq!(columns, column_count);
-}
-
-static SELECT_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"SELECT\s+(?P<columns>[a-zA-Z0-9_,\s]+)\s+FROM\s+(?P<table>[a-zA-Z0-9_]+)\s+WHERE\s+(?P<keys>[a-zA-Z0-9_\s=?.AND]+?)(?:\s+LIMIT|\s+USING|$)").unwrap());
-
-pub(crate) fn check_cql_query_typed<I: SerializeRow, O: FromRow, T>(statement: Statement<impl TypedStatement<I, O>>, tb: Table<T>, selector_columns: &[Column<T>], selected_columns: &[Column<T>]) {
-    let statement = statement.0;
-    
-    let value_count = statement.matches('?')
-        .count();
-
-    let column_count = &statement[(statement.find("SELECT").unwrap() + 6)..statement.find("FROM").unwrap()]
-        .matches(',')
-        .count() + 1;
-
-    let values = count_tuple_elements::<I>();
-    let columns = count_tuple_elements::<O>();
-
-    assert_eq!(values, value_count);
-    assert_eq!(columns, column_count);
-
-    if let Some(caps) = SELECT_REGEX.captures(statement) {
-        let mut columns: HashSet<String> = caps.name("columns")
-            .unwrap()
-            .as_str()
-            .trim()
-            .split(", ")
-            .map(|s| s.to_string())
-            .collect();
-
-        for col in selected_columns {
-            assert!(columns.remove(col.name()), "{} 列はクエリで選択されていません", col.name());
-        }
-
-        let table = caps.name("table").unwrap().as_str();
-        assert_eq!(table, tb.name());
-
-        let mut keys = caps.name("keys")
-            .unwrap()
-            .as_str()
-            .trim()
-            .to_string();
-
-        keys.push_str(" AND ");
-
-        let mut keys: HashSet<String> = keys.split(" = ? AND ")
-            .map(|s| s.to_string())
-            .collect();
-
-        for key in selector_columns {
-            assert!(keys.remove(key.name()), "{} 列はクエリのキーに使用されていません", key.name());
-        }
-    } else {
-        panic!()
-    }
 }
 
 #[allow(unused)]
