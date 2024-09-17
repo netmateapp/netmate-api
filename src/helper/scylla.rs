@@ -10,6 +10,13 @@ impl<T> From<QueryError> for InitError<T> {
     }
 }
 
+pub async fn prepare<T>(session: &Arc<Session>, query: &str) -> Result<Arc<PreparedStatement>, InitError<T>> {
+    match session.prepare(query).await {
+        Ok(statement) => Ok(Arc::new(statement)),
+        Err(e) => Err(e.into())
+    }
+}
+
 pub struct Statement<T>(&'static str, PhantomData<T>);
 
 impl<T> Statement<T> {

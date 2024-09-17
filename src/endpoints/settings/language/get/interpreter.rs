@@ -1,60 +1,31 @@
 use std::sync::Arc;
 
-use scylla::{prepared_statement::PreparedStatement, FromRow, Session};
+use scylla::{prepared_statement::PreparedStatement, Session};
 
 use super::dsl::{GetLanguage, GetLanguageError};
 
-use crate::{common::{fallible::Fallible, id::account_id::AccountId, language::Language}, helper::{error::InitError, scylla::{Statement, TypedStatement}}};
+use crate::{common::{fallible::Fallible, id::account_id::AccountId, language::Language}, helper::{error::InitError, scylla::prepare}};
 
 pub struct GetLanguageImpl {
     db: Arc<Session>,
-    select_language: Arc<SelectLanguage>,
+    select_language: Arc<PreparedStatement>,
 }
 
 impl GetLanguageImpl {
     pub async fn try_new(db: Arc<Session>) -> Result<GetLanguageImpl, InitError<GetLanguageImpl>> {
-        let select_language = SELECT_LANGUAGE.prepared(&db, SelectLanguage)
-            .await
-            .map_err(|e| InitError::new(e.into()))?;
-
+        let select_language = prepare(&db, "SELECT language FROM accounts WHERE id = ?").await?;
         Ok(Self { db, select_language })
     }
 }
 
 impl GetLanguage for GetLanguageImpl {
     async fn get_language(&self, account_id: AccountId) -> Fallible<Language, GetLanguageError> {
-        self.select_language.query(&self.db, (account_id, ))
+        self.db
+            .execute_unpaged(&self.select_language, (account_id, ))
             .await
+            .map_err(|e| GetLanguageError::GetLanguageFailed(e.into()))?
+            .first_row_typed::<(Language, )>()
             .map(|(language, )| language)
-            .map_err(GetLanguageError::GetLanguageFailed)
-    }
-}
-
-const SELECT_LANGUAGE: Statement<SelectLanguage>
-    = Statement::of("SELECT language FROM accounts WHERE id = ? LIMIT 1");
-
-struct SelectLanguage(PreparedStatement);
-
-impl TypedStatement<(AccountId, ), (Language, )> for SelectLanguage {
-    type Result<U> = U where U: FromRow;
-
-    async fn query(&self, session: &Arc<Session>, values: (AccountId, )) -> anyhow::Result<(Language, )> {
-        session.execute_unpaged(&self.0, values)
-            .await
-            .map_err(anyhow::Error::from)?
-            .first_row_typed()
-            .map_err(anyhow::Error::from)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::helper::scylla::check_cql_query_type;
-
-    use super::SELECT_LANGUAGE;
-    
-    #[test]
-    fn check_select_language_type() {
-        check_cql_query_type(SELECT_LANGUAGE);
+            .map_err(|e| GetLanguageError::GetLanguageFailed(e.into()))
     }
 }
