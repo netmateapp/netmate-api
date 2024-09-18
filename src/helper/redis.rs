@@ -12,7 +12,7 @@ where
 {
     cache.get()
         .await
-        .map_err(|e| map_err(e))
+        .map_err(map_err)
 }
 
 pub const NAMESPACE_SEPARATOR: char = ':';

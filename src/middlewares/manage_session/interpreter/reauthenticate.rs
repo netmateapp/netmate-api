@@ -31,16 +31,16 @@ impl ReAuthenticateSession for ManageSessionImpl {
 
                 let token = parts.next()
                     .ok_or_else(|| handle_error(ParseRefreshPairValueError))
-                    .map(|s| RefreshToken::from_str(s))?
+                    .map(RefreshToken::from_str)?
                     .map_err(handle_error)?;
 
                 let account_id = parts.next()
                     .ok_or_else(|| handle_error(ParseRefreshPairValueError))
-                    .map(|s| Uuid::from_str(s))?
+                    .map(Uuid::from_str)?
                     .map_err(handle_error)
-                    .map(|u| Uuid7::try_from(u))?
+                    .map(Uuid7::try_from)?
                     .map_err(handle_error)
-                    .map(|u| AccountId::of(u))?;
+                    .map(AccountId::of)?;
 
                 Ok((token, account_id))
             }))

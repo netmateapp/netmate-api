@@ -1,9 +1,8 @@
 use std::sync::Arc;
 
-use assign_refresh_pair::{InsertSessionSeries, INSERT_SESSION_SERIES};
-use scylla::Session;
+use scylla::{prepared_statement::PreparedStatement, Session};
 
-use crate::helper::{error::InitError, redis::Pool};
+use crate::helper::{error::InitError, redis::Pool, scylla::prepare};
 
 use super::dsl::start_session::StartSession;
 
@@ -14,14 +13,12 @@ mod assign_session_id;
 pub struct StartSessionImpl {
     db: Arc<Session>,
     cache: Arc<Pool>,
-    insert_session_series: Arc<InsertSessionSeries>,
+    insert_session_series: Arc<PreparedStatement>,
 }
 
 impl StartSessionImpl {
     pub async fn try_new(db: Arc<Session>, cache: Arc<Pool>) -> Result<Self, InitError<Self>> {
-        let insert_session_series = INSERT_SESSION_SERIES.prepared(&db, InsertSessionSeries)
-            .await
-            .map_err(|e| InitError::new(e.into()))?;
+        let insert_session_series = prepare(&db, "INSERT INTO session_series (account_id, series, refreshed_at) VALUES (?, ?, ?) USING TTL ?").await?;
 
         Ok(Self { db, cache, insert_session_series })
     }

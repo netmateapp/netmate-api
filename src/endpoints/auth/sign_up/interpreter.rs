@@ -14,10 +14,6 @@ pub struct SignUpImpl {
 
 impl SignUpImpl {
     pub async fn try_new(db: Arc<Session>) -> Result<Self, InitError<SignUpImpl>> {
-        fn handle_error<E: Into<anyhow::Error>>(e: E) -> InitError<SignUpImpl> {
-            InitError::new(e.into())
-        }
-
         let select_account_id = prepare(&db, "SELECT id FROM accounts WHERE email = ? LIMIT 1").await?;
 
         let insert_pre_verification_account = prepare(&db, "INSERT INTO pre_verification_accounts (one_time_token, email, password_hash, birth_year, region, language) VALUES (?, ?, ?, ?, ?, ?) USING TTL ?").await?;

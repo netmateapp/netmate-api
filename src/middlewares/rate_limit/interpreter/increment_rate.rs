@@ -1,18 +1,20 @@
 
-use redis::{Script, ToRedisArgs};
+use redis::{RedisWrite, ToRedisArgs};
 
-use crate::{common::{api_key::ApiKey, fallible::Fallible}, helper::redis::{Connection, TypedCommand, NAMESPACE_SEPARATOR}, middlewares::rate_limit::{dsl::increment_rate::{IncrementRate, IncrementRateError, InculsiveLimit, Rate, TimeWindow}, interpreter::RATE_LIMIT_NAMESPACE}};
+use crate::{common::{api_key::ApiKey, fallible::Fallible}, helper::redis::{conn, NAMESPACE_SEPARATOR}, middlewares::rate_limit::{dsl::increment_rate::{IncrementRate, IncrementRateError, InculsiveLimit, Rate, TimeWindow}, interpreter::RATE_LIMIT_NAMESPACE}};
 
 use super::{EndpointName, RateLimitImpl};
 
 impl IncrementRate for RateLimitImpl {
     async fn increment_rate_within_window(&self, api_key: &ApiKey, time_window: &TimeWindow) -> Fallible<Rate, IncrementRateError> {
-        let key = Key(&self.endpoint_name, api_key);
+        let mut conn = conn(&self.cache, |e| IncrementRateError::IncrementRateFailed(e.into())).await?;
         
         self.incr_and_expire_if_first
-                .run(&self.cache, (key, time_window))
-                .await
-                .map_err(IncrementRateError::IncrementRateFailed)
+            .key(RateKey::new(&self.endpoint_name, api_key))
+            .arg(time_window)
+            .invoke_async::<Rate>(&mut *conn)
+            .await
+            .map_err(|e| IncrementRateError::IncrementRateFailed(e.into()))
     }
 
     fn time_window(&self) -> &TimeWindow {
@@ -24,47 +26,30 @@ impl IncrementRate for RateLimitImpl {
     }
 }
 
-#[derive(Debug)]
-pub struct IncrAndExpireIfFirstScript(pub Script);
+struct RateKey(String);
 
-struct Key<'a, 'b>(&'a EndpointName, &'b ApiKey);
-
-fn format_key(endpoint_name: &EndpointName, api_key: &ApiKey) -> String {
-    format!("{}{}{}{}{}", RATE_LIMIT_NAMESPACE, NAMESPACE_SEPARATOR, endpoint_name, NAMESPACE_SEPARATOR, api_key)
-}
-
-impl<'a, 'b> ToRedisArgs for Key<'a, 'b> {
-    fn write_redis_args<W>(&self, out: &mut W)
-    where
-        W: ?Sized + redis::RedisWrite
-    {
-        format_key(self.0, self.1).write_redis_args(out);
+impl RateKey {
+    pub fn new(endpoint_name: &EndpointName, api_key: &ApiKey) -> Self {
+        Self(format!("{}{}{}{}{}", RATE_LIMIT_NAMESPACE, NAMESPACE_SEPARATOR, endpoint_name, NAMESPACE_SEPARATOR, api_key))
     }
 }
 
-impl<'a, 'b, 'c> TypedCommand<(Key<'a, 'b>, &'c TimeWindow), Rate> for IncrAndExpireIfFirstScript {
-    async fn execute(&self, mut conn: Connection<'_>, (key, time_window): (Key<'a, 'b>, &'c TimeWindow)) -> anyhow::Result<Rate> {
-        self.0
-            .key(key)
-            .arg(time_window)
-            .invoke_async::<Rate>(&mut *conn)
-            .await
-            .map_err(Into::into)
+impl ToRedisArgs for RateKey {
+    fn write_redis_args<W: ?Sized + RedisWrite>(&self, out: &mut W) {
+        self.0.write_redis_args(out);
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{common::api_key::ApiKey, helper::redis::{Namespace, NAMESPACE_SEPARATOR}, middlewares::rate_limit::interpreter::{EndpointName, RATE_LIMIT_NAMESPACE}};
-
-    use super::format_key;
+    use crate::{common::api_key::ApiKey, helper::redis::{Namespace, NAMESPACE_SEPARATOR}, middlewares::rate_limit::interpreter::{increment_rate::RateKey, EndpointName, RATE_LIMIT_NAMESPACE}};
 
     #[test]
     fn test_format_key() {
         let endpoint_name = EndpointName::new(Namespace::new("test").unwrap());
         let api_key = ApiKey::gen();
-        let key = format_key(&endpoint_name, &api_key);
+        let key = RateKey::new(&endpoint_name, &api_key);
         let expected = format!("{}{}{}{}{}", RATE_LIMIT_NAMESPACE, NAMESPACE_SEPARATOR, endpoint_name, NAMESPACE_SEPARATOR, api_key);
-        assert_eq!(key, expected);
+        assert_eq!(key.0, expected);
     }
 }

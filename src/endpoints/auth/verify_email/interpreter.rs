@@ -15,10 +15,6 @@ pub struct VerifyEmailImpl {
 
 impl VerifyEmailImpl {
     pub async fn try_new(db: Arc<Session>) -> Result<Self, InitError<VerifyEmailImpl>> {
-        fn handle_error<E: Into<anyhow::Error>>(e: E) -> InitError<VerifyEmailImpl> {
-            InitError::new(e.into())
-        }
-
         let select_account_creation_application = prepare(&db, "SELECT email, password_hash, birth_year, region, language FROM pre_verification_accounts WHERE one_time_token = ? LIMIT 1").await?;
 
         let insert_account = prepare(&db, "INSERT INTO accounts (id, email, password_hash, birth_year, region, language) VALUES (?, ?, ?, ?, ?, ?) IF NOT EXISTS").await?;

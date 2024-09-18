@@ -26,10 +26,6 @@ pub struct ManageSessionImpl {
 
 impl ManageSessionImpl {
     pub async fn try_new(db: Arc<Session>, cache: Arc<Pool>) -> Result<Self, InitError<Self>> {
-        fn handle_error<E: Into<anyhow::Error>>(e: E) -> InitError<ManageSessionImpl> {
-            InitError::new(e.into())
-        }
-
         let select_last_session_series_refreshed_at = prepare(&db, "SELECT refreshed_at FROM session_series WHERE account_id = ? AND series = ? LIMIT 1").await?;
 
         let update_session_series_ttl = prepare(&db, "UPDATE session_series SET refreshed_at = ? WHERE account_id = ? AND series = ? USING TTL ?").await?;

@@ -1,21 +1,19 @@
 use std::sync::Arc;
 
-use scylla::{prepared_statement::PreparedStatement, FromRow, Session};
+use scylla::{prepared_statement::PreparedStatement, Session};
 
-use crate::{common::{fallible::Fallible, id::account_id::AccountId, language::Language}, helper::{error::InitError, scylla::{Statement, TypedStatement, Unit}}};
+use crate::{common::{fallible::Fallible, id::account_id::AccountId, language::Language}, helper::{error::InitError, scylla::prepare}};
 
 use super::dsl::{SetLanaguage, SetLanguageError};
 
 pub struct SetLanguageImpl {
     db: Arc<Session>,
-    update_language: Arc<UpdateLanguage>,
+    update_language: Arc<PreparedStatement>,
 }
 
 impl SetLanguageImpl {
     pub async fn try_new(db: Arc<Session>) -> Result<SetLanguageImpl, InitError<SetLanguageImpl>> {
-        let update_language = UPDATE_LANGUAGE.prepared(&db, UpdateLanguage)
-            .await
-            .map_err(|e| InitError::new(e.into()))?;
+        let update_language = prepare(&db, "UPDATE accounts SET language = ? WHERE id = ?").await?;
 
         Ok(Self { db, update_language })
     }
@@ -23,26 +21,10 @@ impl SetLanguageImpl {
 
 impl SetLanaguage for SetLanguageImpl {
     async fn set_language(&self, account_id: AccountId, language: Language) -> Fallible<(), SetLanguageError> {
-        self.update_language
-            .query(&self.db, (language, account_id))
+        self.db
+            .execute_unpaged(&self.update_language, (language, account_id))
             .await
-            .map(|_| ()) // execute -ize
-            .map_err(SetLanguageError::SetLanguageFailed)
-    }
-}
-
-const UPDATE_LANGUAGE: Statement<UpdateLanguage>
-    = Statement::of("UPDATE accounts SET language = ? WHERE id = ?");
-
-struct UpdateLanguage(PreparedStatement);
-
-impl TypedStatement<(Language, AccountId), Unit> for UpdateLanguage {
-    type Result<U> = U where U: FromRow;
-
-    async fn query(&self, session: &Arc<Session>, values: (Language, AccountId)) -> anyhow::Result<Unit> {
-        session.execute_unpaged(&self.0, values)
-            .await
-            .map(|_| Unit)
-            .map_err(anyhow::Error::from)
+            .map(|_| ())
+            .map_err(|e| SetLanguageError::SetLanguageFailed(e.into()))
     }
 }
