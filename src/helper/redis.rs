@@ -1,11 +1,19 @@
 use std::fmt::{self, Display};
 
-use bb8_redis::{bb8::{self, PooledConnection}, RedisConnectionManager};
-use redis::{FromRedisValue, ToRedisArgs};
+use bb8_redis::{bb8::{self, PooledConnection, RunError}, RedisConnectionManager};
+use redis::RedisError;
 use thiserror::Error;
 
 pub type Pool = bb8::Pool<RedisConnectionManager>;
-pub type Connection<'a> = PooledConnection<'a, RedisConnectionManager>;
+
+pub async fn conn<O, E>(cache: &Pool, map_err: O) -> Result<PooledConnection<'_, RedisConnectionManager>, E>
+where
+    O: FnOnce(RunError<RedisError>) -> E,
+{
+    cache.get()
+        .await
+        .map_err(|e| map_err(e))
+}
 
 pub const NAMESPACE_SEPARATOR: char = ':';
 
@@ -73,27 +81,4 @@ impl Display for Namespace {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
     }
-}
-
-pub const GET_COMMAND: &str = "GET";
-pub const SET_COMMAND: &str = "SET";
-pub const DEL_COMMAND: &str = "DEL";
-
-pub const EX_OPTION: &str = "EX";
-pub const NX_OPTION: &str = "NX";
-
-pub(crate) trait TypedCommand<I, O>
-where
-    I: ToRedisArgs,
-    O: FromRedisValue,
-{
-    async fn run(&self, cache: &Pool, args: I) -> anyhow::Result<O> {
-        let conn = cache.get()
-            .await
-            .map_err(Into::<anyhow::Error>::into)?;
-
-        self.execute(conn, args).await
-    }
-
-    async fn execute(&self, conn: Connection<'_>, args: I) -> anyhow::Result<O>;
 }

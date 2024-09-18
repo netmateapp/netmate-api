@@ -90,20 +90,3 @@ impl TypedStatement<(AccountId, ), (HandleShareCount, )> for SelectHandleShareCo
             .map_err(anyhow::Error::from)
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use crate::helper::scylla::check_cql_query_type;
-
-    use super::{SELECT_HANDLES, SELECT_HANDLE_SHARE_COUNTS};
-
-    #[test]
-    fn check_select_handles_type() {
-        check_cql_query_type(SELECT_HANDLES);
-    }
-
-    #[test]
-    fn check_select_handle_share_count_type() {
-        check_cql_query_type(SELECT_HANDLE_SHARE_COUNTS);
-    }
-}

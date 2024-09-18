@@ -7,23 +7,22 @@ pub const SESSION_ID_NAMESPACE: Namespace = Namespace::of("sid");
 pub const REFRESH_PAIR_NAMESPACE: Namespace = Namespace::of("rfp");
 pub const REFRESH_PAIR_VALUE_SEPARATOR: char = '$';
 
-// セッションID関連
-pub struct SetSessionIdCommand;
+pub struct SessionIdKey(String);
 
-pub struct SessionIdKey<'a>(pub &'a SessionId);
-
-impl<'a> ToRedisArgs for SessionIdKey<'a> {
-    fn write_redis_args<W: ?Sized + RedisWrite>(&self, out: &mut W) {
-        format_session_id_key(self.0).write_redis_args(out);
+impl SessionIdKey {
+    pub fn new(session_id: &SessionId) -> Self {
+        Self(format!("{}{}{}", SESSION_ID_NAMESPACE, NAMESPACE_SEPARATOR, session_id))
     }
 }
 
-pub fn format_session_id_key(session_id: &SessionId) -> String {
-    format!("{}{}{}", SESSION_ID_NAMESPACE, NAMESPACE_SEPARATOR, session_id)
+impl ToRedisArgs for SessionIdKey {
+    fn write_redis_args<W: ?Sized + RedisWrite>(&self, out: &mut W) {
+        self.0.write_redis_args(out);
+    }
 }
 
-impl<'a> TypedCommand<(SessionIdKey<'a>, AccountId, SessionExpirationSeconds), Option<()>> for SetSessionIdCommand {
-    async fn execute(&self, mut conn: Connection<'_>, (key, session_account_id, new_expiration): (SessionIdKey<'a>, AccountId, SessionExpirationSeconds)) -> anyhow::Result<Option<()>> {
+impl<'a> TypedCommand<(SessionIdOld<'a>, AccountId, SessionExpirationSeconds), Option<()>> for SetSessionIdCommand {
+    async fn execute(&self, mut conn: Connection<'_>, (key, session_account_id, new_expiration): (SessionIdOld<'a>, AccountId, SessionExpirationSeconds)) -> anyhow::Result<Option<()>> {
         cmd(SET_COMMAND)
             .arg(key)
             .arg(session_account_id.to_string())
@@ -36,28 +35,32 @@ impl<'a> TypedCommand<(SessionIdKey<'a>, AccountId, SessionExpirationSeconds), O
     }
 }
 
-// リフレッシュペア関連
-pub struct RefreshPairKey<'a>(pub &'a SessionSeries);
+pub struct RefreshPairKey(String);
 
-impl<'a> ToRedisArgs for RefreshPairKey<'a> {
-    fn write_redis_args<W: ?Sized + RedisWrite>(&self, out: &mut W) {
-        format_refresh_pair_key(self.0).write_redis_args(out);
+impl RefreshPairKey {
+    pub fn new(session_series: &SessionSeries) -> Self {
+        Self(format!("{}{}{}", REFRESH_PAIR_NAMESPACE, NAMESPACE_SEPARATOR, session_series))
     }
 }
 
-pub fn format_refresh_pair_key(session_series: &SessionSeries) -> String {
-    format!("{}{}{}", REFRESH_PAIR_NAMESPACE, NAMESPACE_SEPARATOR, session_series)
-}
 
-pub fn format_refresh_pair_value(new_refresh_token: &RefreshToken, session_account_id: AccountId) -> String {
-    format!("{}{}{}", new_refresh_token, REFRESH_PAIR_VALUE_SEPARATOR, session_account_id)
-}
-
-pub struct RefreshPairValue<'a>(pub &'a RefreshToken, pub AccountId);
-
-impl<'a> ToRedisArgs for RefreshPairValue<'a> {
+impl ToRedisArgs for RefreshPairKey {
     fn write_redis_args<W: ?Sized + RedisWrite>(&self, out: &mut W) {
-        format_refresh_pair_value(self.0, self.1).write_redis_args(out);
+        self.0.write_redis_args(out);
+    }
+}
+
+pub struct RefreshPairValue(String);
+
+impl RefreshPairValue {
+    pub fn new(new_refresh_token: &RefreshToken, session_account_id: AccountId) -> Self {
+        Self(format!("{}{}{}", new_refresh_token, REFRESH_PAIR_VALUE_SEPARATOR, session_account_id))
+    }
+}
+
+impl ToRedisArgs for RefreshPairValue {
+    fn write_redis_args<W: ?Sized + RedisWrite>(&self, out: &mut W) {
+        self.0.write_redis_args(out);
     }
 }
 

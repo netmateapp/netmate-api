@@ -1,10 +1,8 @@
 use std::sync::Arc;
 
-use mitigate_session_theft::{DeleteAllSessionSeries, SelectAllSessionSeries, SelectEmailAndLanguage, DELETE_ALL_SESSION_SERIES, SELECT_ALL_SESSION_SERIES, SELECT_EMAIL_AND_LANGUAGE};
-use refresh_session_series::{SelectLastSessionSeriesRefreshedAt, UpdateSessionSeriesTtl, SELECT_LAST_API_KEY_REFRESHED_AT, UPDATE_SESSION_SERIES_TTL};
-use scylla::Session;
+use scylla::{prepared_statement::PreparedStatement, Session};
 
-use crate::helper::{error::InitError, redis::Pool};
+use crate::helper::{error::InitError, redis::Pool, scylla::prepare};
 
 use super::dsl::{extract_session_info::ExtractSessionInformation, manage_session::ManageSession};
 
@@ -19,11 +17,11 @@ mod update_session;
 pub struct ManageSessionImpl {
     db: Arc<Session>,
     cache: Arc<Pool>,
-    select_last_session_series_refreshed_at: Arc<SelectLastSessionSeriesRefreshedAt>,
-    update_session_series_ttl: Arc<UpdateSessionSeriesTtl>,
-    select_email_and_language: Arc<SelectEmailAndLanguage>,
-    select_all_session_series: Arc<SelectAllSessionSeries>,
-    delete_all_session_series: Arc<DeleteAllSessionSeries>,
+    select_last_session_series_refreshed_at: Arc<PreparedStatement>,
+    update_session_series_ttl: Arc<PreparedStatement>,
+    select_email_and_language: Arc<PreparedStatement>,
+    select_all_session_series: Arc<PreparedStatement>,
+    delete_all_session_series: Arc<PreparedStatement>,
 }
 
 impl ManageSessionImpl {
@@ -32,25 +30,15 @@ impl ManageSessionImpl {
             InitError::new(e.into())
         }
 
-        let select_last_session_series_refreshed_at = SELECT_LAST_API_KEY_REFRESHED_AT.prepared(&db, SelectLastSessionSeriesRefreshedAt)
-            .await
-            .map_err(handle_error)?;
+        let select_last_session_series_refreshed_at = prepare(&db, "SELECT refreshed_at FROM session_series WHERE account_id = ? AND series = ? LIMIT 1").await?;
 
-        let update_session_series_ttl = UPDATE_SESSION_SERIES_TTL.prepared(&db, UpdateSessionSeriesTtl)
-            .await
-            .map_err(handle_error)?;
+        let update_session_series_ttl = prepare(&db, "UPDATE session_series SET refreshed_at = ? WHERE account_id = ? AND series = ? USING TTL ?").await?;
 
-        let select_email_and_language = SELECT_EMAIL_AND_LANGUAGE.prepared(&db, SelectEmailAndLanguage)
-            .await
-            .map_err(handle_error)?;
+        let select_email_and_language = prepare(&db, "SELECT email, language FROM accounts WHERE id = ? LIMIT 1").await?;
 
-        let select_all_session_series = SELECT_ALL_SESSION_SERIES.prepared(&db, SelectAllSessionSeries)
-            .await
-            .map_err(handle_error)?;
+        let select_all_session_series = prepare(&db, "SELECT FROM session_series WHERE account_id = ?").await?;
 
-        let delete_all_session_series = DELETE_ALL_SESSION_SERIES.prepared(&db, DeleteAllSessionSeries)
-            .await
-            .map_err(handle_error)?;
+        let delete_all_session_series = prepare(&db, "DELETE FROM session_series WHERE account_id = ?").await?;
 
         Ok(Self { db, cache, select_last_session_series_refreshed_at, update_session_series_ttl, select_email_and_language, select_all_session_series, delete_all_session_series })
     }
