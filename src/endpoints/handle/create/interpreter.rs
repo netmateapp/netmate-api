@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use scylla::{prepared_statement::PreparedStatement, Session};
 
-use crate::{common::{fallible::Fallible, handle::{id::HandleId, name::HandleName}, id::account_id::AccountId}, helper::{error::InitError, scylla::prepare}};
+use crate::{common::{fallible::Fallible, handle::{id::HandleId, name::NonAnonymousHandleName}, id::account_id::AccountId}, helper::{error::InitError, scylla::prepare}};
 
 use super::dsl::{CreateHandle, CreateHandleError};
 
@@ -23,7 +23,7 @@ impl CreateHandleImpl {
 }
 
 impl CreateHandle for CreateHandleImpl {
-    async fn create_new_handle(&self, account_id: AccountId, handle_id: HandleId, handle_name: HandleName) -> Fallible<(), CreateHandleError> {
+    async fn create_new_handle(&self, account_id: AccountId, handle_id: HandleId, handle_name: NonAnonymousHandleName) -> Fallible<(), CreateHandleError> {
         self.db
             .execute_unpaged(&self.insert_handle, (account_id, handle_id, handle_name))
             .await
