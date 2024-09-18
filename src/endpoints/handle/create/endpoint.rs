@@ -16,12 +16,12 @@ pub async fn endpoint(db: Arc<Session>, cache: Arc<Pool>) -> Result<Router, Init
     .layer(rate_limiter(db.clone(), cache.clone(), "crehd", 10, 1, TimeUnit::HOURS).await?)
     .layer(session_manager(db.clone(), cache).await?);
 
-    let create_handles = CreateHandleImpl::try_new(db).await?;
+    let create_handle = CreateHandleImpl::try_new(db).await?;
 
     let router = Router::new()
         .route("/handles", post(handler))
         .layer(services)
-        .with_state(Arc::new(create_handles));
+        .with_state(Arc::new(create_handle));
 
     Ok(router)
 }

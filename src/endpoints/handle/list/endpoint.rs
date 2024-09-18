@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
-use axum::{extract::State, routing::get, Extension, Json, Router};
+use axum::{extract::State, response::{IntoResponse, Response}, routing::get, Extension, Json, Router};
 use axum_macros::debug_handler;
-use http::StatusCode;
+use http::{header::CACHE_CONTROL, HeaderValue, StatusCode};
 use scylla::Session;
 use serde::Serialize;
 use tower::ServiceBuilder;
@@ -14,7 +14,7 @@ use super::{dsl::GetHandles, interpreter::GetHandlesImpl};
 
 pub async fn endpoint(db: Arc<Session>, cache: Arc<Pool>) -> Result<Router, InitError<GetHandlesImpl>> {
     let services = ServiceBuilder::new()
-        .layer(rate_limiter(db.clone(), cache.clone(), "gethds", 30, 1, TimeUnit::HOURS).await?)
+        .layer(rate_limiter(db.clone(), cache.clone(), "lishd", 30, 1, TimeUnit::HOURS).await?)
         .layer(session_manager(db.clone(), cache).await?);
 
     let get_handles = GetHandlesImpl::try_new(db).await?;
@@ -31,7 +31,7 @@ pub async fn endpoint(db: Arc<Session>, cache: Arc<Pool>) -> Result<Router, Init
 pub async fn handler(
     State(routine): State<Arc<GetHandlesImpl>>,
     Extension(account_id): Extension<AccountId>,
-) -> Result<Json<Body>, StatusCode> {
+) -> Result<Response, StatusCode> {
     match routine.get_handles(account_id).await {
         Ok(handles) => {
             let handles = handles.into_iter()
@@ -42,7 +42,14 @@ pub async fn handler(
                 })
                 .collect();
 
-            Ok(Json(Body { handles }))
+            const CACHE_CONTROL_VALUE: HeaderValue = HeaderValue::from_static("private, max-age=3600, must-revalidate");
+
+            // ETagを追加
+
+            Ok((
+                [(CACHE_CONTROL, CACHE_CONTROL_VALUE)],
+                Json(Body { handles })
+            ).into_response())
         },
         Err(e) => {
             error!(

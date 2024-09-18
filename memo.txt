@@ -3,3 +3,4 @@ common/email/resend.rsのAPIキーがない
 session/manage_sessionのDDoS対策(セッションIDを破棄してreq→発行→破棄でreqへの対策)
 sign_up/interpreterで、TTLの時間がDSL上に表れていない(←これ問題？)
 rate_limit/interpreter/rate_limitでキャッシュができていない
+アカウント作成時に匿名名義を初期化
