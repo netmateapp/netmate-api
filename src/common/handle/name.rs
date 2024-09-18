@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::CqlValue};
+use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::{ColumnType, CqlValue}, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -47,6 +47,12 @@ pub enum ParseHandleNameError {
     Empty,
     #[error("文字数が多すぎます")]
     CharacterCostOverflow,
+}
+
+impl SerializeValue for HandleName {
+    fn serialize<'b>(&self, typ: &ColumnType, writer: CellWriter<'b>) -> Result<WrittenCellProof<'b>, SerializationError> {
+        SerializeValue::serialize(&self.0, typ, writer)
+    }
 }
 
 impl FromCqlVal<Option<CqlValue>> for HandleName {

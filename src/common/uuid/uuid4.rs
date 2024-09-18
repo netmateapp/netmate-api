@@ -1,6 +1,6 @@
 use std::fmt::{self, Display};
 
-use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::CqlValue};
+use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::{ColumnType, CqlValue}, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uuid::Uuid;
@@ -41,6 +41,12 @@ impl TryFrom<Uuid> for Uuid4 {
         } else {
             Err(ParseUuid4Error)
         }
+    }
+}
+
+impl SerializeValue for Uuid4 {
+    fn serialize<'b>(&self, typ: &ColumnType, writer: CellWriter<'b>) -> Result<WrittenCellProof<'b>, SerializationError> {
+        SerializeValue::serialize(&self.0, typ, writer)
     }
 }
 
