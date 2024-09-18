@@ -2,14 +2,14 @@ use std::sync::Arc;
 
 use scylla::{prepared_statement::PreparedStatement, FromRow, Session};
 
-use crate::{common::{fallible::Fallible, handle::{id::HandleId, name::HandleName, share_count::HandleShareCount}, id::account_id::AccountId}, helper::{error::InitError, scylla::{Statement, TypedStatement}}};
+use crate::{common::{fallible::Fallible, handle::{id::HandleId, name::HandleName, share_count::HandleShareCount}, id::account_id::AccountId}, helper::{error::InitError, scylla::{prepare, Statement, TypedStatement}}};
 
 use super::dsl::{GetHandles, GetHandlesError};
 
 pub struct GetHandlesImpl {
     db: Arc<Session>,
-    select_handles: Arc<SelectHandles>,
-    select_handle_share_counts: Arc<SelectHandleShareCounts>,
+    select_handles: Arc<PreparedStatement>,
+    select_handle_share_counts: Arc<PreparedStatement>,
 }
 
 impl GetHandlesImpl {
@@ -18,13 +18,9 @@ impl GetHandlesImpl {
             InitError::new(e.into())
         }
 
-        let select_handles = SELECT_HANDLES.prepared(&db, SelectHandles)
-            .await
-            .map_err(handle_error)?;
+        let select_handles = prepare(&db, "SELECT handle_id, handle_name FROM handles WHERE account_id = ?").await?;
 
-        let select_handle_share_counts = SELECT_HANDLE_SHARE_COUNTS.prepared(&db, SelectHandleShareCounts)
-            .await
-            .map_err(handle_error)?;
+        let select_handle_share_counts = prepare(&db, "SELECT share_count FROM handle_share_counts WHERE account_id = ?").await?;
 
         Ok(Self { db, select_handles, select_handle_share_counts })
     }
