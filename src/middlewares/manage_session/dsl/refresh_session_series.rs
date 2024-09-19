@@ -102,7 +102,7 @@ mod tests {
         let result = MockRefreshSessionSeries.try_refresh_session_series(
             &SESSION_SERIES_TO_BE_REFRESHED,
             AccountId::gen(),
-            RefreshPairExpirationSeconds::secs(1),
+            RefreshPairExpirationSeconds::days(1),
         ).await;
         assert!(result.is_ok());
     }
@@ -112,7 +112,7 @@ mod tests {
         let result = MockRefreshSessionSeries.try_refresh_session_series(
             &SessionSeries::gen(),
             AccountId::gen(),
-            RefreshPairExpirationSeconds::secs(1),
+            RefreshPairExpirationSeconds::days(1),
         ).await;
         assert!(result.is_ok());
     }
