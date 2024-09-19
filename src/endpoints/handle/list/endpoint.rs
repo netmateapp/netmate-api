@@ -8,16 +8,16 @@ use serde::Serialize;
 use tower::ServiceBuilder;
 use tracing::error;
 
-use crate::{common::{handle::{id::HandleId, name::HandleName, share_count::HandleShareCount}, id::account_id::AccountId}, helper::{error::InitError, middleware::{rate_limiter, session_manager, TimeUnit}, redis::Pool}};
+use crate::{common::{handle::{id::HandleId, name::HandleName}, id::account_id::AccountId}, helper::{error::InitError, middleware::{rate_limiter, session_manager, TimeUnit}, redis::Pool}};
 
-use super::{dsl::ListHandles, interpreter::GetHandlesImpl};
+use super::{dsl::ListHandles, interpreter::ListHandlesImpl};
 
-pub async fn endpoint(db: Arc<Session>, cache: Arc<Pool>) -> Result<Router, InitError<GetHandlesImpl>> {
+pub async fn endpoint(db: Arc<Session>, cache: Arc<Pool>) -> Result<Router, InitError<ListHandlesImpl>> {
     let services = ServiceBuilder::new()
         .layer(rate_limiter(db.clone(), cache.clone(), "lishd", 30, 1, TimeUnit::HOURS).await?)
         .layer(session_manager(db.clone(), cache).await?);
 
-    let get_handles = GetHandlesImpl::try_new(db).await?;
+    let get_handles = ListHandlesImpl::try_new(db).await?;
 
     let router = Router::new()
         .route("/handles", get(handler))
@@ -29,16 +29,15 @@ pub async fn endpoint(db: Arc<Session>, cache: Arc<Pool>) -> Result<Router, Init
 
 #[debug_handler]
 pub async fn handler(
-    State(routine): State<Arc<GetHandlesImpl>>,
+    State(routine): State<Arc<ListHandlesImpl>>,
     Extension(account_id): Extension<AccountId>,
 ) -> Result<Response, StatusCode> {
     match routine.list_handles(account_id).await {
         Ok(handles) => {
             let handles = handles.into_iter()
-                .map(|(handle_id, handle_name, handle_share_count)| Handle {
+                .map(|(handle_id, handle_name)| Handle {
                     id: handle_id,
                     name: handle_name,
-                    share_count: handle_share_count,
                 })
                 .collect();
 
@@ -70,5 +69,4 @@ pub struct Body {
 pub struct Handle {
     id: HandleId,
     name: Option<HandleName>,
-    share_count: HandleShareCount,
 }
