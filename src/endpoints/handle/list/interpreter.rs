@@ -4,7 +4,7 @@ use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result
 
 use crate::{common::{fallible::Fallible, handle::{id::HandleId, name::HandleName, share_count::HandleShareCount}, id::account_id::AccountId}, helper::{error::InitError, scylla::prepare}};
 
-use super::dsl::{GetHandles, GetHandlesError};
+use super::dsl::{ListHandles, GetHandlesError};
 
 pub struct GetHandlesImpl {
     db: Arc<Session>,
@@ -22,8 +22,8 @@ impl GetHandlesImpl {
     }
 }
 
-impl GetHandles for GetHandlesImpl {
-    async fn get_handles(&self, account_id: AccountId) -> Fallible<Vec<(HandleId, Option<HandleName>, HandleShareCount)>, GetHandlesError> {
+impl ListHandles for GetHandlesImpl {
+    async fn list_handles(&self, account_id: AccountId) -> Fallible<Vec<(HandleId, Option<HandleName>, HandleShareCount)>, GetHandlesError> {
         fn handle_error<E: Into<anyhow::Error>>(e: E) -> GetHandlesError {
             GetHandlesError::GetHandlesFailed(e.into())
         }
