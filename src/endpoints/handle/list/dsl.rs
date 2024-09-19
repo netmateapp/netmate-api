@@ -2,7 +2,7 @@ use thiserror::Error;
 
 use crate::common::{fallible::Fallible, handle::{id::HandleId, name::HandleName, share_count::HandleShareCount}, id::account_id::AccountId};
 pub(crate) trait GetHandles {
-    async fn get_handles(&self, account_id: AccountId) -> Fallible<Vec<(HandleId, HandleName, HandleShareCount)>, GetHandlesError>;
+    async fn get_handles(&self, account_id: AccountId) -> Fallible<Vec<(HandleId, Option<HandleName>, HandleShareCount)>, GetHandlesError>;
 }
 
 #[derive(Debug, Error)]

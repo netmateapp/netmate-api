@@ -1,6 +1,6 @@
-use std::sync::Arc;
+use std::{str::FromStr, sync::Arc};
 
-use scylla::{prepared_statement::PreparedStatement, Session};
+use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::CqlValue, prepared_statement::PreparedStatement, Session};
 
 use crate::{common::{fallible::Fallible, handle::{id::HandleId, name::HandleName, share_count::HandleShareCount}, id::account_id::AccountId}, helper::{error::InitError, scylla::prepare}};
 
@@ -23,19 +23,20 @@ impl GetHandlesImpl {
 }
 
 impl GetHandles for GetHandlesImpl {
-    async fn get_handles(&self, account_id: AccountId) -> Fallible<Vec<(HandleId, HandleName, HandleShareCount)>, GetHandlesError> {
+    async fn get_handles(&self, account_id: AccountId) -> Fallible<Vec<(HandleId, Option<HandleName>, HandleShareCount)>, GetHandlesError> {
         fn handle_error<E: Into<anyhow::Error>>(e: E) -> GetHandlesError {
             GetHandlesError::GetHandlesFailed(e.into())
         }
 
-        let handles = self.db
+        let handles: Vec<(HandleId, Option<HandleName>)> = self.db
             .execute_unpaged(&self.select_handles, (account_id, ))
                 .await
                 .map_err(handle_error)?
                 .rows_typed()
                 .map(|rows| {
                     rows.flatten()
-                        .collect::<Vec<(HandleId, HandleName)>>()
+                        .map(|(id, name): (HandleId, OptionHandleName)| (id, name.0))
+                        .collect::<Vec<(HandleId, Option<HandleName>)>>()
                 })
                 .map_err(handle_error)?;
 
@@ -56,5 +57,22 @@ impl GetHandles for GetHandlesImpl {
             .collect();
 
         Ok(handles)
+    }
+}
+
+pub struct OptionHandleName(Option<HandleName>);
+
+impl FromCqlVal<Option<CqlValue>> for OptionHandleName {
+    fn from_cql(cql_val: Option<CqlValue>) -> Result<Self, FromCqlValError> {
+        String::from_cql(cql_val)
+            .and_then(|v| {
+                if v.is_empty() {
+                    Ok(OptionHandleName(None))
+                } else {
+                    HandleName::from_str(&v)
+                        .map(|v| OptionHandleName(Some(v)))
+                        .map_err(|_| FromCqlValError::BadVal)
+                }
+            })
     }
 }

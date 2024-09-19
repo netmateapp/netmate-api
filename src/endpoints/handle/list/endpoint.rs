@@ -69,6 +69,6 @@ pub struct Body {
 #[derive(Serialize)]
 pub struct Handle {
     id: HandleId,
-    name: HandleName,
+    name: Option<HandleName>,
     share_count: HandleShareCount,
 }

@@ -7,7 +7,7 @@ use serde::Deserialize;
 use tower::ServiceBuilder;
 use tracing::error;
 
-use crate::{common::{handle::name::NonAnonymousHandleName, id::account_id::AccountId}, helper::{error::InitError, middleware::{rate_limiter, session_manager, TimeUnit}, redis::Pool}};
+use crate::{common::{handle::name::HandleName, id::account_id::AccountId}, helper::{error::InitError, middleware::{rate_limiter, session_manager, TimeUnit}, redis::Pool}};
 
 use super::{dsl::CreateHandle, interpreter::CreateHandleImpl};
 
@@ -45,5 +45,5 @@ pub async fn handler(
 
 #[derive(Deserialize)]
 pub struct Payload {
-    handle_name: NonAnonymousHandleName
+    handle_name: HandleName
 }
