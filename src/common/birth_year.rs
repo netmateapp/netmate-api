@@ -1,7 +1,7 @@
 use std::{num::NonZeroU16, sync::LazyLock, time::SystemTime};
 
 use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::{ColumnType, CqlValue}, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
-use serde::{Deserialize, Serialize};
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;
 
 /// `BirthYear`は、未指定又は1900年～現在の年を表す。
@@ -12,7 +12,7 @@ pub const MIN_BIRTH_YEAR: u16 = 1900;
 // 生年は統計目的の情報であり、数才の人間はユーザーとして想定されない
 pub static MAX_BIRTH_YEAR: LazyLock<u16> = LazyLock::new(current_year);
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct BirthYear(Option<NonZeroU16>);
 
 impl BirthYear {
@@ -56,6 +56,34 @@ impl TryFrom<i16> for BirthYear {
 
     fn try_from(value: i16) -> Result<Self, Self::Error> {
         BirthYear::try_from(value as u16)
+    }
+}
+
+impl TryFrom<Option<NonZeroU16>> for BirthYear {
+    type Error = ParseBirthYearError;
+
+    fn try_from(value: Option<NonZeroU16>) -> Result<Self, Self::Error> {
+        match value {
+            Some(v) if MIN_BIRTH_YEAR <= v.get() && v.get() <= *MAX_BIRTH_YEAR => Ok(BirthYear(Some(v))),
+            Some(_) => Err(ParseBirthYearError),
+            None => Ok(BirthYear(None))
+        }
+    }
+}
+
+impl Serialize for BirthYear {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match self.value() {
+            Some(v) => serializer.serialize_some(&v.get()),
+            None => serializer.serialize_none()
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for BirthYear {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        Option::<NonZeroU16>::deserialize(deserializer)
+            .and_then(|v| BirthYear::try_from(v).map_err(de::Error::custom))
     }
 }
 
@@ -169,6 +197,19 @@ mod tests {
     fn try_from_invalid_i16() {
         assert_eq!(BirthYear::try_from((MIN_BIRTH_YEAR - 1) as i16), Err(ParseBirthYearError));
         assert_eq!(BirthYear::try_from((*MAX_BIRTH_YEAR + 1) as i16), Err(ParseBirthYearError));
+    }
+
+    #[test]
+    fn try_from_valid_option_nonzero_u16() {
+        assert_eq!(*BirthYear::try_from(NonZeroU16::new(0)).unwrap().value(), NonZeroU16::new(0));
+        assert_eq!(*BirthYear::try_from(NonZeroU16::new(MIN_BIRTH_YEAR)).unwrap().value(), NonZeroU16::new(MIN_BIRTH_YEAR));
+        assert_eq!(*BirthYear::try_from(NonZeroU16::new(*MAX_BIRTH_YEAR)).unwrap().value(), NonZeroU16::new(*MAX_BIRTH_YEAR));
+    }
+
+    #[test]
+    fn try_from_invalid_option_nonzero_u16() {
+        assert_eq!(BirthYear::try_from(NonZeroU16::new(MIN_BIRTH_YEAR - 1)), Err(ParseBirthYearError));
+        assert_eq!(BirthYear::try_from(NonZeroU16::new(*MAX_BIRTH_YEAR + 1)), Err(ParseBirthYearError));
     }
 
     #[test]
