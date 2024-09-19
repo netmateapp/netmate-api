@@ -37,12 +37,13 @@ impl From<UnixtimeMillis> for i64 {
 
 impl SerializeValue for UnixtimeMillis {
     fn serialize<'b>(&self, typ: &ColumnType, writer: CellWriter<'b>) -> Result<WrittenCellProof<'b>, SerializationError> {
-        (self.0 as i64).serialize(typ, writer)
+        i64::from(*self).serialize(typ, writer)
     }
 }
 
 impl FromCqlVal<Option<CqlValue>> for UnixtimeMillis {
     fn from_cql(cql_val: Option<CqlValue>) -> Result<Self, FromCqlValError> {
-        CqlTimestamp::from_cql(cql_val).map(|cql_timestamp| Self(cql_timestamp.0 as u64))
+        CqlTimestamp::from_cql(cql_val)
+            .map(|cql_timestamp| UnixtimeMillis::from(cql_timestamp.0))
     }
 }

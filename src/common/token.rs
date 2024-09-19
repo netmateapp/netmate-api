@@ -4,7 +4,7 @@ use rand::{RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 use redis::{FromRedisValue, RedisError, RedisResult};
 use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::{ColumnType, CqlValue}, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
-use serde::{de, Deserialize};
+use serde::{de, Deserialize, Deserializer};
 use thiserror::Error;
 
 const ENTROPY_BITS_PER_CHAR: usize = 6;
@@ -108,24 +108,22 @@ fn is_valid_char(c: char) -> bool {
 }
 
 impl<'de, const BYTES: usize> Deserialize<'de> for Token<BYTES> {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>
-    {
-        let s: &str = Deserialize::deserialize(deserializer)?;
-        Token::from_str(s).map_err(de::Error::custom)
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        String::deserialize(deserializer)
+            .and_then(|v| Token::from_str(v.as_str()).map_err(de::Error::custom))
     }
 }
 
 impl<const BYTES: usize> SerializeValue for Token<BYTES> {
     fn serialize<'b>(&self, typ: &ColumnType, writer: CellWriter<'b>) -> Result<WrittenCellProof<'b>, SerializationError> {
-        self.0.serialize(typ, writer)
+        self.value().serialize(typ, writer)
     }
 }
 
 impl<const BYTES: usize> FromCqlVal<Option<CqlValue>> for Token<BYTES> {
     fn from_cql(cql_val: Option<CqlValue>) -> Result<Self, FromCqlValError> {
-        String::from_cql(cql_val).and_then(|v| Token::from_str(v.as_str()).map_err(|_| FromCqlValError::BadVal))
+        String::from_cql(cql_val)
+            .and_then(|v| Token::from_str(v.as_str()).map_err(|_| FromCqlValError::BadVal))
     }
 }
 

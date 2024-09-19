@@ -44,6 +44,6 @@ impl FromStr for ApiKey {
 
 impl SerializeValue for ApiKey {
     fn serialize<'b>(&self, typ: &ColumnType, writer: CellWriter<'b>) -> Result<WrittenCellProof<'b>, SerializationError> {
-        self.0.serialize(typ, writer)
+        self.value().serialize(typ, writer)
     }
 }

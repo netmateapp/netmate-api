@@ -5,7 +5,7 @@ use base64::{engine::general_purpose, Engine};
 use rand::rngs::OsRng;
 use regex::Regex;
 use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::{ColumnType, CqlValue}, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
-use serde::{de::{self}, Deserialize};
+use serde::{de::{self}, Deserialize, Deserializer};
 use thiserror::Error;
 
 static ARGON2_CONTEXT: LazyLock<Argon2> = LazyLock::new(|| {
@@ -159,12 +159,9 @@ fn is_unsafe_password(password: &str) -> bool {
 }
 
 impl<'de> Deserialize<'de> for Password {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>
-    {
-        let s: &str = Deserialize::deserialize(deserializer)?;
-        Password::from_str(s).map_err(de::Error::custom)
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        String::deserialize(deserializer)
+            .and_then(|v| Password::from_str(v.as_str()).map_err(de::Error::custom))
     }
 }
 
