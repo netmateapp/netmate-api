@@ -1,6 +1,6 @@
 use std::fmt::{self, Display};
 
-use redis::{FromRedisValue, RedisResult, ToRedisArgs};
+use redis::{FromRedisValue, RedisResult, RedisWrite, ToRedisArgs};
 use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::{ColumnType, CqlValue}, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
 use uuid::Uuid;
 
@@ -44,10 +44,7 @@ impl FromCqlVal<Option<CqlValue>> for AccountId {
 }
 
 impl ToRedisArgs for AccountId {
-    fn write_redis_args<W>(&self, out: &mut W)
-    where
-        W: ?Sized + redis::RedisWrite
-    {
+    fn write_redis_args<W: ?Sized + RedisWrite>(&self, out: &mut W) {
         self.value().write_redis_args(out)
     }
 }
