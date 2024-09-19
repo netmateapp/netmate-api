@@ -4,7 +4,7 @@ use scylla::{prepared_statement::PreparedStatement, Session};
 
 use crate::{common::{birth_year::BirthYear, email::{address::Email, resend::ResendEmailSender, send::{Body, EmailSender, HtmlContent, NetmateEmail, PlainText, SenderName, Subject}}, fallible::Fallible, id::account_id::AccountId, language::Language, one_time_token::OneTimeToken, password::PasswordHash, region::Region}, helper::{error::InitError, scylla::prepare}, translation::{ja, us_en}};
 
-use super::dsl::{SignUp, SignUpError};
+use super::dsl::{ApplicationExpirationSeconds, SignUp, SignUpError};
 
 pub struct SignUpImpl {
     db: Arc<Session>,
@@ -37,9 +37,9 @@ impl SignUp for SignUpImpl {
             .map_err(|e| SignUpError::PotentiallyUnavailableEmail(e.into()))
     }
 
-    async fn apply_to_create_account(&self, email: &Email, pw_hash: &PasswordHash, birth_year: BirthYear, region: Region, language: Language, token: &OneTimeToken) -> Result<(), SignUpError> {
+    async fn apply_to_create_account(&self, email: &Email, password_hash: &PasswordHash, birth_year: BirthYear, region: Region, language: Language, token: &OneTimeToken, expiration: ApplicationExpirationSeconds) -> Result<(), SignUpError> {
         self.db
-            .execute_unpaged(&self.insert_pre_verification_account, (token, email, pw_hash, birth_year, region, language))
+            .execute_unpaged(&self.insert_pre_verification_account, (token, email, password_hash, birth_year, region, language, expiration))
             .await
             .map(|_| ())
             .map_err(|e| SignUpError::ApplicationFailed(e.into()))

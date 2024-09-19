@@ -1,6 +1,9 @@
+use scylla::{frame::response::result::ColumnType, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
 use thiserror::Error;
 
 use crate::common::{birth_year::BirthYear, email::address::Email, fallible::Fallible, language::Language, one_time_token::OneTimeToken, password::{Password, PasswordHash}, region::Region};
+
+const CREATE_ACCOUNT_APPLICATION_EXPIRATION: ApplicationExpirationSeconds = ApplicationExpirationSeconds::days(1);
 
 pub(crate) trait SignUp {
     async fn sign_up(&self, email: &Email, password: &Password, birth_year: BirthYear, region: Region, language: Language) -> Fallible<(), SignUpError> {
@@ -9,7 +12,7 @@ pub(crate) trait SignUp {
             // `sign_up`は自動化されたリクエストから特に保護されなければならない
             let hash: PasswordHash = password.hashed();
             let token = OneTimeToken::gen();
-            self.apply_to_create_account(email, &hash, birth_year, region, language, &token).await?;
+            self.apply_to_create_account(email, &hash, birth_year, region, language, &token, CREATE_ACCOUNT_APPLICATION_EXPIRATION).await?;
             self.send_verification_email(email, language, &token).await
         } else {
             Err(SignUpError::UnavailableEmail)
@@ -18,7 +21,7 @@ pub(crate) trait SignUp {
 
     async fn is_available_email(&self, email: &Email) -> Fallible<bool, SignUpError>;
 
-    async fn apply_to_create_account(&self, email: &Email, pw_hash: &PasswordHash, birth_year: BirthYear, region: Region, language: Language, token: &OneTimeToken) -> Fallible<(), SignUpError>;
+    async fn apply_to_create_account(&self, email: &Email, password_hash: &PasswordHash, birth_year: BirthYear, region: Region, language: Language, token: &OneTimeToken, expiration: ApplicationExpirationSeconds) -> Fallible<(), SignUpError>;
 
     async fn send_verification_email(&self, email: &Email, language: Language, token: &OneTimeToken) -> Result<(), SignUpError>;
 }
@@ -35,6 +38,31 @@ pub enum SignUpError {
     AuthenticationEmailSendFailed(#[source] anyhow::Error)
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct ApplicationExpirationSeconds(u32);
+
+impl ApplicationExpirationSeconds {
+    pub const fn days(days: u32) -> Self {
+        Self(days * 24 * 60 * 60)
+    }
+
+    pub fn as_secs(&self) -> u32 {
+        self.0
+    }
+}
+
+impl From<ApplicationExpirationSeconds> for i32 {
+    fn from(value: ApplicationExpirationSeconds) -> Self {
+        value.as_secs() as i32
+    }
+}
+
+impl SerializeValue for ApplicationExpirationSeconds {
+    fn serialize<'b>(&self, typ: &ColumnType, writer: CellWriter<'b>) -> Result<WrittenCellProof<'b>, SerializationError> {
+        i32::from(*self).serialize(typ, writer)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::str::FromStr;
@@ -43,7 +71,7 @@ mod tests {
 
     use crate::common::{birth_year::BirthYear, email::address::Email, language::Language, one_time_token::OneTimeToken, password::{Password, PasswordHash}, region::Region};
 
-    use super::{Fallible, SignUp, SignUpError};
+    use super::{ApplicationExpirationSeconds, Fallible, SignUp, SignUpError};
 
     // `SignUp#sign_up()`のロジックの正当性を保証する
     struct MockSignUp;
@@ -67,7 +95,7 @@ mod tests {
             }
         }
 
-        async fn apply_to_create_account(&self, case: &Email, _: &PasswordHash, _: BirthYear, _: Region, _: Language, _: &OneTimeToken) -> Fallible<(), SignUpError> {
+        async fn apply_to_create_account(&self, case: &Email, _: &PasswordHash, _: BirthYear, _: Region, _: Language, _: &OneTimeToken, _: ApplicationExpirationSeconds) -> Fallible<(), SignUpError> {
             match case.value().as_str() {
                 APPLIED_BUT_SEND_FAILED | SIGN_UP => Ok(()),
                 _ => Err(SignUpError::ApplicationFailed(MockError.into()))
