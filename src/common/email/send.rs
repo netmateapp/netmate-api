@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{fmt::{self, Display}, str::FromStr};
 
 use thiserror::Error;
 
@@ -22,12 +22,24 @@ impl SenderName {
     }
 }
 
+impl Display for SenderName {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.value())
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct NetmateEmail(Email);
 
 impl NetmateEmail {
     pub fn value(&self) -> &Email {
         &self.0
+    }
+}
+
+impl Display for NetmateEmail {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.value())
     }
 }
 
@@ -55,6 +67,12 @@ pub struct Subject(String);
 impl Subject {
     pub fn value(&self) -> &String {
         &self.0
+    }
+}
+
+impl Display for Subject {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.value())
     }
 }
 
@@ -90,6 +108,12 @@ impl HtmlContent {
     }
 }
 
+impl Display for HtmlContent {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.value())
+    }
+}
+
 pub struct PlainText(String);
 
 impl PlainText {
@@ -102,6 +126,11 @@ impl PlainText {
     }
 }
 
+impl Display for PlainText {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.value())
+    }
+}
 
 // 長い行は折り返されるため、Bodyには制限を適用しない
 pub struct Body(HtmlContent, PlainText);
