@@ -3,7 +3,7 @@ use thiserror::Error;
 use crate::common::{fallible::Fallible, handle::id::HandleId, id::account_id::AccountId};
 
 pub(crate) trait DeleteHandle {
-    async fn delete_handle_if_not_anonymous(&self, account_id: AccountId, handle_id: HandleId) -> Fallible<(), DeleteHandleError>;
+    async fn delete_handle_if_onymous(&self, account_id: AccountId, handle_id: HandleId) -> Fallible<(), DeleteHandleError>;
 }
 
 #[derive(Debug, Error)]

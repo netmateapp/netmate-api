@@ -30,7 +30,7 @@ pub async fn handler(
     Extension(account_id): Extension<AccountId>,
     Path(handle_id): Path<HandleId>
 ) -> StatusCode {
-    match routine.delete_handle_if_not_anonymous(account_id, handle_id).await {
+    match routine.delete_handle_if_onymous(account_id, handle_id).await {
         Ok(_) => StatusCode::NO_CONTENT,
         Err(DeleteHandleError::AnonymousHandle) => StatusCode::FORBIDDEN,
         Err(e) => {

@@ -23,7 +23,7 @@ impl DeleteHandleImpl {
 }
 
 impl DeleteHandle for DeleteHandleImpl {
-    async fn delete_handle_if_not_anonymous(&self, account_id: AccountId, handle_id: HandleId) -> Fallible<(), DeleteHandleError> {
+    async fn delete_handle_if_onymous(&self, account_id: AccountId, handle_id: HandleId) -> Fallible<(), DeleteHandleError> {
         fn handle_error<E: Into<anyhow::Error>>(e: E) -> DeleteHandleError {
             DeleteHandleError::DeleteHandleFailed(e.into())
         }
