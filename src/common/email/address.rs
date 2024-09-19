@@ -3,7 +3,7 @@ use std::{fmt::{self, Display}, str::FromStr, sync::LazyLock};
 use idna::domain_to_ascii;
 use regex::Regex;
 use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::{ColumnType, CqlValue}, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
-use serde::{de::{self}, Deserialize};
+use serde::{de::{self}, Deserialize, Deserializer};
 use thiserror::Error;
 
 #[derive(Debug, PartialEq)]
@@ -80,24 +80,22 @@ fn validate_domain_part(domain_part: &str) -> bool {
 }
 
 impl<'de> Deserialize<'de> for Email {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>
-    {
-        let s: &str = Deserialize::deserialize(deserializer)?;
-        Email::from_str(s).map_err(de::Error::custom)
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        String::deserialize(deserializer)
+            .and_then(|v| Email::from_str(v.as_str()).map_err(de::Error::custom))
     }
 }
 
 impl SerializeValue for Email {
     fn serialize<'b>(&self, typ: &ColumnType, writer: CellWriter<'b>) -> Result<WrittenCellProof<'b>, SerializationError> {
-        self.0.serialize(typ, writer)
+        self.value().serialize(typ, writer)
     }
 }
 
 impl FromCqlVal<Option<CqlValue>> for Email {
     fn from_cql(cql_val: Option<CqlValue>) -> Result<Self, FromCqlValError> {
-        String::from_cql(cql_val).and_then(|v| Email::from_str(v.as_str()).map_err(|_| FromCqlValError::BadVal))
+        String::from_cql(cql_val)
+            .and_then(|v| Email::from_str(v.as_str()).map_err(|_| FromCqlValError::BadVal))
     }
 }
 
