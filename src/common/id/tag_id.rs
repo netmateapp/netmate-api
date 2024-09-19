@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Serialize, Serializer};
 
 use crate::common::uuid::uuid4::Uuid4;
 
@@ -18,10 +18,7 @@ impl TagId {
 }
 
 impl Serialize for TagId {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer
-    {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         self.value().serialize(serializer)
     }
 }
