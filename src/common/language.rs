@@ -51,7 +51,7 @@ impl TryFrom<i8> for Language {
 
 impl Serialize for Language {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        serializer.serialize_u8(u8::from(*self))
+        u8::from(*self).serialize(serializer)
     }
 }
 

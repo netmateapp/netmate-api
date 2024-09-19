@@ -439,7 +439,7 @@ impl TryFrom<i8> for Region {
 
 impl Serialize for Region {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        serializer.serialize_u8(u8::from(*self))
+        u8::from(*self).serialize(serializer)
     }
 }
 
