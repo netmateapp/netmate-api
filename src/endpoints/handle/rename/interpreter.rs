@@ -13,14 +13,14 @@ pub struct RenameHandleImpl {
 
 impl RenameHandleImpl {
     pub async fn try_new(db: Arc<Session>) -> Result<Self, InitError<Self>> {
-        let update_handle_name = prepare(&db, "UPDATE handles SET handle_name = ? WHERE account_id = ? AND handle_id = ?").await?;
+        let update_handle_name = prepare(&db, "UPDATE handles SET handle_name = ? WHERE account_id = ? AND handle_id = ? IF handle_name != ''").await?;
 
         Ok(Self { db, update_handle_name })
     }
 }
 
 impl RenameHandle for RenameHandleImpl {
-    async fn rename_handle(&self, account_id: AccountId, handle_id: HandleId, new_handle_name: HandleName) -> Fallible<(), RenameHandleError> {
+    async fn rename_handle_if_onymous(&self, account_id: AccountId, handle_id: HandleId, new_handle_name: HandleName) -> Fallible<(), RenameHandleError> {
         self.db
             .execute_unpaged(&self.update_handle_name, (new_handle_name, account_id, handle_id))
             .await

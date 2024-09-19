@@ -31,7 +31,7 @@ pub async fn handler(
     Extension(account_id): Extension<AccountId>,
     Json(payload): Json<Payload>
 ) -> StatusCode {
-    match routine.rename_handle(account_id, payload.handle_id, payload.new_handle_name).await {
+    match routine.rename_handle_if_onymous(account_id, payload.handle_id, payload.new_handle_name).await {
         Ok(_) => StatusCode::OK,
         Err(e) => {
             error!(
