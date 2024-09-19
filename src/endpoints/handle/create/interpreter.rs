@@ -23,7 +23,7 @@ impl CreateHandleImpl {
 }
 
 impl CreateHandle for CreateHandleImpl {
-    async fn create_new_handle(&self, account_id: AccountId, handle_id: HandleId, handle_name: HandleName) -> Fallible<(), CreateHandleError> {
+    async fn add_handle(&self, account_id: AccountId, handle_id: HandleId, handle_name: HandleName) -> Fallible<(), CreateHandleError> {
         self.db
             .execute_unpaged(&self.insert_handle, (account_id, handle_id, handle_name))
             .await
