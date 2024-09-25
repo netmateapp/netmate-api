@@ -2,3 +2,5 @@ common/password.rsのデータ読み込み処理がよく抽象化されてい�
 common/email/resend.rsのAPIキーがない
 session/manage_sessionのDDoS対策(セッションIDを破棄してreq→発行→破棄でreqへの対策)
 rate_limit/interpreter/rate_limitでキャッシュができていない
+redisキーのフォーマットテストは不要？
+verify_email/interpreter, session_manager/interpreter/reauthenticateのRedisから取得した文字列の解析にテストが無い
