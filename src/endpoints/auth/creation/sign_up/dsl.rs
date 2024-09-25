@@ -1,4 +1,4 @@
-use scylla::{frame::response::result::ColumnType, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
+use redis::ToRedisArgs;
 use thiserror::Error;
 
 use crate::common::{birth_year::BirthYear, email::address::Email, fallible::Fallible, language::Language, one_time_token::OneTimeToken, password::{Password, PasswordHash}, region::Region};
@@ -57,9 +57,9 @@ impl From<ApplicationExpirationSeconds> for i32 {
     }
 }
 
-impl SerializeValue for ApplicationExpirationSeconds {
-    fn serialize<'b>(&self, typ: &ColumnType, writer: CellWriter<'b>) -> Result<WrittenCellProof<'b>, SerializationError> {
-        i32::from(*self).serialize(typ, writer)
+impl ToRedisArgs for ApplicationExpirationSeconds {
+    fn write_redis_args<W: ?Sized + redis::RedisWrite>(&self, out: &mut W) {
+        i32::from(*self).write_redis_args(out)
     }
 }
 

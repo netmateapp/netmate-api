@@ -4,7 +4,10 @@ use crate::common::{birth_year::BirthYear, email::address::Email, fallible::Fall
 
 pub(crate) trait VerifyEmail {
     async fn verify_email(&self, token: &OneTimeToken) -> Fallible<(AccountId, TagId), VerifyEmailError> {
-        let (email, password_hash, birth_year, region, language) = self.retrieve_account_creation_application_by(token).await?;
+        let (email, password_hash, birth_year, region, language) = self.retrieve_account_creation_application_by(token)
+            .await?
+            .ok_or_else(|| VerifyEmailError::AccountCreationApplicationNotFound)?;
+
         let account_id = AccountId::gen();
         match self.create_account(account_id, &email, &password_hash, birth_year, region, language).await {
             Ok(_) => {
@@ -20,7 +23,7 @@ pub(crate) trait VerifyEmail {
         }
     }
 
-    async fn retrieve_account_creation_application_by(&self, token: &OneTimeToken) -> Fallible<(Email, PasswordHash, BirthYear, Region, Language), VerifyEmailError>;
+    async fn retrieve_account_creation_application_by(&self, token: &OneTimeToken) -> Fallible<Option<(Email, PasswordHash, BirthYear, Region, Language)>, VerifyEmailError>;
 
     async fn create_account(&self, account_id: AccountId, email: &Email, password_hash: &PasswordHash, birth_year: BirthYear, region: Region, language: Language) -> Fallible<(), VerifyEmailError>;
 
@@ -31,6 +34,8 @@ pub(crate) trait VerifyEmail {
 pub enum VerifyEmailError {
     #[error("アカウント作成申請データの取得に失敗しました")]
     RetrieveAccountCreationApplicationFailed(#[source] anyhow::Error),
+    #[error("アカウント作成申請データが存在しません")]
+    AccountCreationApplicationNotFound,
     #[error("一時トークンによる認証に失敗しました")]
     OneTimeTokenAuthenticationFailed,
     #[error("アカウントの作成に失敗しました")]
@@ -64,16 +69,16 @@ mod tests {
     const VERIFY_EMAIL: &str = "case5";
 
     impl VerifyEmail for MockVerifyEmail {
-        async fn retrieve_account_creation_application_by(&self, case: &OneTimeToken) -> Fallible<(Email, PasswordHash, BirthYear, Region, Language), VerifyEmailError> {
+        async fn retrieve_account_creation_application_by(&self, case: &OneTimeToken) -> Fallible<Option<(Email, PasswordHash, BirthYear, Region, Language)>, VerifyEmailError> {
             match case.value().as_str() {
                 RETRIEVE_BUT_CREATE_FAILED | RETRIEVE_BUT_ACCOUNT_ALREADY_EXISTS | VERIFY_EMAIL => {
-                    Ok((
+                    Ok(Some((
                         Email::from_str("test@example.com").unwrap(),
                         PasswordHash::new_unchecked(case.value()),
                         BirthYear::try_from(0u16).unwrap(),
                         Region::Japan,
                         Language::Japanese
-                    ))
+                    )))
                 },
                 TOKEN_AUTH_FAILED => Err(VerifyEmailError::OneTimeTokenAuthenticationFailed),
                 RETRIEVE_FAILED => Err(VerifyEmailError::RetrieveAccountCreationApplicationFailed(MockError.into())),

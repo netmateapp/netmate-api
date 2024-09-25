@@ -1,24 +1,22 @@
 use std::{str::FromStr, sync::{Arc, LazyLock}};
 
+use redis::cmd;
 use scylla::{prepared_statement::PreparedStatement, Session};
 
-use crate::{common::{birth_year::BirthYear, email::{address::Email, resend::ResendEmailSender, send::{Body, EmailSender, HtmlContent, NetmateEmail, PlainText, SenderName, Subject}}, fallible::Fallible, id::account_id::AccountId, language::Language, one_time_token::OneTimeToken, password::PasswordHash, region::Region}, helper::{error::InitError, scylla::prepare}, translation::{ja, us_en}};
+use crate::{common::{birth_year::BirthYear, email::{address::Email, resend::ResendEmailSender, send::{Body, EmailSender, HtmlContent, NetmateEmail, PlainText, SenderName, Subject}}, fallible::Fallible, id::account_id::AccountId, language::Language, one_time_token::OneTimeToken, password::PasswordHash, region::Region}, endpoints::auth::creation::value::{PreVerificationAccountKey, PreVerificationAccountValue}, helper::{error::InitError, redis::{conn, Pool}, scylla::prepare}, translation::{ja, us_en}};
 
 use super::dsl::{ApplicationExpirationSeconds, SignUp, SignUpError};
 
 pub struct SignUpImpl {
     db: Arc<Session>,
+    cache: Arc<Pool>,
     select_account_id: Arc<PreparedStatement>,
-    insert_pre_verification_account: Arc<PreparedStatement>,
 }
 
 impl SignUpImpl {
-    pub async fn try_new(db: Arc<Session>) -> Result<Self, InitError<SignUpImpl>> {
-        let select_account_id = prepare(&db, "SELECT id FROM accounts WHERE email = ? LIMIT 1").await?;
-
-        let insert_pre_verification_account = prepare(&db, "INSERT INTO pre_verification_accounts (one_time_token, email, password_hash, birth_year, region, language) VALUES (?, ?, ?, ?, ?, ?) USING TTL ?").await?;
-
-        Ok(Self { db, select_account_id, insert_pre_verification_account })
+    pub async fn try_new(db: Arc<Session>, cache: Arc<Pool>) -> Result<Self, InitError<SignUpImpl>> {
+        let select_account_id = prepare(&db, "SELECT id FROM accounts WHERE email = ? LIMIT 1 BYPASS CACHE").await?;
+        Ok(Self { db, cache, select_account_id })
     }
 }
 
@@ -38,10 +36,15 @@ impl SignUp for SignUpImpl {
     }
 
     async fn apply_to_create_account(&self, email: &Email, password_hash: &PasswordHash, birth_year: BirthYear, region: Region, language: Language, token: &OneTimeToken, expiration: ApplicationExpirationSeconds) -> Result<(), SignUpError> {
-        self.db
-            .execute_unpaged(&self.insert_pre_verification_account, (token, email, password_hash, birth_year, region, language, expiration))
+        let mut conn = conn(&self.cache, |e| SignUpError::ApplicationFailed(e.into())).await?;
+
+        cmd("SET")
+            .arg(PreVerificationAccountKey::new(token))
+            .arg(PreVerificationAccountValue::new(email, password_hash, birth_year, region, language))
+            .arg("EX")
+            .arg(expiration)
+            .exec_async(&mut *conn)
             .await
-            .map(|_| ())
             .map_err(|e| SignUpError::ApplicationFailed(e.into()))
     }
 

@@ -20,9 +20,6 @@ async fn main() {
 
     tracing::subscriber::set_global_default(subscriber).unwrap();
 
-    
-
-
     /*
     NTPが導入されている&時刻が正確であることを必ず確認する
     条件を満たさなければpanicで強制終了

@@ -1,4 +1,4 @@
-use std::{collections::HashSet, fs::File, io::{BufRead, BufReader}, str::FromStr, sync::LazyLock};
+use std::{collections::HashSet, fmt::{self, Display}, fs::File, io::{BufRead, BufReader}, str::FromStr, sync::LazyLock};
 
 use argon2::{password_hash::{self, PasswordHasher, SaltString}, Algorithm, Argon2, ParamsBuilder, PasswordVerifier, Version};
 use base64::{engine::general_purpose, Engine};
@@ -110,6 +110,12 @@ impl FromStr for PasswordHash {
         } else {
             Err(ParsePasswordHashError)
         }
+    }
+}
+
+impl Display for PasswordHash {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.value())
     }
 }
 

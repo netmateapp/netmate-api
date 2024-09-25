@@ -6,6 +6,8 @@ pub async fn startup() {
     let app = Router::new();
         //.merge(sign_up_route());
 
+    // Brotli 圧縮を有効にする
+    
     let listener = TcpListener::bind("127.0.0.1:8080").await.unwrap();
     // let listener = TcpListener::bind("0.0.0.0:443").await.unwrap();
     axum::serve(listener, app).await.unwrap();

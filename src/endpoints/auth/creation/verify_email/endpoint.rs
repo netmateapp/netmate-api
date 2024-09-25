@@ -14,9 +14,9 @@ use super::{dsl::{VerifyEmail, VerifyEmailError}, interpreter::VerifyEmailImpl};
 pub async fn endpoint(db: Arc<Session>, cache: Arc<Pool>) -> Result<Router, InitError<VerifyEmailImpl>> {
     let services = ServiceBuilder::new()
         .layer(rate_limiter(db.clone(), cache.clone(), "vrfem", 3, 1, TimeUnit::HOURS).await?)
-        .layer(session_starter(db.clone(), cache).await?);
+        .layer(session_starter(db.clone(), cache.clone()).await?);
 
-    let verify_email = VerifyEmailImpl::try_new(db).await?;
+    let verify_email = VerifyEmailImpl::try_new(db, cache).await?;
 
     let router = Router::new()
         .route("/verify_email", post(handler))

@@ -11,12 +11,13 @@ use tracing::info;
 use crate::common::email::address::Email;
 use crate::common::{birth_year::BirthYear, language::Language, password::Password, region::Region};
 use crate::helper::error::InitError;
+use crate::helper::redis::Pool;
 
 use super::dsl::SignUp;
 use super::interpreter::SignUpImpl;
 
-pub async fn endpoint(db: Arc<Session>) -> Result<Router, InitError<SignUpImpl>> {
-    let sign_up = SignUpImpl::try_new(db).await?;
+pub async fn endpoint(db: Arc<Session>, cache: Arc<Pool>) -> Result<Router, InitError<SignUpImpl>> {
+    let sign_up = SignUpImpl::try_new(db, cache).await?;
 
     let router = Router::new()
         .route("/sign_up", post(handler))
