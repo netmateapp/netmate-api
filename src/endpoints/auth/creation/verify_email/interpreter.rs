@@ -11,16 +11,13 @@ pub struct VerifyEmailImpl {
     db: Arc<Session>,
     cache: Arc<Pool>,
     insert_account: Arc<PreparedStatement>,
-    delete_account_creation_application: Arc<PreparedStatement>,
 }
 
 impl VerifyEmailImpl {
     pub async fn try_new(db: Arc<Session>, cache: Arc<Pool>) -> Result<Self, InitError<VerifyEmailImpl>> {
         let insert_account = prepare(&db, "INSERT INTO accounts (id, email, password_hash, birth_year, region, language) VALUES (?, ?, ?, ?, ?, ?) IF NOT EXISTS").await?;
 
-        let delete_account_creation_application = prepare(&db, "DELETE FROM pre_verification_accounts WHERE one_time_token = ?").await?;
-
-        Ok(Self { db, cache, insert_account, delete_account_creation_application })
+        Ok(Self { db, cache, insert_account })
     }
 }
 
@@ -73,10 +70,12 @@ impl VerifyEmail for VerifyEmailImpl {
     }
 
     async fn delete_account_creation_application_by(&self, token: &OneTimeToken) -> Fallible<(), VerifyEmailError> {
-        self.db
-            .execute_unpaged(&self.delete_account_creation_application, (token, ))
+        let mut conn = conn(&self.cache, |e| VerifyEmailError::DeleteAccountCreationApplicationFailed(e.into())).await?;
+
+        cmd("DEL")
+            .arg(PreVerificationAccountKey::new(token))
+            .exec_async(&mut *conn)
             .await
-            .map(|_| ())
             .map_err(|e| VerifyEmailError::DeleteAccountCreationApplicationFailed(e.into()))
     }
 }
