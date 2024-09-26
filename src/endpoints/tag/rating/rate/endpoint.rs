@@ -19,7 +19,7 @@ pub async fn endpoint(db: Arc<Session>, cache: Arc<Pool>) -> Result<Router, Init
     let interpreter = RateTagRelationImpl::try_new(db).await?;
 
     let router = Router::new()
-        .route("/:id/super/:related_id/rating", put(handler))
+        .route("/rating", put(handler))
         .layer(services)
         .with_state(Arc::new(interpreter));
 
