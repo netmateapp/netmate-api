@@ -33,19 +33,19 @@ pub enum RateTagRelationError {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::LazyLock;
+    use uuid::Uuid;
 
-    use crate::common::{fallible::Fallible, id::account_id::AccountId, rating::Rating, tag::{relation::TagRelation, tag_id::TagId}};
+    use crate::common::{fallible::Fallible, id::account_id::AccountId, rating::Rating, tag::{relation::TagRelation, tag_id::TagId}, uuid::uuid4::Uuid4};
 
     use super::{RateTagRelation, RateTagRelationError};
 
-    static UNSUGGESTED_RELATION_SUBTAG_ID: LazyLock<TagId> = LazyLock::new(TagId::gen);
+    const UNSUGGESTED_RELATION_SUBTAG_ID: TagId = TagId::of(Uuid4::new_unchecked(Uuid::from_fields(0x01, 0x01, 0x4001, &[0x80, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x03])));
 
     struct MockRateTagRelation;
 
     impl RateTagRelation for MockRateTagRelation {
-        async fn is_tag_relation_suggested(&self, subtag_id: TagId, _: TagId, _: TagRelation) -> Fallible<bool, RateTagRelationError> {
-            Ok(subtag_id != *UNSUGGESTED_RELATION_SUBTAG_ID)
+        async fn is_tag_relation_suggested(&self, _: TagId, supertag_id: TagId, _: TagRelation) -> Fallible<bool, RateTagRelationError> {
+            Ok(supertag_id != UNSUGGESTED_RELATION_SUBTAG_ID)
         }
 
         async fn rate(&self, _: AccountId, _: TagId, _: TagId, _: TagRelation, _: Rating) -> Fallible<(), RateTagRelationError> {
@@ -59,15 +59,19 @@ mod tests {
 
     #[tokio::test]
     async fn check_suggested_tag_relation() {
+        // 下位タグが上位タグより小さくなるよう設定
+        let subtag_id = TagId::of(Uuid4::new_unchecked(Uuid::from_fields(0x01, 0x01, 0x4001, &[0x80, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01])));
+        let supertag_id = TagId::of(Uuid4::new_unchecked(Uuid::from_fields(0x01, 0x01, 0x4001, &[0x80, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x02])));
+
         // 有効な提案の場合
         for relation in [TagRelation::Inclusion, TagRelation::Equivalence] {
-            let res = test_rate_tag_relation(TagId::gen(), TagId::gen(), relation).await;
+            let res = test_rate_tag_relation(subtag_id, supertag_id, relation).await;
             assert!(res.is_ok());
         }
 
         // 無効な提案の場合
         for relation in [TagRelation::Inclusion, TagRelation::Equivalence] {
-            let res = test_rate_tag_relation(*UNSUGGESTED_RELATION_SUBTAG_ID, TagId::gen(), relation).await;
+            let res = test_rate_tag_relation(subtag_id, UNSUGGESTED_RELATION_SUBTAG_ID, relation).await;
             assert!(matches!(res.err().unwrap(), RateTagRelationError::UnsuggestedTagRelation));
         }
     }
