@@ -26,9 +26,9 @@ impl UnrateTagRelationImpl {
 }
 
 impl UnrateTagRelation for UnrateTagRelationImpl {
-    async fn is_tag_relation_suggested(&self, subtag_id: TagId, supertag_id: TagId, relation: TagRelation) -> Fallible<bool, UnrateTagRelationError> {
+    async fn is_tag_relation_proposed(&self, subtag_id: TagId, supertag_id: TagId, relation: TagRelation) -> Fallible<bool, UnrateTagRelationError> {
         fn handle_error<E: Into<anyhow::Error>>(e: E) -> UnrateTagRelationError {
-            UnrateTagRelationError::CheckSuggestedTagRelationFailed(e.into())
+            UnrateTagRelationError::CheckProposedTagRelationFailed(e.into())
         }
         
         self.db

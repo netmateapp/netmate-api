@@ -15,7 +15,7 @@ pub struct RateTagRelationImpl {
 
 impl RateTagRelationImpl {
     pub async fn try_new(db: Arc<Session>) -> Fallible<Self, InitError<Self>> {
-        let select_inclusion_or_equivalence = prepare(&db, "SELECT inclusion_or_equivalence FROM tag_relations WHERE subtag_id = ? AND supertag_id = ?").await?;
+        let select_inclusion_or_equivalence = prepare(&db, "SELECT inclusion_or_equivalence FROM proposed_tag_relations WHERE subtag_id = ? AND supertag_id = ?").await?;
 
         let insert_tag_relation_rating = prepare(&db, "INSERT INTO tag_relation_rating_operations_by_account (account_id, subtag_id, supertag_id, inclusion_or_equivalence, operation_id) VALUES (?, ?, ?, ?, ?)").await?;
 
@@ -27,9 +27,9 @@ impl RateTagRelationImpl {
 
 impl RateTagRelation for RateTagRelationImpl {
     // 提案は撤回される可能性があるため、キャッシュできない
-    async fn is_tag_relation_suggested(&self, subtag_id: TagId, supertag_id: TagId, relation: TagRelation) -> Fallible<bool, RateTagRelationError> {
+    async fn is_tag_relation_proposed(&self, subtag_id: TagId, supertag_id: TagId, relation: TagRelation) -> Fallible<bool, RateTagRelationError> {
         fn handle_error<E: Into<anyhow::Error>>(e: E) -> RateTagRelationError {
-            RateTagRelationError::CheckSuggestedTagRelationFailed(e.into())
+            RateTagRelationError::CheckProposedTagRelationFailed(e.into())
         }
         
         self.db
