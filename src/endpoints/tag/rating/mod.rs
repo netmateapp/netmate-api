@@ -1,3 +1,3 @@
 pub mod get;
 pub mod rate;
-pub mod remove;
+pub mod unrate;

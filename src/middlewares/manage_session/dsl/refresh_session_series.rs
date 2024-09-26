@@ -82,7 +82,7 @@ mod tests {
         async fn fetch_last_session_series_refreshed_at(&self, session_series: &SessionSeries, _session_account_id: AccountId) -> Fallible<LastSessionSeriesRefreshedAt, RefreshSessionSeriesError> {
             if session_series == &*SESSION_SERIES_TO_BE_REFRESHED {
                 let last_refreshed_at = UnixtimeMillis::now().value() - REFRESH_THERESHOLD.as_millis();
-                Ok(LastSessionSeriesRefreshedAt::new(UnixtimeMillis::new(last_refreshed_at)))
+                Ok(LastSessionSeriesRefreshedAt::new(UnixtimeMillis::of(last_refreshed_at)))
             } else {
                 Ok(LastSessionSeriesRefreshedAt::new(UnixtimeMillis::now()))
             }

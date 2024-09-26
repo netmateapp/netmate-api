@@ -101,7 +101,7 @@ mod tests {
     #[tokio::test]
     async fn api_key_to_be_refreshed() {
         let last_api_key_refreshed_at = UnixtimeMillis::now().value() - API_KEY_REFRESH_THERESHOLD.as_millis();
-        let last_api_key_refreshed_at = LastApiKeyRefreshedAt::new(UnixtimeMillis::new(last_api_key_refreshed_at));
+        let last_api_key_refreshed_at = LastApiKeyRefreshedAt::new(UnixtimeMillis::of(last_api_key_refreshed_at));
         let api_key = ApiKey::gen();
         let result = MockRefreshApiKey.try_refresh_api_key(last_api_key_refreshed_at, &api_key).await;
         assert!(result.is_ok());

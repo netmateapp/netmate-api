@@ -6,8 +6,8 @@ use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::{response::resul
 pub struct UnixtimeMillis(u64);
 
 impl UnixtimeMillis {
-    pub fn new(unixtime: u64) -> Self {
-        Self(unixtime)
+    pub fn of(unixtime_millis: u64) -> Self {
+        Self(unixtime_millis)
     }
 
     pub fn now() -> Self {
