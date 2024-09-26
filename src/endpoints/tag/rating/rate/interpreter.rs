@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use scylla::{prepared_statement::PreparedStatement, Session};
 
-use crate::{common::{fallible::Fallible, id::account_id::AccountId, rating::Rating, tag::{relation::TagRelation, tag_id::TagId}}, helper::{error::InitError, scylla::prepare}};
+use crate::{common::{cycle::Cycle, fallible::Fallible, id::account_id::AccountId, rating::Rating, tag::{relation::TagRelation, tag_id::TagId}}, helper::{error::InitError, scylla::prepare}};
 
 use super::dsl::{RateTagRelation, RateTagRelationError};
 
@@ -52,7 +52,7 @@ impl RateTagRelation for RateTagRelationImpl {
 
         // cycleが指定されていない
         self.db
-            .execute_unpaged(&self.insert_tag_relation_rating_to_cycle, (account_id, subtag_id, supertag_id, relation, rating))
+            .execute_unpaged(&self.insert_tag_relation_rating_to_cycle, (Cycle::current_cycle(), account_id, subtag_id, supertag_id, relation, rating))
             .await
             .map_err(|e| RateTagRelationError::RateTagRelationFailed(e.into()))?;
 
