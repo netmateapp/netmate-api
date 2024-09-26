@@ -25,11 +25,11 @@ pub const fn top_tag_id_by_language(language: Language) -> TagId {
 pub fn is_top_tag(tag_id: TagId) -> bool {
     let uuid = tag_id.value().value();
     let bytes = uuid.as_bytes();
-    bytes[0..5] == [0, 0, 0, 0, 0, 0] &&
+    bytes[0..=5] == [0, 0, 0, 0, 0, 0] &&
     bytes[6] == 0x40 &&
     bytes[7] == 0 &&
     bytes[8] == 0x80 &&
-    bytes[9..14] == [0, 0, 0, 0, 0, 0] &&
+    bytes[9..=14] == [0, 0, 0, 0, 0, 0] &&
     bytes[15] < 4
 }
 
