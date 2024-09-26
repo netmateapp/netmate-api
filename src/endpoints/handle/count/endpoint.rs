@@ -53,6 +53,7 @@ pub async fn handler(
         Err(e) => {
             error!(
                 error = %e,
+                account_id = %account_id,
                 "アカウントの名義の取得に失敗しました"
             );
             Err(StatusCode::INTERNAL_SERVER_ERROR)
