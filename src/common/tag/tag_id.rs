@@ -1,3 +1,4 @@
+use scylla::{frame::response::result::ColumnType, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
 use serde::{Serialize, Serializer};
 
 use crate::common::uuid::uuid4::Uuid4;
@@ -19,6 +20,12 @@ impl TagId {
 
 impl Serialize for TagId {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        self.value().serialize(serializer)
+        Serialize::serialize(&self.value(), serializer)
+    }
+}
+
+impl SerializeValue for TagId {
+    fn serialize<'b>(&self, typ: &ColumnType, writer: CellWriter<'b>) -> Result<WrittenCellProof<'b>, SerializationError> {
+        SerializeValue::serialize(&self.value(), typ, writer)
     }
 }

@@ -17,8 +17,8 @@ impl Uuid4 {
         Uuid4(Uuid::new_v4())
     }
 
-    pub fn value(&self) -> &Uuid {
-        &self.0
+    pub fn value(&self) -> Uuid {
+        self.0
     }
 }
 
@@ -46,7 +46,7 @@ impl TryFrom<Uuid> for Uuid4 {
 
 impl Serialize for Uuid4 {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        Serialize::serialize(self.value(), serializer)
+        Serialize::serialize(&self.value(), serializer)
     }
 }
 
@@ -59,7 +59,7 @@ impl<'de> Deserialize<'de> for Uuid4 {
 
 impl SerializeValue for Uuid4 {
     fn serialize<'b>(&self, typ: &ColumnType, writer: CellWriter<'b>) -> Result<WrittenCellProof<'b>, SerializationError> {
-        SerializeValue::serialize(&self.0, typ, writer)
+        SerializeValue::serialize(&self.value(), typ, writer)
     }
 }
 
