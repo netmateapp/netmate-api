@@ -2,43 +2,6 @@ use scylla::{frame::response::result::ColumnType, serialize::{value::SerializeVa
 use serde::{de, Deserialize, Deserializer};
 use thiserror::Error;
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub enum TagRelationType {
-    Inclusion,
-    Equivalence,
-}
-
-impl From<TagRelationType> for bool {
-    fn from(value: TagRelationType) -> Self {
-        match value {
-            TagRelationType::Inclusion => true,
-            TagRelationType::Equivalence => false,
-        }
-    }
-}
-
-impl From<bool> for TagRelationType {
-    fn from(value: bool) -> Self {
-        if value {
-            TagRelationType::Inclusion
-        } else {
-            TagRelationType::Equivalence
-        }
-    }
-}
-
-impl<'de> Deserialize<'de> for TagRelationType {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        bool::deserialize(deserializer).map(TagRelationType::from)
-    }
-}
-
-impl SerializeValue for TagRelationType {
-    fn serialize<'b>(&self, typ: &ColumnType, writer: CellWriter<'b>) -> Result<WrittenCellProof<'b>, SerializationError> {
-        SerializeValue::serialize(&bool::from(*self), typ, writer)
-    }
-}
-
 // 各評価と数値の対応は普遍的であるため、構成要素の一部として評価を含む値と互換性がある
 // テーブルの列に対応した構造体を作成する必要はなく、そのまま`Rating`を使用できる
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
@@ -97,19 +60,7 @@ impl SerializeValue for Rating {
 
 #[cfg(test)]
 mod tests {
-    use crate::endpoints::tag::rating::value::{Rating, TagRelationType};
-
-    #[test]
-    fn relation_type_to_bool() {
-        assert!(bool::from(TagRelationType::Inclusion));
-        assert!(!bool::from(TagRelationType::Equivalence));
-    }
-
-    #[test]
-    fn bool_to_tag_relation_type() {
-        assert_eq!(TagRelationType::from(true), TagRelationType::Inclusion);
-        assert_eq!(TagRelationType::from(false), TagRelationType::Equivalence);
-    }
+    use crate::common::rating::Rating;
 
     #[test]
     fn u8_to_rating() {

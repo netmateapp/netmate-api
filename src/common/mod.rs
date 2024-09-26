@@ -8,6 +8,7 @@ pub mod language;
 pub mod handle;
 pub mod one_time_token;
 pub mod password;
+pub mod rating;
 pub mod region;
 pub mod session;
 pub mod tag;

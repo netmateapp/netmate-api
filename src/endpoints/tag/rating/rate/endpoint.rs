@@ -7,7 +7,7 @@ use serde::Deserialize;
 use tower::ServiceBuilder;
 use tracing::error;
 
-use crate::{common::{id::account_id::AccountId, tag::tag_id::TagId}, endpoints::tag::rating::value::{Rating, TagRelationType}, helper::{error::InitError, middleware::{rate_limiter, session_manager, TimeUnit}, redis::Pool}};
+use crate::{common::{id::account_id::AccountId, rating::Rating, tag::{relation::TagRelation, tag_id::TagId}}, helper::{error::InitError, middleware::{rate_limiter, session_manager, TimeUnit}, redis::Pool}};
 
 use super::{dsl::{RateTagRelation, RateTagRelationError}, interpreter::RateTagRelationImpl};
 
@@ -31,7 +31,7 @@ pub async fn handler(
     Extension(account_id): Extension<AccountId>,
     Json(payload): Json<Payload>
 ) -> StatusCode {
-    match routine.rate_tag_relation(account_id, payload.subtag_id, payload.supertag_id, payload.inclusion_or_equivalence, payload.rating).await {
+    match routine.rate_tag_relation(account_id, payload.subtag_id, payload.supertag_id, payload.relation, payload.rating).await {
         Ok(()) => StatusCode::OK,
         Err(RateTagRelationError::RateTagRelationFailed(e)) => {
             error!(
@@ -39,7 +39,7 @@ pub async fn handler(
                 account_id = %account_id,
                 subtag_id = %payload.subtag_id,
                 supertag_id = %payload.supertag_id,
-                inclusion_or_equivalence = ?payload.inclusion_or_equivalence,
+                inclusion_or_equivalence = ?payload.relation,
                 rating = ?payload.rating,
                 "タグ関係の評価に失敗しました"
             );
@@ -53,6 +53,6 @@ pub async fn handler(
 pub struct Payload {
     subtag_id: TagId,
     supertag_id: TagId,
-    inclusion_or_equivalence: TagRelationType,
+    relation: TagRelation,
     rating: Rating,
 }

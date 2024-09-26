@@ -1,21 +1,21 @@
 use thiserror::Error;
 
-use crate::{common::{fallible::Fallible, id::account_id::AccountId, tag::{tag_id::TagId, top_tag::is_top_tag}}, endpoints::tag::rating::value::{Rating, TagRelationType}};
+use crate::common::{fallible::Fallible, id::account_id::AccountId, rating::Rating, tag::{relation::TagRelation, tag_id::TagId, top_tag::is_top_tag}};
 
 pub(crate) trait RateTagRelation {
-    async fn rate_tag_relation(&self, account_id: AccountId, subtag_id: TagId, supertag_id: TagId, inclusion_or_equivalence: TagRelationType, rating: Rating) -> Fallible<(), RateTagRelationError> {
+    async fn rate_tag_relation(&self, account_id: AccountId, subtag_id: TagId, supertag_id: TagId, relation: TagRelation, rating: Rating) -> Fallible<(), RateTagRelationError> {
         if subtag_id == supertag_id {
             Err(RateTagRelationError::CannotRateSameTagRelation)
         } else if is_top_tag(subtag_id) || is_top_tag(supertag_id) {
             Err(RateTagRelationError::CannotRateTopTagRelation)
-        } else if inclusion_or_equivalence == TagRelationType::Equivalence && subtag_id > supertag_id {
+        } else if relation == TagRelation::Equivalence && subtag_id > supertag_id {
             Err(RateTagRelationError::SubtagIdMustBeSmallerThanSupertagIdInEquivalence)
         } else {
-            self.rate(account_id, subtag_id, supertag_id, inclusion_or_equivalence, rating).await
+            self.rate(account_id, subtag_id, supertag_id, relation, rating).await
         }
     }
 
-    async fn rate(&self, account_id: AccountId, subtag_id: TagId, supertag_id: TagId, inclusion_or_equivalence: TagRelationType, rating: Rating) -> Fallible<(), RateTagRelationError>;
+    async fn rate(&self, account_id: AccountId, subtag_id: TagId, supertag_id: TagId, relation: TagRelation, rating: Rating) -> Fallible<(), RateTagRelationError>;
 }
 
 #[derive(Debug, Error)]
