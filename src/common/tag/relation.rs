@@ -1,4 +1,4 @@
-use scylla::{frame::response::result::ColumnType, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
+use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::{ColumnType, CqlValue}, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
 use serde::{Deserialize, Deserializer};
 
 // タグ関係は包含関係であり、あるタグ間に包含関係が存在する場合、
@@ -38,6 +38,12 @@ impl<'de> Deserialize<'de> for TagRelation {
 impl SerializeValue for TagRelation {
     fn serialize<'b>(&self, typ: &ColumnType, writer: CellWriter<'b>) -> Result<WrittenCellProof<'b>, SerializationError> {
         SerializeValue::serialize(&bool::from(*self), typ, writer)
+    }
+}
+
+impl FromCqlVal<Option<CqlValue>> for TagRelation {
+    fn from_cql(cql_val: Option<CqlValue>) -> Result<Self, FromCqlValError> {
+        bool::from_cql(cql_val).map(TagRelation::from)
     }
 }
 

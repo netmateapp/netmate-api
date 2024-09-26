@@ -10,7 +10,7 @@ const TAIWANESE_MANDARIN_TOP_TAG: TagId = top_tag_id(0x02);
 const AMERICAN_ENGLISH_TOP_TAG: TagId = top_tag_id(0x03);
 
 const fn top_tag_id(d4_8: u8) -> TagId {
-    TagId::new(Uuid4::new_unchecked(Uuid::from_fields(0x00, 0x00, 0x4000, &[0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, d4_8])))
+    TagId::of(Uuid4::new_unchecked(Uuid::from_fields(0x00, 0x00, 0x4000, &[0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, d4_8])))
 }
 
 pub const fn top_tag_id_by_language(language: Language) -> TagId {

@@ -9,18 +9,16 @@ use crate::common::uuid::uuid4::Uuid4;
 pub struct TagId(Uuid4);
 
 impl TagId {
+    pub fn gen() -> Self {
+        Self(Uuid4::gen())
+    }
+
     pub const fn of(uuid: Uuid4) -> Self {
         Self(uuid)
     }
 
     pub fn value(&self) -> Uuid4 {
         self.0
-    }
-}
-
-impl TagId {
-    pub const fn new(value: Uuid4) -> Self {
-        TagId(value)
     }
 }
 
