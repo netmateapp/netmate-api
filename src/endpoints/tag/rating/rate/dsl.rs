@@ -4,12 +4,14 @@ use crate::common::{fallible::Fallible, id::account_id::AccountId, rating::Ratin
 
 pub(crate) trait RateTagRelation {
     async fn rate_tag_relation(&self, account_id: AccountId, subtag_id: TagId, supertag_id: TagId, relation: TagRelation, rating: Rating) -> Fallible<(), RateTagRelationError> {
+        // DBを参照せずとも弾けるものは弾く
         if subtag_id == supertag_id {
             Err(RateTagRelationError::CannotRateSameTagRelation)
         } else if is_top_tag(subtag_id) || is_top_tag(supertag_id) {
             Err(RateTagRelationError::CannotRateTopTagRelation)
         } else if relation == TagRelation::Equivalence && subtag_id > supertag_id {
             Err(RateTagRelationError::SubtagIdMustBeSmallerThanSupertagIdInEquivalence)
+        // DBを参照して弾く
         } else if !self.is_tag_relation_suggested(subtag_id, supertag_id, relation).await? {
             Err(RateTagRelationError::UnsuggestedTagRelation)
         } else {

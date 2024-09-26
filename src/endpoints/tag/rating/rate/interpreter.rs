@@ -50,7 +50,6 @@ impl RateTagRelation for RateTagRelationImpl {
             .await
             .map_err(|e| RateTagRelationError::RateTagRelationFailed(e.into()))?;
 
-        // cycleが指定されていない
         self.db
             .execute_unpaged(&self.insert_tag_relation_rating_to_cycle, (Cycle::current_cycle(), account_id, subtag_id, supertag_id, relation, rating))
             .await
