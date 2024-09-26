@@ -1,21 +1,18 @@
 use thiserror::Error;
 
-use crate::common::{fallible::Fallible, id::account_id::AccountId, rating::Rating, tag::{relation::TagRelation, tag_id::TagId, top_tag::is_top_tag}};
+use crate::common::{fallible::Fallible, id::account_id::AccountId, rating::Rating, tag::{relation::{validate_tag_relation, TagRelation}, tag_id::TagId}};
 
 pub(crate) trait RateTagRelation {
     async fn rate_tag_relation(&self, account_id: AccountId, subtag_id: TagId, supertag_id: TagId, relation: TagRelation, rating: Rating) -> Fallible<(), RateTagRelationError> {
-        // DBを参照せずとも弾けるものは弾く
-        if subtag_id == supertag_id {
-            Err(RateTagRelationError::CannotRateSameTagRelation)
-        } else if is_top_tag(subtag_id) || is_top_tag(supertag_id) {
-            Err(RateTagRelationError::CannotRateTopTagRelation)
-        } else if relation == TagRelation::Equivalence && subtag_id > supertag_id {
-            Err(RateTagRelationError::SubtagIdMustBeSmallerThanSupertagIdInEquivalence)
-        // DBを参照して弾く
-        } else if !self.is_tag_relation_suggested(subtag_id, supertag_id, relation).await? {
-            Err(RateTagRelationError::UnsuggestedTagRelation)
-        } else {
-            self.rate(account_id, subtag_id, supertag_id, relation, rating).await
+        match validate_tag_relation(subtag_id, supertag_id, relation) {
+            Ok(()) => {
+                if !self.is_tag_relation_suggested(subtag_id, supertag_id, relation).await? {
+                    Err(RateTagRelationError::UnsuggestedTagRelation)
+                } else {
+                    self.rate(account_id, subtag_id, supertag_id, relation, rating).await
+                }
+            },
+            Err(e) => Err(RateTagRelationError::RateTagRelationFailed(e.into()))
         }
     }
 
@@ -26,12 +23,6 @@ pub(crate) trait RateTagRelation {
 
 #[derive(Debug, Error)]
 pub enum RateTagRelationError {
-    #[error("同じタグ間の関係を評価することはできません")]
-    CannotRateSameTagRelation,
-    #[error("トップタグとの関係を評価することはできません")]
-    CannotRateTopTagRelation,
-    #[error("同値関係では`subtag_id`が`supertag_id`より小さくなければなりません")]
-    SubtagIdMustBeSmallerThanSupertagIdInEquivalence,
     #[error("タグ関係が提案されているかの確認に失敗しました")]
     CheckSuggestedTagRelationFailed(#[source] anyhow::Error),
     #[error("提案されていないタグ関係です")]
@@ -44,9 +35,7 @@ pub enum RateTagRelationError {
 mod tests {
     use std::sync::LazyLock;
 
-    use uuid::Uuid;
-
-    use crate::common::{fallible::Fallible, id::account_id::AccountId, language::Language, rating::Rating, tag::{relation::TagRelation, tag_id::TagId, top_tag::top_tag_id_by_language}, uuid::uuid4::Uuid4};
+    use crate::common::{fallible::Fallible, id::account_id::AccountId, rating::Rating, tag::{relation::TagRelation, tag_id::TagId}};
 
     use super::{RateTagRelation, RateTagRelationError};
 
@@ -66,41 +55,6 @@ mod tests {
 
     async fn test_rate_tag_relation(subtag_id: TagId, supertag_id: TagId, relation: TagRelation) -> Fallible<(), RateTagRelationError> {
         MockRateTagRelation.rate_tag_relation(AccountId::gen(), subtag_id, supertag_id, relation, Rating::High).await
-    }
-
-    #[tokio::test]
-    async fn same_tag() {
-        let tag_id = TagId::gen();
-
-        for relation in [TagRelation::Inclusion, TagRelation::Equivalence] {
-            let res = test_rate_tag_relation(tag_id, tag_id, relation).await;
-            assert!(matches!(res.err().unwrap(), RateTagRelationError::CannotRateSameTagRelation));
-        }
-    }
-
-    #[tokio::test]
-    async fn top_tag() {
-        let top_tag_id = top_tag_id_by_language(Language::Japanese);
-
-        for (subtag_id, supertag_id) in [(top_tag_id, TagId::gen()), (TagId::gen(), top_tag_id)] {
-            for relation in [TagRelation::Inclusion, TagRelation::Equivalence] {
-                let res = test_rate_tag_relation(subtag_id, supertag_id, relation).await;
-                assert!(matches!(res.err().unwrap(), RateTagRelationError::CannotRateTopTagRelation));
-            }
-        }
-    }
-
-    #[tokio::test]
-    async fn compare_tags_in_equivalence_relation() {
-        let subtag_id = TagId::of(Uuid4::new_unchecked(Uuid::from_fields(0x01, 0x01, 0x4001, &[0x80, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01])));
-        let supertag_id = TagId::of(Uuid4::new_unchecked(Uuid::from_fields(0x01, 0x01, 0x4001, &[0x80, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x02])));
-
-        let res = test_rate_tag_relation(subtag_id, supertag_id, TagRelation::Equivalence).await;
-        assert!(res.is_ok());
-
-        // 下位タグと上位タグを逆転させる
-        let res = test_rate_tag_relation(supertag_id, subtag_id, TagRelation::Equivalence).await;
-        assert!(matches!(res.err().unwrap(), RateTagRelationError::SubtagIdMustBeSmallerThanSupertagIdInEquivalence));
     }
 
     #[tokio::test]
