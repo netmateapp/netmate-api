@@ -7,7 +7,7 @@ use super::tag_id::TagId;
 const JAPANESE_TOP_TAG: TagId = top_tag_id(0x00);
 const KOREAN_TOP_TAG: TagId = top_tag_id(0x01);
 const TAIWANESE_MANDARIN_TOP_TAG: TagId = top_tag_id(0x02);
-const AMERICAN_ENGLISH_TOP_TAG: TagId = top_tag_id(0x03);
+const ENGLISH_TOP_TAG: TagId = top_tag_id(0x03);
 
 const fn top_tag_id(d4_8: u8) -> TagId {
     TagId::of(Uuid4::new_unchecked(Uuid::from_fields(0x00, 0x00, 0x4000, &[0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, d4_8])))
@@ -18,7 +18,7 @@ pub const fn top_tag_id_by_language(language: Language) -> TagId {
         Language::Japanese => JAPANESE_TOP_TAG,
         Language::Korean => KOREAN_TOP_TAG,
         Language::TaiwaneseMandarin => TAIWANESE_MANDARIN_TOP_TAG,
-        _ => AMERICAN_ENGLISH_TOP_TAG,
+        _ => ENGLISH_TOP_TAG,
     }
 }
 
@@ -37,7 +37,7 @@ pub fn is_top_tag(tag_id: TagId) -> bool {
 mod tests {
     use uuid::Variant;
 
-    use crate::common::tag::{tag_id::TagId, top_tag::{is_top_tag, top_tag_id, AMERICAN_ENGLISH_TOP_TAG, JAPANESE_TOP_TAG, KOREAN_TOP_TAG, TAIWANESE_MANDARIN_TOP_TAG}};
+    use crate::common::tag::{tag_id::TagId, top_tag::{is_top_tag, top_tag_id, ENGLISH_TOP_TAG, JAPANESE_TOP_TAG, KOREAN_TOP_TAG, TAIWANESE_MANDARIN_TOP_TAG}};
 
     #[test]
     fn check_top_tag_id_format() {
@@ -48,7 +48,7 @@ mod tests {
 
     #[test]
     fn test_is_top_tag() {
-        for top_tag_id in [JAPANESE_TOP_TAG, KOREAN_TOP_TAG, TAIWANESE_MANDARIN_TOP_TAG, AMERICAN_ENGLISH_TOP_TAG] {
+        for top_tag_id in [JAPANESE_TOP_TAG, KOREAN_TOP_TAG, TAIWANESE_MANDARIN_TOP_TAG, ENGLISH_TOP_TAG] {
             assert!(is_top_tag(top_tag_id));
         }
     }
@@ -62,6 +62,6 @@ mod tests {
         check_top_tag_id(JAPANESE_TOP_TAG, 0x00);
         check_top_tag_id(KOREAN_TOP_TAG, 0x01);
         check_top_tag_id(TAIWANESE_MANDARIN_TOP_TAG, 0x02);
-        check_top_tag_id(AMERICAN_ENGLISH_TOP_TAG, 0x03);
+        check_top_tag_id(ENGLISH_TOP_TAG, 0x03);
     }
 }
