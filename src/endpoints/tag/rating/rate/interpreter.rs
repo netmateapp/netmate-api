@@ -26,7 +26,7 @@ impl RateTagRelationImpl {
 }
 
 impl RateTagRelation for RateTagRelationImpl {
-    async fn is_relation_suggested(&self, subtag_id: TagId, supertag_id: TagId, relation: TagRelation) -> Fallible<bool, RateTagRelationError> {
+    async fn is_tag_relation_suggested(&self, subtag_id: TagId, supertag_id: TagId, relation: TagRelation) -> Fallible<bool, RateTagRelationError> {
         fn handle_error<E: Into<anyhow::Error>>(e: E) -> RateTagRelationError {
             RateTagRelationError::CheckSuggestedTagRelationFailed(e.into())
         }
