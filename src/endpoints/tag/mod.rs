@@ -1,2 +1,2 @@
 pub mod rating;
-pub mod suggestion;
+pub mod proposal;
