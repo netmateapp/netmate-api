@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use scylla::{prepared_statement::PreparedStatement, Session};
 
-use crate::{common::{fallible::Fallible, id::account_id::AccountId, tag::tag_id::TagId}, endpoints::tag::rating::value::{AccountTableOperationId, CycleTableOperationId, Rating, TagRelationType}, helper::{error::InitError, scylla::prepare}};
+use crate::{common::{fallible::Fallible, id::account_id::AccountId, tag::tag_id::TagId}, endpoints::tag::rating::value::{Rating, TagRelationType}, helper::{error::InitError, scylla::prepare}};
 
 use super::dsl::{RateTagRelation, RateTagRelationError};
 
@@ -23,12 +23,12 @@ impl RateTagRelationImpl {
 impl RateTagRelation for RateTagRelationImpl {
     async fn rate(&self, account_id: AccountId, subtag_id: TagId, supertag_id: TagId, inclusion_or_equivalence: TagRelationType, rating: Rating) -> Fallible<(), RateTagRelationError> {
         self.db
-            .execute_unpaged(&self.insert_tag_relation_rating, (account_id, subtag_id, supertag_id, inclusion_or_equivalence, AccountTableOperationId::from(rating)))
+            .execute_unpaged(&self.insert_tag_relation_rating, (account_id, subtag_id, supertag_id, inclusion_or_equivalence, rating))
             .await
             .map_err(|e| RateTagRelationError::RateTagRelationFailed(e.into()))?;
 
         self.db
-            .execute_unpaged(&self.insert_tag_relation_rating_log, (account_id, subtag_id, supertag_id, inclusion_or_equivalence, CycleTableOperationId::from(rating)))
+            .execute_unpaged(&self.insert_tag_relation_rating_log, (account_id, subtag_id, supertag_id, inclusion_or_equivalence, rating))
             .await
             .map_err(|e| RateTagRelationError::RateTagRelationFailed(e.into()))?;
 
