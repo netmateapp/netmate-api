@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::common::{birth_year::BirthYear, email::address::Email, fallible::Fallible, id::{account_id::AccountId, tag_id::TagId}, language::Language, one_time_token::OneTimeToken, password::PasswordHash, region::Region, tag::top_tag_id_by_language};
+use crate::common::{birth_year::BirthYear, email::address::Email, fallible::Fallible, id::account_id::AccountId, language::Language, one_time_token::OneTimeToken, password::PasswordHash, region::Region, tag::{tag_id::TagId, top_tag::top_tag_id_by_language}};
 
 pub(crate) trait VerifyEmail {
     async fn verify_email(&self, token: &OneTimeToken) -> Fallible<(AccountId, TagId), VerifyEmailError> {
@@ -11,9 +11,9 @@ pub(crate) trait VerifyEmail {
         let account_id = AccountId::gen();
         match self.create_account(account_id, &email, &password_hash, birth_year, region, language).await {
             Ok(_) => {
-                // 失敗してもTTLにより削除されるため続行
+                // 失敗しても期限切れで自動削除されるため続行
                 let _ = self.delete_account_creation_application_by(token).await;
-                Ok((account_id, top_tag_id_by_language(&language)))
+                Ok((account_id, top_tag_id_by_language(language)))
             },
             Err(VerifyEmailError::AccountAlreadyExists) => { // この状況は基本的に発生しない
                 let _ = self.delete_account_creation_application_by(token).await;
@@ -52,7 +52,7 @@ mod tests {
 
     use thiserror::Error;
 
-    use crate::common::{birth_year::BirthYear, email::address::Email, fallible::Fallible, id::{account_id::AccountId, tag_id::TagId}, language::Language, one_time_token::OneTimeToken, password::PasswordHash, region::Region};
+    use crate::common::{birth_year::BirthYear, email::address::Email, fallible::Fallible, id::account_id::AccountId, language::Language, one_time_token::OneTimeToken, password::PasswordHash, region::Region, tag::tag_id::TagId};
 
     use super::{VerifyEmail, VerifyEmailError};
 
