@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use scylla::{prepared_statement::PreparedStatement, Session};
 
-use crate::{common::{cycle::Cycle, fallible::Fallible, id::account_id::AccountId, tag::{non_top_tag_id::NonTopTagId, relation::TagRelation}}, helper::{error::InitError, scylla::prepare}};
+use crate::{common::{cycle::Cycle, fallible::Fallible, id::account_id::AccountId, language_group::LanguageGroup, tag::{non_top_tag_id::NonTopTagId, relation::TagRelation}}, helper::{error::InitError, scylla::prepare}};
 
 use super::dsl::{UnrateTagRelation, UnrateTagRelationError};
 
@@ -26,7 +26,7 @@ impl UnrateTagRelationImpl {
 }
 
 impl UnrateTagRelation for UnrateTagRelationImpl {
-    async fn is_tag_relation_proposed(&self, subtag_id: NonTopTagId, supertag_id: NonTopTagId, relation: TagRelation) -> Fallible<bool, UnrateTagRelationError> {
+    async fn fetch_tag_relation_proposed(&self, subtag_id: NonTopTagId, supertag_id: NonTopTagId) -> Fallible<Option<(TagRelation, LanguageGroup)>, UnrateTagRelationError> {
         fn handle_error<E: Into<anyhow::Error>>(e: E) -> UnrateTagRelationError {
             UnrateTagRelationError::CheckProposedTagRelationFailed(e.into())
         }
@@ -35,22 +35,18 @@ impl UnrateTagRelation for UnrateTagRelationImpl {
             .execute_unpaged(&self.select_inclusion_or_equivalence, (subtag_id, supertag_id))
             .await
             .map_err(handle_error)?
-            .maybe_first_row_typed::<(TagRelation, )>()
+            .maybe_first_row_typed::<(TagRelation, LanguageGroup)>()
             .map_err(handle_error)
-            .map(|o| match o {
-                Some((inclusion_or_equivalence, )) => inclusion_or_equivalence == relation,
-                None => false
-            })
     }
 
-    async fn unrate(&self, account_id: AccountId, subtag_id: NonTopTagId, supertag_id: NonTopTagId, relation: TagRelation) -> Fallible<(), UnrateTagRelationError> {
+    async fn unrate(&self, language_group: LanguageGroup, cycle: Cycle, account_id: AccountId, subtag_id: NonTopTagId, supertag_id: NonTopTagId, relation: TagRelation) -> Fallible<(), UnrateTagRelationError> {
         self.db
         .execute_unpaged(&self.delete_tag_relation_rating_from_account, (account_id, subtag_id, supertag_id, relation))
         .await
         .map_err(|e| UnrateTagRelationError::UnrateTagRelationFailed(e.into()))?;
 
         self.db
-            .execute_unpaged(&self.insert_tag_relation_rating_removal_into_cycle, (Cycle::current_cycle(), account_id, subtag_id, supertag_id, relation))
+            .execute_unpaged(&self.insert_tag_relation_rating_removal_into_cycle, (language_group, cycle, account_id, subtag_id, supertag_id, relation))
             .await
             .map_err(|e| UnrateTagRelationError::UnrateTagRelationFailed(e.into()))?;
 
