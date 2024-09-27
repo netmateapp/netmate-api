@@ -2,7 +2,7 @@ use thiserror::Error;
 
 use crate::common::{fallible::Fallible, id::account_id::AccountId, language_group::LanguageGroup, tag::{non_top_tag_id::NonTopTagId, relation::{validate_tag_relation, TagRelation}, top_tag_id::TopTagId}};
 
-use super::validate_topology::ValidateTopology;
+use super::validate_topology::{ValidateTopology, ValidateTopologyError};
 
 pub(crate) trait ProposeTagRelation {
     async fn propose_tag_relation(&self, account_id: AccountId, subtag_id: NonTopTagId, supertag_id: NonTopTagId, relation: TagRelation) -> Fallible<(), ProposeTagRelationError>
@@ -13,7 +13,7 @@ pub(crate) trait ProposeTagRelation {
             Ok(()) => {
                 self.validate_topology(subtag_id, supertag_id, relation)
                     .await
-                    .map_err(|e| ProposeTagRelationError::ProposeTagRelationFailed(e.into()));
+                    .map_err(ProposeTagRelationError::InvalidTopology)?;
 
                 if !self.has_already_been_proposed(subtag_id, supertag_id, relation).await? {
                     let subtag_top_tag = self.top_tag_of(subtag_id).await?;
@@ -48,6 +48,8 @@ pub(crate) trait ProposeTagRelation {
 
 #[derive(Debug, Error)]
 pub enum ProposeTagRelationError {
+    #[error("無効なトポロジーです")]
+    InvalidTopology(#[source] ValidateTopologyError),
     #[error("既に提案されたかどうかの確認に失敗しました")]
     HasAlreadyBeenProposedFailed(#[source] anyhow::Error),
     #[error("既に提案されています")]

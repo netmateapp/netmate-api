@@ -31,7 +31,7 @@ pub async fn handler(
     Extension(account_id): Extension<AccountId>,
     Json(payload): Json<Payload>
 ) -> StatusCode {
-    match routine.unrate_tag_relation(account_id, payload.subtag_id, payload.supertag_id, payload.relation).await {
+    match routine.unrate_tag_relation(account_id, payload.subtag_id, payload.supertag_id, payload.inclusion_or_equivalence).await {
         Ok(()) => StatusCode::OK,
         Err(UnrateTagRelationError::UnrateTagRelationFailed(e)) => {
             error!(
@@ -39,7 +39,7 @@ pub async fn handler(
                 account_id = %account_id,
                 subtag_id = %payload.subtag_id,
                 supertag_id = %payload.supertag_id,
-                inclusion_or_equivalence = ?payload.relation,
+                inclusion_or_equivalence = ?payload.inclusion_or_equivalence,
                 "タグ関係の評価の取り消しに失敗しました"
             );
             StatusCode::INTERNAL_SERVER_ERROR
@@ -52,5 +52,5 @@ pub async fn handler(
 pub struct Payload {
     subtag_id: NonTopTagId,
     supertag_id: NonTopTagId,
-    relation: TagRelation,
+    inclusion_or_equivalence: TagRelation,
 }

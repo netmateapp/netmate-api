@@ -1,3 +1,5 @@
+use std::fmt::{self, Display};
+
 use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::{ColumnType, CqlValue}, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
 use serde::{Deserialize, Deserializer};
 use thiserror::Error;
@@ -46,6 +48,15 @@ impl From<bool> for TagRelation {
             TagRelation::Inclusion
         } else {
             TagRelation::Equivalence
+        }
+    }
+}
+
+impl Display for TagRelation {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            TagRelation::Inclusion => write!(f, "{}", "包含"),
+            TagRelation::Equivalence => write!(f, "{}", "同値")
         }
     }
 }
