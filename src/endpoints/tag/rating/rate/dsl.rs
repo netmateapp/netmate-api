@@ -1,24 +1,28 @@
 use thiserror::Error;
 
-use crate::common::{fallible::Fallible, id::account_id::AccountId, rating::Rating, tag::{non_top_tag_id::NonTopTagId, relation::{validate_tag_relation, TagRelation}}};
+use crate::common::{cycle::Cycle, fallible::Fallible, id::account_id::AccountId, language_group::LanguageGroup, rating::Rating, tag::{non_top_tag_id::NonTopTagId, relation::{validate_tag_relation, TagRelation}}};
 
 pub(crate) trait RateTagRelation {
     async fn rate_tag_relation(&self, account_id: AccountId, subtag_id: NonTopTagId, supertag_id: NonTopTagId, relation: TagRelation, rating: Rating) -> Fallible<(), RateTagRelationError> {
         match validate_tag_relation(subtag_id, supertag_id, relation) {
             Ok(()) => {
-                if !self.is_tag_relation_proposed(subtag_id, supertag_id, relation).await? {
-                    Err(RateTagRelationError::NonProposedTagRelation)
+                let (inclusion_or_equivalence, language_group) = self.fetch_tag_relation_proposed(subtag_id, supertag_id)
+                    .await?
+                    .ok_or_else(|| RateTagRelationError::NonProposedTagRelation)?;
+
+                if relation == inclusion_or_equivalence {
+                    self.rate(language_group, Cycle::current_cycle(), account_id, subtag_id, supertag_id, relation, rating).await
                 } else {
-                    self.rate(account_id, subtag_id, supertag_id, relation, rating).await
+                    Err(RateTagRelationError::NonProposedTagRelation)
                 }
             },
             Err(e) => Err(RateTagRelationError::RateTagRelationFailed(e.into()))
         }
     }
 
-    async fn is_tag_relation_proposed(&self, subtag_id: NonTopTagId, supertag_id: NonTopTagId, relation: TagRelation) -> Fallible<bool, RateTagRelationError>;
+    async fn fetch_tag_relation_proposed(&self, subtag_id: NonTopTagId, supertag_id: NonTopTagId) -> Fallible<Option<(TagRelation, LanguageGroup)>, RateTagRelationError>;
 
-    async fn rate(&self, account_id: AccountId, subtag_id: NonTopTagId, supertag_id: NonTopTagId, relation: TagRelation, rating: Rating) -> Fallible<(), RateTagRelationError>;
+    async fn rate(&self, language_group: LanguageGroup, cycle: Cycle, account_id: AccountId, subtag_id: NonTopTagId, supertag_id: NonTopTagId, relation: TagRelation, rating: Rating) -> Fallible<(), RateTagRelationError>;
 }
 
 #[derive(Debug, Error)]
@@ -37,7 +41,7 @@ mod tests {
 
     use uuid::Uuid;
 
-    use crate::common::{fallible::Fallible, id::account_id::AccountId, rating::Rating, tag::{non_top_tag_id::NonTopTagId, relation::TagRelation, tag_id::TagId}, uuid::uuid4::Uuid4};
+    use crate::common::{cycle::Cycle, fallible::Fallible, id::account_id::AccountId, language_group::LanguageGroup, rating::Rating, tag::{non_top_tag_id::NonTopTagId, relation::TagRelation, tag_id::TagId}, uuid::uuid4::Uuid4};
 
     use super::{RateTagRelation, RateTagRelationError};
 
@@ -49,11 +53,15 @@ mod tests {
     struct MockRateTagRelation;
 
     impl RateTagRelation for MockRateTagRelation {
-        async fn is_tag_relation_proposed(&self, _: NonTopTagId, supertag_id: NonTopTagId, _: TagRelation) -> Fallible<bool, RateTagRelationError> {
-            Ok(supertag_id != *NON_PROPOSED_RELATION_SUBTAG_ID)
+        async fn fetch_tag_relation_proposed(&self, _: NonTopTagId, supertag_id: NonTopTagId) -> Fallible<Option<(TagRelation, LanguageGroup)>, RateTagRelationError> {
+            if supertag_id == *NON_PROPOSED_RELATION_SUBTAG_ID {
+                Ok(None)
+            } else {
+                Ok(Some((TagRelation::Inclusion, LanguageGroup::Japanese)))
+            }
         }
 
-        async fn rate(&self, _: AccountId, _: NonTopTagId, _: NonTopTagId, _: TagRelation, _: Rating) -> Fallible<(), RateTagRelationError> {
+        async fn rate(&self, _: LanguageGroup, _: Cycle, _: AccountId, _: NonTopTagId, _: NonTopTagId, _: TagRelation, _: Rating) -> Fallible<(), RateTagRelationError> {
             Ok(())
         }
     }
