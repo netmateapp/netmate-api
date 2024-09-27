@@ -6,11 +6,13 @@ use crate::common::{language_group::LanguageGroup, uuid::uuid4::Uuid4};
 
 use super::tag_id::TagId;
 
-const JAPANESE: TopTagId = of(LanguageGroup::Japanese);
-const KOREAN: TopTagId = of(LanguageGroup::Korean);
-const TAIWANESE_MANDARIN: TopTagId = of(LanguageGroup::TaiwaneseMandarin);
-const ENGLISH: TopTagId = of(LanguageGroup::English);
+// トップタグを追加した場合は、language_group.rsの変換も追加する
+pub const JAPANESE: TopTagId = of(LanguageGroup::Japanese);
+pub const KOREAN: TopTagId = of(LanguageGroup::Korean);
+pub const TAIWANESE_MANDARIN: TopTagId = of(LanguageGroup::TaiwaneseMandarin);
+pub const ENGLISH: TopTagId = of(LanguageGroup::English);
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct TopTagId(TagId);
 
 const fn of(group: LanguageGroup) -> TopTagId {

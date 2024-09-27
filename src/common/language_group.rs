@@ -1,7 +1,7 @@
 use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::{ColumnType, CqlValue}, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
 use thiserror::Error;
 
-use super::language::Language;
+use super::{language::Language, tag::top_tag_id::{TopTagId, ENGLISH, JAPANESE, KOREAN, TAIWANESE_MANDARIN}};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum LanguageGroup {
@@ -24,6 +24,18 @@ impl From<Language> for LanguageGroup {
             Language::Korean => LanguageGroup::Korean,
             Language::TaiwaneseMandarin => LanguageGroup::TaiwaneseMandarin,
             Language::AmericanEnglish => LanguageGroup::English,
+        }
+    }
+}
+
+impl From<TopTagId> for LanguageGroup {
+    fn from(value: TopTagId) -> Self {
+        match value {
+            JAPANESE => LanguageGroup::Japanese,
+            KOREAN => LanguageGroup::Korean,
+            TAIWANESE_MANDARIN => LanguageGroup::TaiwaneseMandarin,
+            ENGLISH => LanguageGroup::English,
+            _ => panic!("トップタグに対応する言語グループが指定されていません")
         }
     }
 }
