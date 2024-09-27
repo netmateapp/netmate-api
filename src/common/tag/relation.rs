@@ -2,13 +2,11 @@ use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result
 use serde::{Deserialize, Deserializer};
 use thiserror::Error;
 
-use super::{tag_id::TagId, top_tag_id::is_top_tag_id};
+use super::non_top_tag_id::NonTopTagId;
 
-pub fn validate_tag_relation(subtag_id: TagId, supertag_id: TagId, relation: TagRelation) -> Result<(), TagRelationError> {
+pub fn validate_tag_relation(subtag_id: NonTopTagId, supertag_id: NonTopTagId, relation: TagRelation) -> Result<(), TagRelationError> {
     if subtag_id == supertag_id {
         Err(TagRelationError::CannotRateSameTagRelation)
-    } else if is_top_tag_id(subtag_id) || is_top_tag_id(supertag_id) {
-        Err(TagRelationError::CannotRateTopTagRelation)
     } else if relation == TagRelation::Equivalence && subtag_id > supertag_id {
         Err(TagRelationError::SubtagIdMustBeSmallerThanSupertagIdInEquivalence)
     } else {
@@ -20,8 +18,6 @@ pub fn validate_tag_relation(subtag_id: TagId, supertag_id: TagId, relation: Tag
 pub enum TagRelationError {
     #[error("同じタグ間の関係を評価することはできません")]
     CannotRateSameTagRelation,
-    #[error("トップタグとの関係を評価することはできません")]
-    CannotRateTopTagRelation,
     #[error("同値関係では`subtag_id`が`supertag_id`より小さくなければなりません")]
     SubtagIdMustBeSmallerThanSupertagIdInEquivalence,
 }
@@ -76,13 +72,13 @@ impl FromCqlVal<Option<CqlValue>> for TagRelation {
 mod tests {
     use uuid::Uuid;
 
-    use crate::common::{language::Language, language_group::LanguageGroup, tag::{relation::TagRelation, tag_id::TagId, top_tag_id::TopTagId}, uuid::uuid4::Uuid4};
+    use crate::common::{tag::{non_top_tag_id::NonTopTagId, relation::TagRelation, tag_id::TagId}, uuid::uuid4::Uuid4};
 
     use super::{validate_tag_relation, TagRelationError};
 
     #[test]
     fn same_tag() {
-        let tag_id = TagId::gen();
+        let tag_id = NonTopTagId::gen();
 
         for relation in [TagRelation::Inclusion, TagRelation::Equivalence] {
             assert!(matches!(validate_tag_relation(tag_id, tag_id, relation).err().unwrap(), TagRelationError::CannotRateSameTagRelation));
@@ -90,20 +86,9 @@ mod tests {
     }
 
     #[test]
-    fn top_tag() {
-        let top_tag_id = TopTagId::from(LanguageGroup::from(Language::Japanese)).value();
-
-        for (subtag_id, supertag_id) in [(top_tag_id, TagId::gen()), (TagId::gen(), top_tag_id)] {
-            for relation in [TagRelation::Inclusion, TagRelation::Equivalence] {
-                assert!(matches!(validate_tag_relation(subtag_id, supertag_id, relation).err().unwrap(), TagRelationError::CannotRateTopTagRelation));
-            }
-        }
-    }
-
-    #[test]
     fn compare_tags_in_equivalence_relation() {
-        let subtag_id = TagId::of(Uuid4::new_unchecked(Uuid::from_fields(0x01, 0x01, 0x4001, &[0x80, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01])));
-        let supertag_id = TagId::of(Uuid4::new_unchecked(Uuid::from_fields(0x01, 0x01, 0x4001, &[0x80, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x02])));
+        let subtag_id = NonTopTagId::try_from(TagId::of(Uuid4::new_unchecked(Uuid::from_fields(0x01, 0x01, 0x4001, &[0x80, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01])))).unwrap();
+        let supertag_id = NonTopTagId::try_from(TagId::of(Uuid4::new_unchecked(Uuid::from_fields(0x01, 0x01, 0x4001, &[0x80, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x02])))).unwrap();
 
         assert!(validate_tag_relation(subtag_id, supertag_id, TagRelation::Equivalence).is_ok());
 

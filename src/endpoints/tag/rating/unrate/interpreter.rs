@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use scylla::{prepared_statement::PreparedStatement, Session};
 
-use crate::{common::{cycle::Cycle, fallible::Fallible, id::account_id::AccountId, tag::{relation::TagRelation, tag_id::TagId}}, helper::{error::InitError, scylla::prepare}};
+use crate::{common::{cycle::Cycle, fallible::Fallible, id::account_id::AccountId, tag::{non_top_tag_id::NonTopTagId, relation::TagRelation}}, helper::{error::InitError, scylla::prepare}};
 
 use super::dsl::{UnrateTagRelation, UnrateTagRelationError};
 
@@ -26,7 +26,7 @@ impl UnrateTagRelationImpl {
 }
 
 impl UnrateTagRelation for UnrateTagRelationImpl {
-    async fn is_tag_relation_proposed(&self, subtag_id: TagId, supertag_id: TagId, relation: TagRelation) -> Fallible<bool, UnrateTagRelationError> {
+    async fn is_tag_relation_proposed(&self, subtag_id: NonTopTagId, supertag_id: NonTopTagId, relation: TagRelation) -> Fallible<bool, UnrateTagRelationError> {
         fn handle_error<E: Into<anyhow::Error>>(e: E) -> UnrateTagRelationError {
             UnrateTagRelationError::CheckProposedTagRelationFailed(e.into())
         }
@@ -43,7 +43,7 @@ impl UnrateTagRelation for UnrateTagRelationImpl {
             })
     }
 
-    async fn unrate(&self, account_id: AccountId, subtag_id: TagId, supertag_id: TagId, relation: TagRelation) -> Fallible<(), UnrateTagRelationError> {
+    async fn unrate(&self, account_id: AccountId, subtag_id: NonTopTagId, supertag_id: NonTopTagId, relation: TagRelation) -> Fallible<(), UnrateTagRelationError> {
         self.db
         .execute_unpaged(&self.delete_tag_relation_rating_from_account, (account_id, subtag_id, supertag_id, relation))
         .await

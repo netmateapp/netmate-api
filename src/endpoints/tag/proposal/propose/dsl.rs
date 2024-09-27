@@ -1,9 +1,9 @@
 use thiserror::Error;
 
-use crate::common::{fallible::Fallible, tag::{relation::{validate_tag_relation, TagRelation}, tag_id::TagId}};
+use crate::common::{fallible::Fallible, tag::{non_top_tag_id::NonTopTagId, relation::{validate_tag_relation, TagRelation}}};
 
 pub(crate) trait ProposeTagRelation {
-    async fn propose_tag_relation(&self, subtag_id: TagId, supertag_id: TagId, relation: TagRelation) -> Fallible<(), ProposeTagRelationError> {
+    async fn propose_tag_relation(&self, subtag_id: NonTopTagId, supertag_id: NonTopTagId, relation: TagRelation) -> Fallible<(), ProposeTagRelationError> {
         match validate_tag_relation(subtag_id, supertag_id, relation) {
             Ok(()) => match relation {
                 TagRelation::Inclusion => {
@@ -23,11 +23,11 @@ pub(crate) trait ProposeTagRelation {
         Ok(())
     }
 
-    async fn is_cycle_formed(&self, subtag_id: TagId, supertag_id: TagId) -> Fallible<bool, ProposeTagRelationError>;
+    async fn is_cycle_formed(&self, subtag_id: NonTopTagId, supertag_id: NonTopTagId) -> Fallible<bool, ProposeTagRelationError>;
 
-    async fn is_equivalent(&self, subtag_id: TagId, supertag_id: TagId) -> Fallible<bool, ProposeTagRelationError>;
+    async fn is_equivalent(&self, subtag_id: NonTopTagId, supertag_id: NonTopTagId) -> Fallible<bool, ProposeTagRelationError>;
 
-    async fn propose(&self, subtag_id: TagId, supertag_id: TagId, relation: TagRelation) -> Fallible<(), ProposeTagRelationError>;
+    async fn propose(&self, subtag_id: NonTopTagId, supertag_id: NonTopTagId, relation: TagRelation) -> Fallible<(), ProposeTagRelationError>;
 }
 
 #[derive(Debug, Error)]

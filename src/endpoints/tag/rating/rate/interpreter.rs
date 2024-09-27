@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use scylla::{prepared_statement::PreparedStatement, Session};
 
-use crate::{common::{cycle::Cycle, fallible::Fallible, id::account_id::AccountId, rating::Rating, tag::{relation::TagRelation, tag_id::TagId}}, helper::{error::InitError, scylla::prepare}};
+use crate::{common::{cycle::Cycle, fallible::Fallible, id::account_id::AccountId, rating::Rating, tag::{non_top_tag_id::NonTopTagId, relation::TagRelation}}, helper::{error::InitError, scylla::prepare}};
 
 use super::dsl::{RateTagRelation, RateTagRelationError};
 
@@ -27,7 +27,7 @@ impl RateTagRelationImpl {
 
 impl RateTagRelation for RateTagRelationImpl {
     // 提案は撤回される可能性があるため、キャッシュできない
-    async fn is_tag_relation_proposed(&self, subtag_id: TagId, supertag_id: TagId, relation: TagRelation) -> Fallible<bool, RateTagRelationError> {
+    async fn is_tag_relation_proposed(&self, subtag_id: NonTopTagId, supertag_id: NonTopTagId, relation: TagRelation) -> Fallible<bool, RateTagRelationError> {
         fn handle_error<E: Into<anyhow::Error>>(e: E) -> RateTagRelationError {
             RateTagRelationError::CheckProposedTagRelationFailed(e.into())
         }
@@ -44,7 +44,7 @@ impl RateTagRelation for RateTagRelationImpl {
             })
     }
 
-    async fn rate(&self, account_id: AccountId, subtag_id: TagId, supertag_id: TagId, relation: TagRelation, rating: Rating) -> Fallible<(), RateTagRelationError> {
+    async fn rate(&self, account_id: AccountId, subtag_id: NonTopTagId, supertag_id: NonTopTagId, relation: TagRelation, rating: Rating) -> Fallible<(), RateTagRelationError> {
         self.db
             .execute_unpaged(&self.insert_tag_relation_rating_to_account, (account_id, subtag_id, supertag_id, relation, rating))
             .await

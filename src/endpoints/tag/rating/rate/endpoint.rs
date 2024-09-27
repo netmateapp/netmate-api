@@ -7,7 +7,7 @@ use serde::Deserialize;
 use tower::ServiceBuilder;
 use tracing::error;
 
-use crate::{common::{id::account_id::AccountId, rating::Rating, tag::{relation::TagRelation, tag_id::TagId}}, helper::{error::InitError, middleware::{rate_limiter, session_manager, TimeUnit}, redis::Pool}};
+use crate::{common::{id::account_id::AccountId, rating::Rating, tag::{non_top_tag_id::NonTopTagId, relation::TagRelation}}, helper::{error::InitError, middleware::{rate_limiter, session_manager, TimeUnit}, redis::Pool}};
 
 use super::{dsl::{RateTagRelation, RateTagRelationError}, interpreter::RateTagRelationImpl};
 
@@ -51,8 +51,8 @@ pub async fn handler(
 
 #[derive(Deserialize)]
 pub struct Payload {
-    subtag_id: TagId,
-    supertag_id: TagId,
+    subtag_id: NonTopTagId,
+    supertag_id: NonTopTagId,
     relation: TagRelation,
     rating: Rating,
 }

@@ -15,9 +15,7 @@ pub struct TopTagId(TagId);
 
 const fn of(group: LanguageGroup) -> TopTagId {
     let uuid = Uuid::from_fields(0x00, 0x00, 0x4000, &[0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, group.as_u8()]);
-    let uuidv4 = Uuid4::new_unchecked(uuid);
-    let tag_id = TagId::of(uuidv4);
-    TopTagId(tag_id)
+    TopTagId(TagId::of(Uuid4::new_unchecked(uuid)))
 }
 
 impl TopTagId {
