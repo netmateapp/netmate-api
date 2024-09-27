@@ -1,5 +1,6 @@
 use std::fmt::{self, Display};
 
+use redis::{RedisWrite, ToRedisArgs};
 use scylla::{frame::response::result::ColumnType, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
 use serde::{de, Deserialize, Deserializer};
 use thiserror::Error;
@@ -51,6 +52,12 @@ impl<'de> Deserialize<'de> for NonTopTagId {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         TagId::deserialize(deserializer)
             .and_then(|v| NonTopTagId::try_from(v).map_err(de::Error::custom))
+    }
+}
+
+impl ToRedisArgs for NonTopTagId {
+    fn write_redis_args<W: ?Sized + RedisWrite>(&self, out: &mut W) {
+        self.value().write_redis_args(out);
     }
 }
 

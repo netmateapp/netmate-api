@@ -1,3 +1,4 @@
+use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::CqlValue};
 use serde::{Serialize, Serializer};
 use thiserror::Error;
 use uuid::Uuid;
@@ -65,6 +66,13 @@ impl TryFrom<TagId> for TopTagId {
 impl Serialize for TopTagId {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         Serialize::serialize(&self.value(), serializer)
+    }
+}
+
+impl FromCqlVal<Option<CqlValue>> for TopTagId {
+    fn from_cql(cql_val: Option<CqlValue>) -> Result<Self, FromCqlValError> {
+        TagId::from_cql(cql_val)
+            .and_then(|v| TopTagId::try_from(v).map_err(|_| FromCqlValError::BadVal))
     }
 }
 

@@ -1,5 +1,6 @@
 use std::fmt::{self, Display};
 
+use redis::{FromRedisValue, RedisResult, RedisWrite, ToRedisArgs};
 use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::{ColumnType, CqlValue}, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;
@@ -54,6 +55,18 @@ impl<'de> Deserialize<'de> for Uuid4 {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         Uuid::deserialize(deserializer)
             .and_then(|v| Uuid4::try_from(v).map_err(de::Error::custom))
+    }
+}
+
+impl ToRedisArgs for Uuid4 {
+    fn write_redis_args<W: ?Sized + RedisWrite>(&self, out: &mut W) {
+        self.value().write_redis_args(out);
+    }
+}
+
+impl FromRedisValue for Uuid4 {
+    fn from_redis_value(v: &redis::Value) -> RedisResult<Self> {
+        Uuid::from_redis_value(v).map(Uuid4)
     }
 }
 

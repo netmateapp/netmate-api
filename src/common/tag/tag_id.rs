@@ -1,6 +1,7 @@
 use std::fmt::{self, Display};
 
-use scylla::{frame::response::result::ColumnType, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
+use redis::{FromRedisValue, RedisResult, RedisWrite, ToRedisArgs};
+use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::{ColumnType, CqlValue}, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::common::uuid::uuid4::Uuid4;
@@ -40,8 +41,26 @@ impl<'de> Deserialize<'de> for TagId {
     }
 }
 
+impl ToRedisArgs for TagId {
+    fn write_redis_args<W: ?Sized + RedisWrite>(&self, out: &mut W) {
+        self.value().write_redis_args(out);
+    }
+}
+
+impl FromRedisValue for TagId {
+    fn from_redis_value(v: &redis::Value) -> RedisResult<Self> {
+        Uuid4::from_redis_value(v).map(TagId::of)
+    }
+}
+
 impl SerializeValue for TagId {
     fn serialize<'b>(&self, typ: &ColumnType, writer: CellWriter<'b>) -> Result<WrittenCellProof<'b>, SerializationError> {
         SerializeValue::serialize(&self.value(), typ, writer)
+    }
+}
+
+impl FromCqlVal<Option<CqlValue>> for TagId {
+    fn from_cql(cql_val: Option<CqlValue>) -> Result<Self, FromCqlValError> {
+        Uuid4::from_cql(cql_val).map(TagId::of)
     }
 }

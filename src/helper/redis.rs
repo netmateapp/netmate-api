@@ -6,6 +6,9 @@ use thiserror::Error;
 
 pub type Pool = bb8::Pool<RedisConnectionManager>;
 
+pub const SUPERTAGS_NAMESPACE: Namespace = Namespace("sptgs");
+pub const SUBTAGS_NAMESPACE: Namespace = Namespace("sbtgs");
+
 pub async fn conn<O, E>(cache: &Pool, map_err: O) -> Result<PooledConnection<'_, RedisConnectionManager>, E>
 where
     O: FnOnce(RunError<RedisError>) -> E,
@@ -81,4 +84,9 @@ impl Display for Namespace {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
     }
+}
+
+#[cfg(test)]
+mod tests {
+
 }
