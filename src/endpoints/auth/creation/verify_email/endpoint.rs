@@ -7,7 +7,7 @@ use serde::Serialize;
 use tower::ServiceBuilder;
 use tracing::info;
 
-use crate::{common::{one_time_token::OneTimeToken, tag::tag_id::TagId}, helper::{error::InitError, middleware::{rate_limiter, session_starter, TimeUnit}, redis::Pool}};
+use crate::{common::{one_time_token::OneTimeToken, tag::top_tag::TopTagId}, helper::{error::InitError, middleware::{rate_limiter, session_starter, TimeUnit}, redis::Pool}};
 
 use super::{dsl::{VerifyEmail, VerifyEmailError}, interpreter::VerifyEmailImpl};
 
@@ -62,5 +62,5 @@ pub async fn handler(
 
 #[derive(Serialize)]
 pub struct Body {
-    top_tag_id: TagId,
+    top_tag_id: TopTagId,
 }

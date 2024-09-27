@@ -6,6 +6,7 @@ pub mod email;
 pub mod fallible;
 pub mod id;
 pub mod language;
+pub mod language_group;
 pub mod handle;
 pub mod one_time_token;
 pub mod password;

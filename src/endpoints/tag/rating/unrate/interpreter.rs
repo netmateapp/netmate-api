@@ -15,11 +15,11 @@ pub struct UnrateTagRelationImpl {
 
 impl UnrateTagRelationImpl {
     pub async fn try_new(db: Arc<Session>) -> Fallible<Self, InitError<Self>> {
-        let select_inclusion_or_equivalence = prepare(&db, "SELECT inclusion_or_equivalence FROM proposed_tag_relations WHERE subtag_id = ? AND supertag_id = ?").await?;
+        let select_inclusion_or_equivalence = prepare(&db, "SELECT inclusion_or_equivalence, language_group FROM proposed_tag_relations WHERE subtag_id = ? AND supertag_id = ?").await?;
 
-        let delete_tag_relation_rating_from_account = prepare(&db, "DELETE FROM tag_relation_rating_operations_by_account WHERE account_id = ? AND subtag_id = ? AND supertag_id = ? AND inclusion_or_equivalence = ?").await?;
+        let delete_tag_relation_rating_from_account = prepare(&db, "DELETE FROM tag_relation_ratings_by_account WHERE account_id = ? AND subtag_id = ? AND supertag_id = ? AND inclusion_or_equivalence = ?").await?;
 
-        let insert_tag_relation_rating_removal_into_cycle = prepare(&db, "INSERT INTO tag_relation_rating_operations_by_cycle (cycle, account_id, subtag_id, supertag_id, inclusion_or_equivalence, operation_id) VALUES (?, ?, ?, ?, ?, 255)").await?;
+        let insert_tag_relation_rating_removal_into_cycle = prepare(&db, "INSERT INTO tag_relation_ratings_by_language_group_and_cycle (language_group, cycle, account_id, subtag_id, supertag_id, inclusion_or_equivalence, operation_id) VALUES (?, ?, ?, ?, ?, ?, 255)").await?;
 
         Ok(Self{ db, select_inclusion_or_equivalence, delete_tag_relation_rating_from_account, insert_tag_relation_rating_removal_into_cycle })
     }

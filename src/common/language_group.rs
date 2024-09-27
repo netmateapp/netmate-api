@@ -40,7 +40,7 @@ impl From<LanguageGroup> for i8 {
     }
 }
 
-#[derive(Debug, Error)]
+#[derive(Debug, Error, PartialEq)]
 #[error("言語グループの解析に失敗しました")]
 pub struct ParseLanguageGroupError;
 
@@ -77,5 +77,47 @@ impl FromCqlVal<Option<CqlValue>> for LanguageGroup {
     fn from_cql(cql_val: Option<CqlValue>) -> Result<Self, FromCqlValError> {
         i8::from_cql(cql_val)
             .and_then(|v| LanguageGroup::try_from(v).map_err(|_| FromCqlValError::BadVal))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::common::language_group::{LanguageGroup, ParseLanguageGroupError};
+
+    #[test]
+    fn try_from_valid_u8() {
+        for i in 0u8..4 {
+            let group = LanguageGroup::try_from(i);
+            assert_eq!(group.map(u8::from), Ok(i))
+        }
+    }
+
+    #[test]
+    fn try_from_invalid_u8() {
+        for i in 4u8..=u8::MAX {
+            let group = LanguageGroup::try_from(i);
+            assert_eq!(group.map(u8::from), Err(ParseLanguageGroupError))
+        }
+    }
+
+    #[test]
+    fn try_from_valid_i8() {
+        for i in 0u8..4 {
+            let group = LanguageGroup::try_from(i);
+            assert_eq!(group.map(u8::from), Ok(i))
+        }
+    }
+
+    #[test]
+    fn try_from_invalid_i8() {
+        for i in i8::MIN..0i8 {
+            let language = LanguageGroup::try_from(i);
+            assert_eq!(language.map(i8::from), Err(ParseLanguageGroupError))
+        }
+
+        for i in 5..=i8::MAX {
+            let group = LanguageGroup::try_from(i);
+            assert_eq!(group.map(i8::from), Err(ParseLanguageGroupError))
+        }
     }
 }

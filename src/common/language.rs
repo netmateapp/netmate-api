@@ -4,10 +4,10 @@ use thiserror::Error;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum Language {
-    AmericanEnglish = 0,
-    Japanese = 1,
-    Korean = 2,
-    TaiwaneseMandarin = 3,
+    Japanese = 0,
+    Korean = 1,
+    TaiwaneseMandarin = 2,
+    AmericanEnglish = 3,
 }
 
 #[derive(Debug, PartialEq, Error)]
@@ -122,7 +122,7 @@ mod tests {
     fn deserialize_valid_json() {
         let json = r#"0"#;
         let language: Language = serde_json::from_str(json).unwrap();
-        assert_eq!(language, Language::AmericanEnglish);
+        assert_eq!(language, Language::Japanese);
     }
 
     #[test]

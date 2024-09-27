@@ -2,12 +2,12 @@ use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result
 use serde::{Deserialize, Deserializer};
 use thiserror::Error;
 
-use super::{tag_id::TagId, top_tag::is_top_tag};
+use super::{tag_id::TagId, top_tag::is_top_tag_id};
 
 pub fn validate_tag_relation(subtag_id: TagId, supertag_id: TagId, relation: TagRelation) -> Result<(), TagRelationError> {
     if subtag_id == supertag_id {
         Err(TagRelationError::CannotRateSameTagRelation)
-    } else if is_top_tag(subtag_id) || is_top_tag(supertag_id) {
+    } else if is_top_tag_id(subtag_id) || is_top_tag_id(supertag_id) {
         Err(TagRelationError::CannotRateTopTagRelation)
     } else if relation == TagRelation::Equivalence && subtag_id > supertag_id {
         Err(TagRelationError::SubtagIdMustBeSmallerThanSupertagIdInEquivalence)
@@ -76,7 +76,7 @@ impl FromCqlVal<Option<CqlValue>> for TagRelation {
 mod tests {
     use uuid::Uuid;
 
-    use crate::common::{language::Language, tag::{relation::TagRelation, tag_id::TagId, top_tag::top_tag_id_by_language}, uuid::uuid4::Uuid4};
+    use crate::common::{language::Language, language_group::LanguageGroup, tag::{relation::TagRelation, tag_id::TagId, top_tag::TopTagId}, uuid::uuid4::Uuid4};
 
     use super::{validate_tag_relation, TagRelationError};
 
@@ -91,7 +91,7 @@ mod tests {
 
     #[test]
     fn top_tag() {
-        let top_tag_id = top_tag_id_by_language(Language::Japanese);
+        let top_tag_id = TopTagId::from(LanguageGroup::from(Language::Japanese)).value();
 
         for (subtag_id, supertag_id) in [(top_tag_id, TagId::gen()), (TagId::gen(), top_tag_id)] {
             for relation in [TagRelation::Inclusion, TagRelation::Equivalence] {
