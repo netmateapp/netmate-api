@@ -72,7 +72,7 @@ impl Serialize for TopTagId {
 mod tests {
     use uuid::Variant;
 
-    use crate::common::{language_group::LanguageGroup, tag::top_tag::{of, TopTagId, ENGLISH, JAPANESE, KOREAN, TAIWANESE_MANDARIN}};
+    use crate::common::{language_group::LanguageGroup, tag::top_tag_id::{of, TopTagId, ENGLISH, JAPANESE, KOREAN, TAIWANESE_MANDARIN}};
 
     #[test]
     fn check_top_tag_id_format() {
