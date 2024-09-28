@@ -18,14 +18,14 @@ pub async fn prepare<T>(session: &Arc<Session>, query: &str) -> Result<Arc<Prepa
 }
 
 pub trait Transactional {
-    fn applied<E, H, S>(self, error_handler: H, unapplied_error: S) -> Result<(), E>
+    fn applied<E, H, S>(self, error_handler: H, error_on_unapplied: S) -> Result<(), E>
     where
         H: Fn(anyhow::Error) -> E,
         S: Fn() -> E;
 }
 
 impl Transactional for Result<QueryResult, QueryError> {
-    fn applied<E, H, S>(self, error_handler: H, unapplied_error: S) -> Result<(), E>
+    fn applied<E, H, S>(self, error_handler: H, error_on_unapplied: S) -> Result<(), E>
     where
         H: Fn(anyhow::Error) -> E,
         S: Fn() -> E
@@ -45,7 +45,7 @@ impl Transactional for Result<QueryResult, QueryError> {
                     .and_then(|is_applied| if is_applied {
                         Ok(())
                     } else {
-                        Err(unapplied_error())
+                        Err(error_on_unapplied())
                     })
             },
             Err(e) => Err(error_handler(e.into()))
