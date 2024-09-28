@@ -22,7 +22,7 @@ impl ProposeTagRelationImpl {
 
         let select_top_tag = prepare(&db, "SELECT supertag_id FROM proposed_tag_relations WHERE subtag_id = ? LIMIT 1").await?;
 
-        let insert_tag_relation = prepare(&db, "INSERT INTO proposed_tag_relations (subtag_id, supertag_id, inclusion_or_equivalence, language_group) VALUES (?, ?, ?, ?)").await?;
+        let insert_tag_relation = prepare(&db, "INSERT INTO proposed_tag_relations (subtag_id, supertag_id, inclusion_or_equivalence, language_group) VALUES (?, ?, ?, ?) IF NOT EXISTS").await?;
 
         let insert_tag_relation_rating = prepare(&db, "INSERT INTO tag_relation_ratings_by_account (account_id, subtag_id, supertag_id, inclusion_or_equivalence, operation_id) VALUES (?, ?, ?, ?, 255)").await?;
 

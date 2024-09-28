@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
-use scylla::{cql_to_rust::FromCqlVal, prepared_statement::PreparedStatement, Session};
+use scylla::{prepared_statement::PreparedStatement, Session};
 
-use crate::{common::{fallible::Fallible, handle::id::HandleId, id::account_id::AccountId}, helper::{error::InitError, scylla::prepare}};
+use crate::{common::{fallible::Fallible, handle::id::HandleId, id::account_id::AccountId}, helper::{error::InitError, scylla::{prepare, Transactional}}};
 
 use super::dsl::{DeleteHandle, DeleteHandleError};
 
@@ -29,25 +29,10 @@ impl DeleteHandle for DeleteHandleImpl {
         }
 
         // 名義の削除を試行
-        let result = self.db
+        self.db
             .execute_unpaged(&self.delete_handle_if_not_anonymous, (account_id, handle_id))
             .await
-            .map_err(handle_error)?;
-
-        let (applied_idx, _) = result.get_column_spec("applied")
-            .ok_or_else(|| handle_error(anyhow::anyhow!("applied列がありません")))?;
-
-        let applied = result.first_row()
-            .map_err(handle_error)?
-            .columns[applied_idx]
-            .take();
-
-        let applied = bool::from_cql(applied)
-            .map_err(handle_error)?;
-
-        if !applied {
-            return Err(DeleteHandleError::AnonymousHandle);
-        }
+            .applied(DeleteHandleError::DeleteHandleFailed, || DeleteHandleError::AnonymousHandle)?;
 
         // 共有数の削除
         self.db

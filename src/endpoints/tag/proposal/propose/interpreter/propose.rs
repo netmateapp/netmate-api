@@ -1,4 +1,4 @@
-use crate::{common::{fallible::Fallible, id::account_id::AccountId, language_group::LanguageGroup, tag::{non_top_tag_id::NonTopTagId, relation::TagRelation, top_tag_id::TopTagId}}, endpoints::tag::proposal::propose::dsl::propose::{ProposeTagRelation, ProposeTagRelationError}};
+use crate::{common::{fallible::Fallible, id::account_id::AccountId, language_group::LanguageGroup, tag::{non_top_tag_id::NonTopTagId, relation::TagRelation, top_tag_id::TopTagId}}, endpoints::tag::proposal::propose::dsl::propose::{ProposeTagRelation, ProposeTagRelationError}, helper::scylla::Transactional};
 
 use super::ProposeTagRelationImpl;
 
@@ -30,7 +30,7 @@ impl ProposeTagRelation for ProposeTagRelationImpl {
         self.db
             .execute_unpaged(&self.insert_tag_relation, (subtag_id, supertag_id, relation, language_group))
             .await
-            .map_err(|e| ProposeTagRelationError::ProposeFailed(e.into()))?;
+            .applied(ProposeTagRelationError::ProposeFailed, || ProposeTagRelationError::HasAlreadyBeenProposed)?;
 
         self.db
             .execute_unpaged(&self.insert_tag_relation_rating, (account_id, subtag_id, supertag_id, relation))
