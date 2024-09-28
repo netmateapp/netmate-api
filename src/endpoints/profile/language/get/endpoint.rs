@@ -7,7 +7,7 @@ use scylla::Session;
 use tower::ServiceBuilder;
 use tracing::info;
 
-use crate::{common::{id::account_id::AccountId, language::Language}, endpoints::profile::language::get::dsl::GetLanguage, helper::{error::InitError, middleware::{rate_limiter, session_manager, TimeUnit}, redis::Pool}};
+use crate::{common::{id::account_id::AccountId, language::Language}, endpoints::profile::language::get::dsl::GetLanguage, helper::{error::InitError, middleware::{rate_limiter, session_manager}, redis::Pool}, middlewares::limit::TimeUnit};
 
 use super::interpreter::GetLanguageImpl;
 

@@ -8,3 +8,4 @@ tag/rating/unrate, tag/proposal/propose -> クエリで255(評価の取り消し
 tag/rating/getの実装
 tag/proposal/propose -> 貢献度に基づく制限がない
 middlewares/quota_limit/interpreter -> DBへのクエリが未記述
+sign_up にレート制限がない

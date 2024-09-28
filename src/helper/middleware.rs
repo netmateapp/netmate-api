@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use scylla::Session;
 
-use crate::middlewares::{limit::{Count, EndpointName, InculsiveLimit, TimeWindow}, manage_session::middleware::ManageSessionLayer, quota_limit::middleware::QuotaLimitLayer, rate_limit::middleware::RateLimitLayer, start_session::middleware::StartSessionLayer};
+use crate::middlewares::{limit::{Count, EndpointName, InculsiveLimit, TimeUnit}, manage_session::middleware::ManageSessionLayer, quota_limit::middleware::QuotaLimitLayer, rate_limit::middleware::RateLimitLayer, start_session::middleware::StartSessionLayer};
 
 use super::{error::InitError, redis::{Namespace, Pool}};
 
@@ -19,24 +19,6 @@ pub async fn rate_limiter<T>(db: Arc<Session>, cache: Arc<Pool>, endpoint_name: 
     RateLimitLayer::try_new(db, cache, endpoint_name, limit, time_unit.apply(time_window))
         .await
         .map_err(|e| InitError::<T>::new(e.into()))
-}
-
-pub enum TimeUnit {
-    SECS,
-    MINS,
-    HOURS,
-    DAYS,
-}
-
-impl TimeUnit {
-    pub fn apply(self, time_window: u32) -> TimeWindow {
-        match self {
-            TimeUnit::SECS => TimeWindow::seconds(time_window),
-            TimeUnit::MINS => TimeWindow::minutes(time_window),
-            TimeUnit::HOURS => TimeWindow::hours(time_window),
-            TimeUnit::DAYS => TimeWindow::days(time_window),
-        }
-    }
 }
 
 pub async fn session_starter<T>(db: Arc<Session>, cache: Arc<Pool>) -> Result<StartSessionLayer, InitError<T>> {

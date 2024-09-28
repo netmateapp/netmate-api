@@ -5,6 +5,24 @@ use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result
 
 use crate::helper::redis::Namespace;
 
+pub enum TimeUnit {
+    SECS,
+    MINS,
+    HOURS,
+    DAYS,
+}
+
+impl TimeUnit {
+    pub fn apply(self, time_window: u32) -> TimeWindow {
+        match self {
+            TimeUnit::SECS => TimeWindow::seconds(time_window),
+            TimeUnit::MINS => TimeWindow::minutes(time_window),
+            TimeUnit::HOURS => TimeWindow::hours(time_window),
+            TimeUnit::DAYS => TimeWindow::days(time_window),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct TimeWindow(u32);
 
