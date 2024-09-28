@@ -8,8 +8,6 @@ use crate::{common::{fallible::Fallible, id::account_id::AccountId}, helper::{er
 use super::dsl::{ConsumedQuota, QuotaLimit, QuotaLimitError};
 
 const QUOTA_LIMIT_NAMESPACE: Namespace = Namespace::of("qtlim");
-const PERSONAL_LIMIT_NAMESPACE: Namespace = Namespace::of("pl");
-const CONSUMED_QUOTA_NAMESPACE: Namespace = Namespace::of("cq");
 
 #[derive(Debug)]
 pub struct QuotaLimitImpl {
@@ -46,7 +44,7 @@ impl QuotaLimit for QuotaLimitImpl {
         let mut conn = conn(&self.cache, |e| QuotaLimitError::FetchConsumedQuotaFailed(e.into())).await?;
         
         cmd("GET")
-            .arg(format!("{}{}{}{}{}", QUOTA_LIMIT_NAMESPACE, NAMESPACE_SEPARATOR, CONSUMED_QUOTA_NAMESPACE, NAMESPACE_SEPARATOR, account_id))
+            .arg(format!("{}{}{}{}{}", QUOTA_LIMIT_NAMESPACE, NAMESPACE_SEPARATOR, self.endpoint_name, NAMESPACE_SEPARATOR, account_id))
             .query_async::<Option<ConsumedQuota>>(&mut *conn)
             .await
             .map_err(|e| QuotaLimitError::FetchConsumedQuotaFailed(e.into()))
@@ -56,7 +54,7 @@ impl QuotaLimit for QuotaLimitImpl {
         let mut conn = conn(&self.cache, |e| QuotaLimitError::IncrementConsumedQuotaFailed(e.into())).await?;
         
         self.incr_and_expire_if_first
-            .key(format!("{}{}{}{}{}", QUOTA_LIMIT_NAMESPACE, NAMESPACE_SEPARATOR, CONSUMED_QUOTA_NAMESPACE, NAMESPACE_SEPARATOR, account_id))
+            .key(format!("{}{}{}{}{}", QUOTA_LIMIT_NAMESPACE, NAMESPACE_SEPARATOR, self.endpoint_name, NAMESPACE_SEPARATOR, account_id))
             .arg(time_window)
             .invoke_async(&mut *conn)
             .await
