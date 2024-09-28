@@ -7,14 +7,15 @@ use serde::Deserialize;
 use tower::ServiceBuilder;
 use tracing::error;
 
-use crate::{common::{id::account_id::AccountId, tag::{non_top_tag_id::NonTopTagId, relation::TagRelation}}, helper::{error::InitError, middleware::{rate_limiter, session_manager}, redis::Pool}, middlewares::limit::TimeUnit};
+use crate::{common::{id::account_id::AccountId, tag::{non_top_tag_id::NonTopTagId, relation::TagRelation}}, helper::{error::InitError, middleware::{quota_limiter, rate_limiter, session_manager}, redis::Pool}, middlewares::limit::TimeUnit};
 
 use super::{dsl::propose::{ProposeTagRelation, ProposeTagRelationError}, interpreter::ProposeTagRelationImpl};
 
 pub async fn endpoint(db: Arc<Session>, cache: Arc<Pool>) -> Result<Router, InitError<ProposeTagRelationImpl>> {
     let services = ServiceBuilder::new()
         .layer(rate_limiter(db.clone(), cache.clone(), "prtrl", 100, 15, TimeUnit::MINS).await?)
-        .layer(session_manager(db.clone(), cache.clone()).await?);
+        .layer(session_manager(db.clone(), cache.clone()).await?)
+        .layer(quota_limiter(db.clone(), cache.clone(), "prtrl", 1, TimeUnit::DAYS).await?);
 
     let interpreter = ProposeTagRelationImpl::try_new(db, cache).await?;
 

@@ -1,6 +1,6 @@
 use std::convert::Infallible;
 
-use http::{Request, StatusCode};
+use http::{Request, Response, StatusCode};
 use thiserror::Error;
 use tower::Service;
 
@@ -11,7 +11,7 @@ pub type ConsumedQuota = Count;
 pub(crate) trait QuotaLimit {
     async fn quota_limit<S, B>(&self, inner: &mut S, request: Request<B>) -> Fallible<S::Response, QuotaLimitError>
     where
-        S: Service<Request<B>, Error = Infallible, Response = StatusCode>
+        S: Service<Request<B>, Error = Infallible, Response = Response<B>>
     {
         let account_id = request.extensions()
             .get::<AccountId>()
@@ -24,7 +24,7 @@ pub(crate) trait QuotaLimit {
             // `Error`は`Infallible`であるため`unwrap()`で問題ない
             let response = inner.call(request).await.unwrap();
 
-            match response {
+            match response.status() {
                 StatusCode::OK => {
                     // 失敗しても続行
                     let _ = self.increment_consumed_quota(account_id, self.time_window()).await;
@@ -76,7 +76,7 @@ pub enum QuotaLimitError {
 mod tests {
     use std::{convert::Infallible, future::{ready, Ready}, sync::LazyLock, task::{Context, Poll}};
 
-    use http::{Request, StatusCode};
+    use http::{Request, Response};
     use thiserror::Error;
     use tower::Service;
 
@@ -94,7 +94,7 @@ mod tests {
     struct MockService;
 
     impl Service<Request<()>> for MockService {
-        type Response = StatusCode;
+        type Response = Response<()>;
         type Error = Infallible;
         type Future = Ready<Result<Self::Response, Self::Error>>;
 
@@ -103,7 +103,7 @@ mod tests {
         }
 
         fn call(&mut self, _: Request<()>) -> Self::Future {
-            ready(Ok(StatusCode::OK))
+            ready(Ok(Response::new(())))
         }
     }
 
@@ -141,7 +141,7 @@ mod tests {
         }
     }
 
-    async fn test_quota_limit(account_id: AccountId) -> Fallible<StatusCode, QuotaLimitError> {
+    async fn test_quota_limit(account_id: AccountId) -> Fallible<Response<()>, QuotaLimitError> {
         let mut request = Request::builder()
             .body(())
             .unwrap();

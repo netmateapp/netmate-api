@@ -1,6 +1,6 @@
 use std::{convert::Infallible, future::Future, pin::Pin, sync::Arc, task::{ready, Context, Poll}};
 
-use http::{Request, StatusCode};
+use http::{Request, Response, StatusCode};
 use pin_project::pin_project;
 use scylla::Session;
 use tokio::pin;
@@ -41,7 +41,7 @@ pub struct RateLimitService<S> {
 
 impl <S, B> Service<Request<B>> for RateLimitService<S>
 where
-    S: Service<Request<B>, Error = Infallible, Response = StatusCode> + Clone,
+    S: Service<Request<B>, Error = Infallible, Response = Response<B>> + Clone,
     S::Future: Future<Output = Result<S::Response, S::Error>>,
     B: Default,
 {
@@ -75,7 +75,7 @@ where
 
 impl<S, B> Future for SessionFuture<S, B>
 where
-    S: Service<Request<B>, Error = Infallible, Response = StatusCode>,
+    S: Service<Request<B>, Error = Infallible, Response = Response<B>>,
     S::Future: Future<Output = Result<S::Response, S::Error>>,
     B: Default,
 {
@@ -97,7 +97,12 @@ where
                     _ => StatusCode::INTERNAL_SERVER_ERROR,
                 };
 
-                Poll::Ready(Ok(status_code))
+                let response = Response::builder()
+                    .status(status_code)
+                    .body(B::default())
+                    .unwrap();
+
+                Poll::Ready(Ok(response))
             }
         }
     }
