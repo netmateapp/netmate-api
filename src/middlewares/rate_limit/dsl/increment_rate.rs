@@ -1,7 +1,8 @@
-use redis::{FromRedisValue, RedisResult, ToRedisArgs};
 use thiserror::Error;
 
-use crate::common::{api_key::ApiKey, fallible::Fallible};
+use crate::{common::{api_key::ApiKey, fallible::Fallible}, middlewares::limit::{Count, InculsiveLimit, TimeWindow}};
+
+pub type Rate = Count;
 
 pub(crate) trait IncrementRate {
     async fn try_increment_rate(&self, api_key: &ApiKey) -> Fallible<(), IncrementRateError> {
@@ -31,84 +32,18 @@ pub enum IncrementRateError {
     RateLimitOver,
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub struct TimeWindow(u32);
-
-impl TimeWindow {
-    pub const fn seconds(seconds: u32) -> Self {
-        Self(seconds)
-    }
-
-    pub const fn minutes(minutes: u32) -> Self {
-        Self::seconds(minutes * 60)
-    }
-
-    pub const fn hours(hours: u32) -> Self {
-        Self::minutes(hours * 60)
-    }
-
-    pub const fn days(days: u32) -> Self {
-        Self::hours(days * 24)
-    }
-
-    pub fn as_secs(&self) -> u32 {
-        self.0
-    }
-}
-
-impl ToRedisArgs for TimeWindow {
-    fn write_redis_args<W>(&self, out: &mut W)
-    where
-        W: ?Sized + redis::RedisWrite
-    {
-        self.0.write_redis_args(out);
-    }
-}
-
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub struct Rate(u32);
-
-impl Rate {
-    pub const fn new(rate: u32) -> Self {
-        Self(rate)
-    }
-
-    pub fn value(&self) -> u32 {
-        self.0
-    }
-}
-
-impl FromRedisValue for Rate {
-    fn from_redis_value(v: &redis::Value) -> RedisResult<Self> {
-        u32::from_redis_value(v).map(Rate)
-    }
-}
-
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub struct InculsiveLimit(Rate);
-
-impl InculsiveLimit {
-    pub const fn new(limit: u32) -> Self {
-        Self(Rate::new(limit))
-    }
-
-    pub fn value(&self) -> Rate {
-        self.0
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use std::sync::LazyLock;
 
-    use crate::common::{api_key::ApiKey, fallible::Fallible};
+    use crate::{common::{api_key::ApiKey, fallible::Fallible}, middlewares::limit::{Count, InculsiveLimit, TimeWindow}};
 
-    use super::{IncrementRate, IncrementRateError, InculsiveLimit, Rate, TimeWindow};
+    use super::{IncrementRate, IncrementRateError, Rate};
 
     static WITHIN_LIMIT: LazyLock<ApiKey> = LazyLock::new(ApiKey::gen);
 
     const TIME_WINDOW: TimeWindow = TimeWindow::seconds(60);
-    const INCLUSIVE_LIMIT: InculsiveLimit = InculsiveLimit::new(100);
+    const INCLUSIVE_LIMIT: InculsiveLimit = InculsiveLimit::new(Count::new(100));
 
     struct MockIncrementRate;
 

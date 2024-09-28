@@ -1,7 +1,7 @@
 
 use redis::{RedisWrite, ToRedisArgs};
 
-use crate::{common::{api_key::ApiKey, fallible::Fallible}, helper::redis::{conn, NAMESPACE_SEPARATOR}, middlewares::rate_limit::{dsl::increment_rate::{IncrementRate, IncrementRateError, InculsiveLimit, Rate, TimeWindow}, interpreter::RATE_LIMIT_NAMESPACE}};
+use crate::{common::{api_key::ApiKey, fallible::Fallible}, helper::redis::{conn, NAMESPACE_SEPARATOR}, middlewares::{limit::{InculsiveLimit, TimeWindow}, rate_limit::{dsl::increment_rate::{IncrementRate, IncrementRateError, Rate}, interpreter::RATE_LIMIT_NAMESPACE}}};
 
 use super::{EndpointName, RateLimitImpl};
 

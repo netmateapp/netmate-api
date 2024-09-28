@@ -88,7 +88,7 @@ mod tests {
     use thiserror::Error;
     use tower::Service;
 
-    use crate::{common::{api_key::ApiKey, fallible::Fallible, unixtime::UnixtimeMillis}, middlewares::rate_limit::dsl::{increment_rate::{IncrementRate, IncrementRateError, InculsiveLimit, Rate, TimeWindow}, refresh_api_key::{ApiKeyExpirationSeconds, ApiKeyRefreshThereshold, RefreshApiKey, RefreshApiKeyError}}};
+    use crate::{common::{api_key::ApiKey, fallible::Fallible, unixtime::UnixtimeMillis}, middlewares::{limit::{InculsiveLimit, TimeWindow}, rate_limit::dsl::{increment_rate::{IncrementRate, IncrementRateError, Rate}, refresh_api_key::{ApiKeyExpirationSeconds, ApiKeyRefreshThereshold, RefreshApiKey, RefreshApiKeyError}}}};
 
     use super::{LastApiKeyRefreshedAt, RateLimit, RateLimitError};
 
@@ -107,7 +107,7 @@ mod tests {
     }
 
     const TIME_WINDOW: TimeWindow = TimeWindow::seconds(60);
-    const INCLUSIVE_LIMIT: InculsiveLimit = InculsiveLimit::new(100);
+    const INCLUSIVE_LIMIT: InculsiveLimit = InculsiveLimit::new(Rate::new(100));
 
     impl IncrementRate for MockRateLimit {
         async fn increment_rate_within_window(&self, api_key: &ApiKey, _: TimeWindow) -> Fallible<Rate, IncrementRateError> {

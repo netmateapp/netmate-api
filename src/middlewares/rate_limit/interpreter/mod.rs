@@ -1,9 +1,9 @@
-use std::{fmt::{self, Display}, sync::Arc};
+use std::sync::Arc;
 
 use redis::Script;
 use scylla::{prepared_statement::PreparedStatement, Session};
 
-use crate::{helper::{error::InitError, redis::{Namespace, Pool}, scylla::prepare}, middlewares::rate_limit::dsl::increment_rate::{InculsiveLimit, TimeWindow}};
+use crate::{helper::{error::InitError, redis::{Namespace, Pool}, scylla::prepare}, middlewares::limit::{EndpointName, InculsiveLimit, TimeWindow}};
 
 mod increment_rate;
 mod rate_limit;
@@ -32,20 +32,5 @@ impl RateLimitImpl {
         let incr_and_expire_if_first = Arc::new(Script::new(include_str!("incr_and_expire_if_first.lua")));
 
         Ok(Self { endpoint_name, limit, time_window, db, select_last_api_key_refreshed_at, insert_api_key_with_ttl_refresh, cache, incr_and_expire_if_first })
-    }
-}
-
-#[derive(Debug)]
-pub struct EndpointName(Namespace);
-
-impl EndpointName {
-    pub const fn new(namespace: Namespace) -> Self {
-        Self(namespace)
-    }
-}
-
-impl Display for EndpointName {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0.fmt(f)
     }
 }
