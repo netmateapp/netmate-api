@@ -6,21 +6,21 @@ use crate::common::{api_key::ApiKey, fallible::Fallible};
 pub(crate) trait IncrementRate {
     async fn try_increment_rate(&self, api_key: &ApiKey) -> Fallible<(), IncrementRateError> {
         let rate = self.increment_rate_within_window(api_key, self.time_window()).await?;
-        if self.is_limit_over(&rate) {
+        if self.is_limit_over(rate) {
             return Err(IncrementRateError::RateLimitOver)
         }
         Ok(())
     }
 
-    async fn increment_rate_within_window(&self, api_key: &ApiKey, time_window: &TimeWindow) -> Fallible<Rate, IncrementRateError>;
+    async fn increment_rate_within_window(&self, api_key: &ApiKey, time_window: TimeWindow) -> Fallible<Rate, IncrementRateError>;
 
-    fn time_window(&self) -> &TimeWindow;
+    fn time_window(&self) -> TimeWindow;
 
-    fn is_limit_over(&self, rate: &Rate) -> bool {
+    fn is_limit_over(&self, rate: Rate) -> bool {
         rate > self.inclusive_limit().value()
     }
 
-    fn inclusive_limit(&self) -> &InculsiveLimit;
+    fn inclusive_limit(&self) -> InculsiveLimit;
 }
 
 #[derive(Debug, Error)]
@@ -92,8 +92,8 @@ impl InculsiveLimit {
         Self(Rate::new(limit))
     }
 
-    pub fn value(&self) -> &Rate {
-        &self.0
+    pub fn value(&self) -> Rate {
+        self.0
     }
 }
 
@@ -113,7 +113,7 @@ mod tests {
     struct MockIncrementRate;
 
     impl IncrementRate for MockIncrementRate {
-        async fn increment_rate_within_window(&self, api_key: &ApiKey, _: &TimeWindow) -> Fallible<Rate, IncrementRateError> {
+        async fn increment_rate_within_window(&self, api_key: &ApiKey, _: TimeWindow) -> Fallible<Rate, IncrementRateError> {
             if api_key == &*WITHIN_LIMIT {
                 Ok(Rate::new(INCLUSIVE_LIMIT.value().value()))
             } else {
@@ -121,12 +121,12 @@ mod tests {
             }
         }
 
-        fn time_window(&self) -> &TimeWindow {
-            &TIME_WINDOW
+        fn time_window(&self) -> TimeWindow {
+            TIME_WINDOW
         }
     
-        fn inclusive_limit(&self) -> &InculsiveLimit {
-            &INCLUSIVE_LIMIT
+        fn inclusive_limit(&self) -> InculsiveLimit {
+            INCLUSIVE_LIMIT
         }
     }
 

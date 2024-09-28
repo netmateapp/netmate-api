@@ -13,8 +13,8 @@ use super::{dsl::propose::{ProposeTagRelation, ProposeTagRelationError}, interpr
 
 pub async fn endpoint(db: Arc<Session>, cache: Arc<Pool>) -> Result<Router, InitError<ProposeTagRelationImpl>> {
     let services = ServiceBuilder::new()
-    .layer(rate_limiter(db.clone(), cache.clone(), "prtrl", 100, 15, TimeUnit::MINS).await?)
-    .layer(session_manager(db.clone(), cache.clone()).await?);
+        .layer(rate_limiter(db.clone(), cache.clone(), "prtrl", 100, 15, TimeUnit::MINS).await?)
+        .layer(session_manager(db.clone(), cache.clone()).await?);
 
     let interpreter = ProposeTagRelationImpl::try_new(db, cache).await?;
 

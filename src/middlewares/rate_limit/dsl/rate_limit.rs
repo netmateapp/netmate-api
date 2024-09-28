@@ -110,7 +110,7 @@ mod tests {
     const INCLUSIVE_LIMIT: InculsiveLimit = InculsiveLimit::new(100);
 
     impl IncrementRate for MockRateLimit {
-        async fn increment_rate_within_window(&self, api_key: &ApiKey, _: &TimeWindow) -> Fallible<Rate, IncrementRateError> {
+        async fn increment_rate_within_window(&self, api_key: &ApiKey, _: TimeWindow) -> Fallible<Rate, IncrementRateError> {
             if api_key == &*VALID_API_KEY {
                 Ok(Rate::new(0))
             } else {
@@ -118,12 +118,12 @@ mod tests {
             }
         }
 
-        fn time_window(&self) -> &TimeWindow {
-            &TIME_WINDOW
+        fn time_window(&self) -> TimeWindow {
+            TIME_WINDOW
         }
     
-        fn inclusive_limit(&self) -> &InculsiveLimit {
-            &INCLUSIVE_LIMIT
+        fn inclusive_limit(&self) -> InculsiveLimit {
+            INCLUSIVE_LIMIT
         }
     }
 

@@ -6,7 +6,7 @@ use crate::{common::{api_key::ApiKey, fallible::Fallible}, helper::redis::{conn,
 use super::{EndpointName, RateLimitImpl};
 
 impl IncrementRate for RateLimitImpl {
-    async fn increment_rate_within_window(&self, api_key: &ApiKey, time_window: &TimeWindow) -> Fallible<Rate, IncrementRateError> {
+    async fn increment_rate_within_window(&self, api_key: &ApiKey, time_window: TimeWindow) -> Fallible<Rate, IncrementRateError> {
         let mut conn = conn(&self.cache, |e| IncrementRateError::IncrementRateFailed(e.into())).await?;
         
         self.incr_and_expire_if_first
@@ -17,12 +17,12 @@ impl IncrementRate for RateLimitImpl {
             .map_err(|e| IncrementRateError::IncrementRateFailed(e.into()))
     }
 
-    fn time_window(&self) -> &TimeWindow {
-        &self.time_window
+    fn time_window(&self) -> TimeWindow {
+        self.time_window
     }
 
-    fn inclusive_limit(&self) -> &InculsiveLimit {
-        &self.limit
+    fn inclusive_limit(&self) -> InculsiveLimit {
+        self.limit
     }
 }
 

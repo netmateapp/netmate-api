@@ -20,7 +20,7 @@ where
 
 pub const NAMESPACE_SEPARATOR: char = ':';
 
-const MIN_NAMESPACE_LENGTH: usize = 3;
+const MIN_NAMESPACE_LENGTH: usize = 2;
 const MAX_NAMESPACE_LENGTH: usize = 9;
 
 #[derive(Debug)]

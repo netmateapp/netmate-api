@@ -6,3 +6,4 @@ redisキーのフォーマットテストは不要？
 verify_email/interpreter, session_manager/interpreter/reauthenticateのRedisから取得した文字列の解析にテストが無い
 tag/rating/unrate, tag/proposal/propose -> クエリで255(評価の取り消し)を直接指定している
 tag/rating/getの実装
+tag/proposal/propose -> 貢献度に基づく制限がない
