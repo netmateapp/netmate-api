@@ -1,27 +1,12 @@
 use std::fmt::{self, Display};
 
-use bb8_redis::{bb8::{self, PooledConnection, RunError}, RedisConnectionManager};
-use redis::RedisError;
 use thiserror::Error;
-
-pub type Pool = bb8::Pool<RedisConnectionManager>;
-
-pub const SUPERTAGS_NAMESPACE: Namespace = Namespace("sptgs");
-pub const SUBTAGS_NAMESPACE: Namespace = Namespace("sbtgs");
-
-pub async fn conn<O, E>(cache: &Pool, map_err: O) -> Result<PooledConnection<'_, RedisConnectionManager>, E>
-where
-    O: FnOnce(RunError<RedisError>) -> E,
-{
-    cache.get()
-        .await
-        .map_err(map_err)
-}
 
 pub const NAMESPACE_SEPARATOR: char = ':';
 
-const MIN_NAMESPACE_LENGTH: usize = 2;
-const MAX_NAMESPACE_LENGTH: usize = 9;
+pub(crate) const MIN_NAMESPACE_LENGTH: usize = 2;
+
+pub(crate) const MAX_NAMESPACE_LENGTH: usize = 9;
 
 #[derive(Debug)]
 pub struct Namespace(&'static str);
@@ -84,9 +69,4 @@ impl Display for Namespace {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
     }
-}
-
-#[cfg(test)]
-mod tests {
-
 }

@@ -3,7 +3,7 @@ use std::fmt::{self, Display};
 use redis::{FromRedisValue, RedisResult, ToRedisArgs};
 use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::CqlValue};
 
-use crate::helper::redis::Namespace;
+use crate::helper::redis::modname::Namespace;
 
 pub enum TimeUnit {
     SECS,

@@ -1,6 +1,6 @@
 use redis::{RedisWrite, ToRedisArgs};
 
-use crate::{common::{profile::account_id::AccountId, session::{refresh_token::RefreshToken, session_id::SessionId, session_series::SessionSeries}}, helper::redis::{Namespace, NAMESPACE_SEPARATOR}};
+use crate::{common::{profile::account_id::AccountId, session::{refresh_token::RefreshToken, session_id::SessionId, session_series::SessionSeries}}, helper::redis::modname::{Namespace, NAMESPACE_SEPARATOR}};
 
 pub const SESSION_ID_NAMESPACE: Namespace = Namespace::of("sid");
 
@@ -52,7 +52,7 @@ impl ToRedisArgs for RefreshPairValue {
 
 #[cfg(test)]
 mod tests {
-    use crate::{common::{profile::account_id::AccountId, session::{refresh_token::RefreshToken, session_id::SessionId, session_series::SessionSeries}}, helper::redis::NAMESPACE_SEPARATOR, middlewares::session::{RefreshPairKey, RefreshPairValue, SessionIdKey, REFRESH_PAIR_NAMESPACE, REFRESH_PAIR_VALUE_SEPARATOR, SESSION_ID_NAMESPACE}};
+    use crate::{common::{profile::account_id::AccountId, session::{refresh_token::RefreshToken, session_id::SessionId, session_series::SessionSeries}}, helper::redis::modname::NAMESPACE_SEPARATOR, middlewares::session::{RefreshPairKey, RefreshPairValue, SessionIdKey, REFRESH_PAIR_NAMESPACE, REFRESH_PAIR_VALUE_SEPARATOR, SESSION_ID_NAMESPACE}};
 
     #[test]
     fn test_format_session_id_key() {
