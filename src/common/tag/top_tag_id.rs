@@ -3,9 +3,9 @@ use serde::{Serialize, Serializer};
 use thiserror::Error;
 use uuid::Uuid;
 
-use crate::common::{language_group::LanguageGroup, uuid::uuid4::Uuid4};
+use crate::common::uuid::uuid4::Uuid4;
 
-use super::tag_id::TagId;
+use super::{language_group::LanguageGroup, tag_id::TagId};
 
 // トップタグを追加した場合は、language_group.rsの変換も追加する
 pub const JAPANESE: TopTagId = of(LanguageGroup::Japanese);
@@ -80,7 +80,7 @@ impl FromCqlVal<Option<CqlValue>> for TopTagId {
 mod tests {
     use uuid::Variant;
 
-    use crate::common::{language_group::LanguageGroup, tag::top_tag_id::{of, TopTagId, ENGLISH, JAPANESE, KOREAN, TAIWANESE_MANDARIN}};
+    use crate::common::tag::{language_group::LanguageGroup, top_tag_id::{of, TopTagId, ENGLISH, JAPANESE, KOREAN, TAIWANESE_MANDARIN}};
 
     #[test]
     fn check_top_tag_id_format() {

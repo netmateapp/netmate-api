@@ -1,19 +1,13 @@
-use std::net::SocketAddr;
-use std::sync::Arc;
+use std::{net::SocketAddr, sync::Arc};
 
-use axum::extract::ConnectInfo;
-use axum::{extract::State, http::StatusCode, response::IntoResponse, routing::post, Json, Router};
+use axum::{extract::{ConnectInfo, State}, http::StatusCode, response::IntoResponse, routing::post, Json, Router};
 use scylla::Session;
 use serde::Deserialize;
 use tokio::task;
 use tracing::info;
 
-use crate::common::email::address::Email;
-use crate::common::profile::birth_year::BirthYear;
-use crate::common::profile::language::Language;
-use crate::common::{password::Password, profile::region::Region};
-use crate::helper::error::InitError;
-use crate::helper::redis::Pool;
+use crate::common::{auth::password::Password, email::address::Email, profile::{birth_year::BirthYear, language::Language, region::Region}};
+use crate::helper::{error::InitError, redis::Pool};
 
 use super::dsl::SignUp;
 use super::interpreter::SignUpImpl;

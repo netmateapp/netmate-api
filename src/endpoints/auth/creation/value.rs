@@ -1,4 +1,4 @@
-use crate::{common::{email::address::Email, one_time_token::OneTimeToken, password::PasswordHash, profile::{birth_year::BirthYear, language::Language, region::Region}}, helper::redis::{Namespace, NAMESPACE_SEPARATOR}};
+use crate::{common::{auth::{one_time_token::OneTimeToken, password::PasswordHash}, email::address::Email, profile::{birth_year::BirthYear, language::Language, region::Region}}, helper::redis::{Namespace, NAMESPACE_SEPARATOR}};
 
 const TOKEN_ENTROPY_BITS: usize = 120;
 

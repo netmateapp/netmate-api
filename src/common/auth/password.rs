@@ -175,7 +175,7 @@ impl<'de> Deserialize<'de> for Password {
 mod tests {
     use std::str::FromStr;
 
-    use crate::common::password::{ParsePasswordError, Password, PasswordHash, MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH};
+    use super::{ParsePasswordError, Password, PasswordHash, MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH};
 
     #[test]
     fn password_too_short() {

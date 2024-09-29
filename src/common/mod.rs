@@ -1,12 +1,10 @@
+pub mod auth;
 pub mod api_key;
 pub mod character_count;
 pub mod cycle;
 pub mod email;
 pub mod fallible;
-pub mod language_group;
 pub mod handle;
-pub mod one_time_token;
-pub mod password;
 pub mod profile;
 pub mod rating;
 pub mod session;

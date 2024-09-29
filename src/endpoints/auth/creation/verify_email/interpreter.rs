@@ -3,7 +3,7 @@ use std::{str::{FromStr, SplitN}, sync::Arc};
 use redis::cmd;
 use scylla::{prepared_statement::PreparedStatement, Session};
 
-use crate::{common::{email::address::Email, fallible::Fallible, one_time_token::OneTimeToken, password::PasswordHash, profile::{account_id::AccountId, birth_year::BirthYear, language::Language, region::Region}}, endpoints::auth::creation::value::{format_key, PRE_VERFICATION_ACCOUNTS_VALUE_SEPARATOR}, helper::{error::InitError, redis::{conn, Pool}, scylla::prepare}};
+use crate::{common::{auth::{one_time_token::OneTimeToken, password::PasswordHash}, email::address::Email, fallible::Fallible, profile::{account_id::AccountId, birth_year::BirthYear, language::Language, region::Region}}, endpoints::auth::creation::value::{format_key, PRE_VERFICATION_ACCOUNTS_VALUE_SEPARATOR}, helper::{error::InitError, redis::{conn, Pool}, scylla::prepare}};
 
 use super::dsl::{VerifyEmail, VerifyEmailError};
 

@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::common::{cycle::Cycle, fallible::Fallible, profile::account_id::AccountId, language_group::LanguageGroup, rating::Rating, tag::{non_top_tag_id::NonTopTagId, relation::{validate_tag_relation, TagRelation}}};
+use crate::common::{cycle::Cycle, fallible::Fallible, profile::account_id::AccountId, rating::Rating, tag::{language_group::LanguageGroup, non_top_tag_id::NonTopTagId, relation::{validate_tag_relation, TagRelation}}};
 
 pub(crate) trait RateTagRelation {
     async fn rate_tag_relation(&self, account_id: AccountId, subtag_id: NonTopTagId, supertag_id: NonTopTagId, relation: TagRelation, rating: Rating) -> Fallible<(), RateTagRelationError> {
@@ -41,7 +41,7 @@ mod tests {
 
     use uuid::Uuid;
 
-    use crate::common::{cycle::Cycle, fallible::Fallible, profile::account_id::AccountId, language_group::LanguageGroup, rating::Rating, tag::{non_top_tag_id::NonTopTagId, relation::TagRelation, tag_id::TagId}, uuid::uuid4::Uuid4};
+    use crate::common::{cycle::Cycle, fallible::Fallible, profile::account_id::AccountId, rating::Rating, tag::{language_group::LanguageGroup, non_top_tag_id::NonTopTagId, relation::TagRelation, tag_id::TagId}, uuid::uuid4::Uuid4};
 
     use super::{RateTagRelation, RateTagRelationError};
 
