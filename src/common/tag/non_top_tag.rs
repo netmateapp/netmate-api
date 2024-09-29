@@ -5,7 +5,7 @@ use scylla::{frame::response::result::ColumnType, serialize::{value::SerializeVa
 use serde::{de, Deserialize, Deserializer};
 use thiserror::Error;
 
-use super::{tag_id::TagId, top_tag_id::is_top_tag_id};
+use super::{tag_id::TagId, top_tag::is_top_tag_id};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct NonTopTagId(TagId);

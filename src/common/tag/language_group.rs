@@ -3,7 +3,7 @@ use thiserror::Error;
 
 use crate::common::profile::language::Language;
 
-use super::top_tag_id::{TopTagId, ENGLISH, JAPANESE, KOREAN, TAIWANESE_MANDARIN};
+use super::top_tag::{TopTagId, ENGLISH, JAPANESE, KOREAN, TAIWANESE_MANDARIN};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum LanguageGroup {

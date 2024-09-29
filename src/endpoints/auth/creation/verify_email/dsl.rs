@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::common::{auth::{one_time_token::OneTimeToken, password::PasswordHash}, email::address::Email, fallible::Fallible, profile::{account_id::AccountId, birth_year::BirthYear, language::Language, region::Region}, tag::{language_group::LanguageGroup, top_tag_id::TopTagId}};
+use crate::common::{auth::{one_time_token::OneTimeToken, password::PasswordHash}, email::address::Email, fallible::Fallible, profile::{account_id::AccountId, birth_year::BirthYear, language::Language, region::Region}, tag::{language_group::LanguageGroup, top_tag::TopTagId}};
 
 pub(crate) trait VerifyEmail {
     async fn verify_email(&self, token: &OneTimeToken) -> Fallible<(AccountId, TopTagId), VerifyEmailError> {
@@ -52,7 +52,7 @@ mod tests {
 
     use thiserror::Error;
 
-    use crate::common::{auth::{one_time_token::OneTimeToken, password::PasswordHash}, email::address::Email, fallible::Fallible, profile::{account_id::AccountId, birth_year::BirthYear, language::Language, region::Region}, tag::top_tag_id::TopTagId};
+    use crate::common::{auth::{one_time_token::OneTimeToken, password::PasswordHash}, email::address::Email, fallible::Fallible, profile::{account_id::AccountId, birth_year::BirthYear, language::Language, region::Region}, tag::top_tag::TopTagId};
 
     use super::{VerifyEmail, VerifyEmailError};
 

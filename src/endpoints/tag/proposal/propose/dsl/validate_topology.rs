@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::common::{fallible::Fallible, tag::{non_top_tag_id::NonTopTagId, relation::TagRelation}};
+use crate::common::{fallible::Fallible, tag::{non_top_tag::NonTopTagId, relation::TagRelation}};
 
 pub(crate) trait ValidateTopology {
     async fn validate_topology(&self, subtag_id: NonTopTagId, supertag_id: NonTopTagId, relation: TagRelation) -> Fallible<(), ValidateTopologyError> {

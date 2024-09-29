@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use scylla::{prepared_statement::PreparedStatement, Session};
 
-use crate::{common::{cycle::Cycle, fallible::Fallible, profile::account_id::AccountId, tag::{language_group::LanguageGroup, non_top_tag_id::NonTopTagId, relation::TagRelation}}, helper::{error::InitError, scylla::prepare}};
+use crate::{common::{cycle::Cycle, fallible::Fallible, profile::account_id::AccountId, tag::{language_group::LanguageGroup, non_top_tag::NonTopTagId, relation::TagRelation}}, helper::{error::InitError, scylla::prepare}};
 
 use super::dsl::{UnrateTagRelation, UnrateTagRelationError};
 

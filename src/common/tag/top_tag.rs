@@ -80,7 +80,7 @@ impl FromCqlVal<Option<CqlValue>> for TopTagId {
 mod tests {
     use uuid::Variant;
 
-    use crate::common::tag::{language_group::LanguageGroup, top_tag_id::{of, TopTagId, ENGLISH, JAPANESE, KOREAN, TAIWANESE_MANDARIN}};
+    use crate::common::tag::{language_group::LanguageGroup, top_tag::{of, TopTagId, ENGLISH, JAPANESE, KOREAN, TAIWANESE_MANDARIN}};
 
     #[test]
     fn check_top_tag_id_format() {

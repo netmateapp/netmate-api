@@ -4,7 +4,7 @@ use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result
 use serde::{Deserialize, Deserializer};
 use thiserror::Error;
 
-use super::non_top_tag_id::NonTopTagId;
+use super::non_top_tag::NonTopTagId;
 
 pub fn validate_tag_relation(subtag_id: NonTopTagId, supertag_id: NonTopTagId, relation: TagRelation) -> Result<(), TagRelationError> {
     if subtag_id == supertag_id {
@@ -83,7 +83,7 @@ impl FromCqlVal<Option<CqlValue>> for TagRelation {
 mod tests {
     use uuid::Uuid;
 
-    use crate::common::{tag::{non_top_tag_id::NonTopTagId, relation::TagRelation, tag_id::TagId}, uuid::uuid4::Uuid4};
+    use crate::common::{tag::{non_top_tag::NonTopTagId, relation::TagRelation, tag_id::TagId}, uuid::uuid4::Uuid4};
 
     use super::{validate_tag_relation, TagRelationError};
 
