@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::common::{fallible::Fallible, id::account_id::AccountId, region::Region};
+use crate::common::{fallible::Fallible, profile::{account_id::AccountId, region::Region}};
 
 pub(crate) trait SetRegion {
     async fn set_region(&self, account_id: AccountId, region: Region) -> Fallible<(), SetRegionError>;

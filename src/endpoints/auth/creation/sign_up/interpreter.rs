@@ -3,7 +3,7 @@ use std::{str::FromStr, sync::{Arc, LazyLock}};
 use redis::cmd;
 use scylla::{prepared_statement::PreparedStatement, Session};
 
-use crate::{common::{birth_year::BirthYear, email::{address::Email, resend::ResendEmailSender, send::{Body, EmailSender, HtmlContent, NetmateEmail, PlainText, SenderName, Subject}}, fallible::Fallible, id::account_id::AccountId, language::Language, one_time_token::OneTimeToken, password::PasswordHash, region::Region}, endpoints::auth::creation::value::{PreVerificationAccountKey, PreVerificationAccountValue}, helper::{error::InitError, redis::{conn, Pool}, scylla::prepare}, translation::{ja, us_en}};
+use crate::{common::{email::{address::Email, resend::ResendEmailSender, send::{Body, EmailSender, HtmlContent, NetmateEmail, PlainText, SenderName, Subject}}, fallible::Fallible, one_time_token::OneTimeToken, password::PasswordHash, profile::{account_id::AccountId, birth_year::BirthYear, language::Language, region::Region}}, endpoints::auth::creation::value::{format_key, format_value}, helper::{error::InitError, redis::{conn, Pool}, scylla::prepare}, translation::{ja, us_en}};
 
 use super::dsl::{ApplicationExpirationSeconds, SignUp, SignUpError};
 
@@ -39,8 +39,8 @@ impl SignUp for SignUpImpl {
         let mut conn = conn(&self.cache, |e| SignUpError::ApplicationFailed(e.into())).await?;
 
         cmd("SET")
-            .arg(PreVerificationAccountKey::new(token))
-            .arg(PreVerificationAccountValue::new(email, password_hash, birth_year, region, language))
+            .arg(format_key(token))
+            .arg(format_value(email, password_hash, birth_year, region, language))
             .arg("EX")
             .arg(expiration)
             .exec_async(&mut *conn)

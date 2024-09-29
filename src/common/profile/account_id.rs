@@ -59,7 +59,7 @@ impl FromRedisValue for AccountId {
 mod tests {
     use uuid::Variant;
 
-    use crate::common::id::account_id::EMPTY_ACCOUNT_ID;
+    use super::EMPTY_ACCOUNT_ID;
 
     #[test]
     fn check_top_tag_id_format() {

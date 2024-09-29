@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::common::{fallible::Fallible, handle::{id::HandleId, name::HandleName}, id::account_id::AccountId};
+use crate::common::{fallible::Fallible, handle::{id::HandleId, name::HandleName}, profile::account_id::AccountId};
 
 pub(crate) trait CreateHandle {
     async fn create_handle(&self, account_id: AccountId, handle_name: HandleName) -> Fallible<(), CreateHandleError> {

@@ -7,7 +7,7 @@ use serde::Deserialize;
 use tower::ServiceBuilder;
 use tracing::error;
 
-use crate::{common::{handle::{id::HandleId, name::HandleName}, id::account_id::AccountId}, helper::{error::InitError, middleware::{rate_limiter, session_manager}, redis::Pool}, middlewares::limit::TimeUnit};
+use crate::{common::{handle::{id::HandleId, name::HandleName}, profile::account_id::AccountId}, helper::{error::InitError, middleware::{rate_limiter, session_manager}, redis::Pool}, middlewares::limit::TimeUnit};
 
 use super::{dsl::RenameHandle, interpreter::RenameHandleImpl};
 

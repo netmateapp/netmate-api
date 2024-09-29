@@ -2,7 +2,7 @@ use std::{str::FromStr, sync::Arc};
 
 use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::CqlValue, prepared_statement::PreparedStatement, Session};
 
-use crate::{common::{fallible::Fallible, handle::{id::HandleId, name::HandleName}, id::account_id::AccountId}, helper::{error::InitError, scylla::prepare}};
+use crate::{common::{fallible::Fallible, handle::{id::HandleId, name::HandleName}, profile::account_id::AccountId}, helper::{error::InitError, scylla::prepare}};
 
 use super::dsl::{ListHandles, ListHandlesError};
 

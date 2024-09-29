@@ -9,7 +9,9 @@ use tokio::task;
 use tracing::info;
 
 use crate::common::email::address::Email;
-use crate::common::{birth_year::BirthYear, language::Language, password::Password, region::Region};
+use crate::common::profile::birth_year::BirthYear;
+use crate::common::profile::language::Language;
+use crate::common::{password::Password, profile::region::Region};
 use crate::helper::error::InitError;
 use crate::helper::redis::Pool;
 

@@ -4,7 +4,7 @@ use scylla::{prepared_statement::PreparedStatement, Session};
 
 use super::dsl::{GetLanguage, GetLanguageError};
 
-use crate::{common::{fallible::Fallible, id::account_id::AccountId, language::Language}, helper::{error::InitError, scylla::prepare}};
+use crate::{common::{fallible::Fallible, profile::{account_id::AccountId, language::Language}}, helper::{error::InitError, scylla::prepare}};
 
 pub struct GetLanguageImpl {
     db: Arc<Session>,

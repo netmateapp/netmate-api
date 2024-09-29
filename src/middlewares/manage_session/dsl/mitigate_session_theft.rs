@@ -1,7 +1,7 @@
 use thiserror::Error;
 use tracing::info;
 
-use crate::common::{email::address::Email, fallible::Fallible, id::account_id::AccountId, language::Language};
+use crate::common::{email::address::Email, fallible::Fallible, profile::{account_id::AccountId, language::Language}};
 
 pub(crate) trait MitigateSessionTheft {
     async fn mitigate_session_theft(&self, account_id: AccountId) {

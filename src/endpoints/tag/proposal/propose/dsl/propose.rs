@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::common::{fallible::Fallible, id::account_id::AccountId, language_group::LanguageGroup, tag::{non_top_tag_id::NonTopTagId, relation::{validate_tag_relation, TagRelation}, top_tag_id::TopTagId}};
+use crate::common::{fallible::Fallible, profile::account_id::AccountId, language_group::LanguageGroup, tag::{non_top_tag_id::NonTopTagId, relation::{validate_tag_relation, TagRelation}, top_tag_id::TopTagId}};
 
 use super::validate_topology::{ValidateTopology, ValidateTopologyError};
 

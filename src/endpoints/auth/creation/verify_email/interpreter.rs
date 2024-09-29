@@ -3,7 +3,7 @@ use std::{str::{FromStr, SplitN}, sync::Arc};
 use redis::cmd;
 use scylla::{prepared_statement::PreparedStatement, Session};
 
-use crate::{common::{birth_year::BirthYear, email::address::Email, fallible::Fallible, id::account_id::AccountId, language::Language, one_time_token::OneTimeToken, password::PasswordHash, region::Region}, endpoints::auth::creation::value::{PreVerificationAccountKey, PRE_VERFICATION_ACCOUNTS_VALUE_SEPARATOR}, helper::{error::InitError, redis::{conn, Pool}, scylla::prepare}};
+use crate::{common::{email::address::Email, fallible::Fallible, one_time_token::OneTimeToken, password::PasswordHash, profile::{account_id::AccountId, birth_year::BirthYear, language::Language, region::Region}}, endpoints::auth::creation::value::{format_key, PRE_VERFICATION_ACCOUNTS_VALUE_SEPARATOR}, helper::{error::InitError, redis::{conn, Pool}, scylla::prepare}};
 
 use super::dsl::{VerifyEmail, VerifyEmailError};
 
@@ -42,7 +42,7 @@ impl VerifyEmail for VerifyEmailImpl {
         let mut conn = conn(&self.cache, handle_error).await?;
         
         cmd("GET")
-            .arg(PreVerificationAccountKey::new(token))
+            .arg(format_key(token))
             .query_async::<Option<String>>(&mut *conn)
             .await
             .map_err(handle_error)
@@ -73,7 +73,7 @@ impl VerifyEmail for VerifyEmailImpl {
         let mut conn = conn(&self.cache, |e| VerifyEmailError::DeleteAccountCreationApplicationFailed(e.into())).await?;
 
         cmd("DEL")
-            .arg(PreVerificationAccountKey::new(token))
+            .arg(format_key(token))
             .exec_async(&mut *conn)
             .await
             .map_err(|e| VerifyEmailError::DeleteAccountCreationApplicationFailed(e.into()))

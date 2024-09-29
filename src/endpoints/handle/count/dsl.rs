@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::common::{fallible::Fallible, handle::{id::HandleId, share_count::HandleShareCount}, id::account_id::AccountId};
+use crate::common::{fallible::Fallible, handle::{id::HandleId, share_count::HandleShareCount}, profile::account_id::AccountId};
 
 pub(crate) trait CountHandlesShare {
     async fn count_handles_share(&self, account_id: AccountId) -> Fallible<Vec<(HandleId, HandleShareCount)>, CountHandlesShareError>;

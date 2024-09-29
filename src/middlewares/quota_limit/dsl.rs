@@ -4,7 +4,7 @@ use http::{Request, Response, StatusCode};
 use thiserror::Error;
 use tower::Service;
 
-use crate::{common::{fallible::Fallible, id::account_id::AccountId}, middlewares::limit::{Count, InculsiveLimit, TimeWindow}};
+use crate::{common::{fallible::Fallible, profile::account_id::AccountId}, middlewares::limit::{Count, InculsiveLimit, TimeWindow}};
 
 pub type ConsumedQuota = Count;
 
@@ -81,7 +81,7 @@ mod tests {
     use tower::Service;
 
 
-    use crate::{common::{fallible::Fallible, id::account_id::AccountId}, middlewares::limit::{InculsiveLimit, TimeWindow}};
+    use crate::{common::{fallible::Fallible, profile::account_id::AccountId}, middlewares::limit::{InculsiveLimit, TimeWindow}};
 
     use super::{ConsumedQuota, QuotaLimit, QuotaLimitError};
 

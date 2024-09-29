@@ -1,7 +1,7 @@
 use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::{ColumnType, CqlValue}, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
 use thiserror::Error;
 
-use super::{language::Language, tag::top_tag_id::{TopTagId, ENGLISH, JAPANESE, KOREAN, TAIWANESE_MANDARIN}};
+use super::{profile::language::Language, tag::top_tag_id::{TopTagId, ENGLISH, JAPANESE, KOREAN, TAIWANESE_MANDARIN}};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum LanguageGroup {

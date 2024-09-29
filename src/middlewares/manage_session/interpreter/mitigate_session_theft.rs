@@ -2,7 +2,7 @@ use std::{str::FromStr, sync::LazyLock};
 
 use redis::cmd;
 
-use crate::{common::{email::{address::Email, resend::ResendEmailSender, send::{Body, EmailSender, HtmlContent, NetmateEmail, PlainText, SenderName, Subject}}, fallible::Fallible, id::account_id::AccountId, language::Language, session::session_series::SessionSeries}, helper::redis::conn, middlewares::{manage_session::dsl::mitigate_session_theft::{MitigateSessionTheft, MitigateSessionTheftError}, session::RefreshPairKey}, translation::ja};
+use crate::{common::{email::{address::Email, resend::ResendEmailSender, send::{Body, EmailSender, HtmlContent, NetmateEmail, PlainText, SenderName, Subject}}, fallible::Fallible, profile::{account_id::AccountId, language::Language}, session::session_series::SessionSeries}, helper::redis::conn, middlewares::{manage_session::dsl::mitigate_session_theft::{MitigateSessionTheft, MitigateSessionTheftError}, session::RefreshPairKey}, translation::ja};
 
 use super::ManageSessionImpl;
 

@@ -24,7 +24,7 @@ impl ProposeTagRelationImpl {
 
         let insert_tag_relation = prepare(&db, "INSERT INTO proposed_tag_relations (subtag_id, supertag_id, inclusion_or_equivalence, language_group) VALUES (?, ?, ?, ?) IF NOT EXISTS").await?;
 
-        let insert_tag_relation_rating = prepare(&db, "INSERT INTO tag_relation_ratings_by_account (account_id, subtag_id, supertag_id, inclusion_or_equivalence, operation_id) VALUES (?, ?, ?, ?, 255)").await?;
+        let insert_tag_relation_rating = prepare(&db, "INSERT INTO tag_relation_ratings_by_account (account_id, subtag_id, supertag_id, inclusion_or_equivalence, operation_id) VALUES (?, ?, ?, ?, 127)").await?;
 
         Ok(Self { db, cache, select_tag_relation, select_top_tag, insert_tag_relation, insert_tag_relation_rating })
     }

@@ -3,7 +3,7 @@ use std::sync::Arc;
 use redis::cmd;
 use scylla::{prepared_statement::PreparedStatement, Session};
 
-use crate::{common::{fallible::Fallible, id::account_id::AccountId, session::session_series::SessionSeries}, helper::{error::InitError, redis::{conn, Pool}, scylla::prepare}, middlewares::session::RefreshPairKey};
+use crate::{common::{fallible::Fallible, profile::account_id::AccountId, session::session_series::SessionSeries}, helper::{error::InitError, redis::{conn, Pool}, scylla::prepare}, middlewares::session::RefreshPairKey};
 
 use super::dsl::{SignOut, SignOutError};
 

@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::common::{fallible::Fallible, id::account_id::AccountId, session::session_series::SessionSeries};
+use crate::common::{fallible::Fallible, profile::account_id::AccountId, session::session_series::SessionSeries};
 
 pub(crate) trait SignOut {
     async fn sign_out(&self, account_id: AccountId, session_series: &SessionSeries) -> Fallible<(), SignOutError>;

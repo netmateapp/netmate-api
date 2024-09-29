@@ -1,4 +1,4 @@
-use crate::{common::{fallible::Fallible, id::account_id::AccountId, language_group::LanguageGroup, tag::{non_top_tag_id::NonTopTagId, relation::TagRelation, top_tag_id::TopTagId}}, endpoints::tag::proposal::propose::dsl::propose::{ProposeTagRelation, ProposeTagRelationError}, helper::scylla::Transactional};
+use crate::{common::{fallible::Fallible, profile::account_id::AccountId, language_group::LanguageGroup, tag::{non_top_tag_id::NonTopTagId, relation::TagRelation, top_tag_id::TopTagId}}, endpoints::tag::proposal::propose::dsl::propose::{ProposeTagRelation, ProposeTagRelationError}, helper::scylla::Transactional};
 
 use super::ProposeTagRelationImpl;
 

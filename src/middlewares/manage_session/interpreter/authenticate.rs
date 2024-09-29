@@ -1,6 +1,6 @@
 use bb8_redis::redis::cmd;
 
-use crate::{common::{fallible::Fallible, id::account_id::AccountId, session::session_id::SessionId}, helper::redis::conn, middlewares::{manage_session::dsl::authenticate::{AuthenticateSession, AuthenticateSessionError}, session::SessionIdKey}};
+use crate::{common::{fallible::Fallible, profile::account_id::AccountId, session::session_id::SessionId}, helper::redis::conn, middlewares::{manage_session::dsl::authenticate::{AuthenticateSession, AuthenticateSessionError}, session::SessionIdKey}};
 
 use super::ManageSessionImpl;
 

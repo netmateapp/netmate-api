@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::common::{fallible::Fallible, id::account_id::AccountId, session::{refresh_pair_expiration::RefreshPairExpirationSeconds, refresh_token::RefreshToken, session_series::SessionSeries}};
+use crate::common::{fallible::Fallible, profile::account_id::AccountId, session::{refresh_pair_expiration::RefreshPairExpirationSeconds, refresh_token::RefreshToken, session_series::SessionSeries}};
 
 pub(crate)  trait AssignRefreshPair {
     async fn assign_refresh_pair(&self, session_account_id: AccountId, expiration: RefreshPairExpirationSeconds) -> Fallible<(SessionSeries, RefreshToken), AssignRefreshPairError> {

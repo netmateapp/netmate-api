@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::common::{fallible::Fallible, id::account_id::AccountId, session::{session_expiration::SessionExpirationSeconds, session_id::SessionId}};
+use crate::common::{fallible::Fallible, profile::account_id::AccountId, session::{session_expiration::SessionExpirationSeconds, session_id::SessionId}};
 
 pub(crate) trait UpdateSession {
     async fn update_session(&self, session_account_id: AccountId, new_expiration: SessionExpirationSeconds) -> Fallible<SessionId, UpdateSessionError> {

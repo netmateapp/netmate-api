@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use scylla::{prepared_statement::PreparedStatement, Session};
 
-use crate::{common::{cycle::Cycle, fallible::Fallible, id::account_id::AccountId, language_group::LanguageGroup, tag::{non_top_tag_id::NonTopTagId, relation::TagRelation}}, helper::{error::InitError, scylla::prepare}};
+use crate::{common::{cycle::Cycle, fallible::Fallible, profile::account_id::AccountId, language_group::LanguageGroup, tag::{non_top_tag_id::NonTopTagId, relation::TagRelation}}, helper::{error::InitError, scylla::prepare}};
 
 use super::dsl::{UnrateTagRelation, UnrateTagRelationError};
 
@@ -19,7 +19,7 @@ impl UnrateTagRelationImpl {
 
         let delete_tag_relation_rating_from_account = prepare(&db, "DELETE FROM tag_relation_ratings_by_account WHERE account_id = ? AND subtag_id = ? AND supertag_id = ? AND inclusion_or_equivalence = ?").await?;
 
-        let insert_tag_relation_rating_removal_into_cycle = prepare(&db, "INSERT INTO tag_relation_ratings_by_language_group_and_cycle (language_group, cycle, account_id, subtag_id, supertag_id, inclusion_or_equivalence, operation_id) VALUES (?, ?, ?, ?, ?, ?, 255)").await?;
+        let insert_tag_relation_rating_removal_into_cycle = prepare(&db, "INSERT INTO tag_relation_ratings_by_language_group_and_cycle (language_group, cycle, account_id, subtag_id, supertag_id, inclusion_or_equivalence, operation_id) VALUES (?, ?, ?, ?, ?, ?, 127)").await?;
 
         Ok(Self{ db, select_inclusion_or_equivalence, delete_tag_relation_rating_from_account, insert_tag_relation_rating_removal_into_cycle })
     }

@@ -4,7 +4,7 @@ use http::{Request, Response};
 use thiserror::Error;
 use tower::Service;
 
-use crate::common::{fallible::Fallible, id::account_id::AccountId, session::{cookie::{set_refresh_pair_cookie_with_expiration, set_session_cookie_with_expiration}, refresh_pair_expiration::REFRESH_PAIR_EXPIRATION, session_expiration::SESSION_EXPIRATION}};
+use crate::common::{fallible::Fallible, profile::account_id::AccountId, session::{cookie::{set_refresh_pair_cookie_with_expiration, set_session_cookie_with_expiration}, refresh_pair_expiration::REFRESH_PAIR_EXPIRATION, session_expiration::SESSION_EXPIRATION}};
 
 use super::{assign_refresh_pair::{AssignRefreshPair, AssignRefreshPairError}, assign_session_id::{AssignSessionId, AssignSessionIdError}};
 
@@ -53,7 +53,7 @@ mod tests {
     use http::{header::SET_COOKIE, Request, Response, StatusCode};
     use tower::Service;
 
-    use crate::{common::{fallible::Fallible, id::account_id::AccountId, session::{refresh_pair_expiration::RefreshPairExpirationSeconds, refresh_token::RefreshToken, session_expiration::SessionExpirationSeconds, session_id::SessionId, session_series::SessionSeries}}, middlewares::start_session::dsl::{assign_refresh_pair::{AssignRefreshPair, AssignRefreshPairError}, assign_session_id::{AssignSessionId, AssignSessionIdError}}};
+    use crate::{common::{fallible::Fallible, profile::account_id::AccountId, session::{refresh_pair_expiration::RefreshPairExpirationSeconds, refresh_token::RefreshToken, session_expiration::SessionExpirationSeconds, session_id::SessionId, session_series::SessionSeries}}, middlewares::start_session::dsl::{assign_refresh_pair::{AssignRefreshPair, AssignRefreshPairError}, assign_session_id::{AssignSessionId, AssignSessionIdError}}};
 
     use super::StartSession;
 

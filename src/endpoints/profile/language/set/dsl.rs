@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::common::{fallible::Fallible, id::account_id::AccountId, language::Language};
+use crate::common::{fallible::Fallible, profile::{account_id::AccountId, language::Language}};
 
 pub(crate) trait SetLanaguage {
     async fn set_language(&self, account_id: AccountId, language: Language) -> Fallible<(), SetLanguageError>;

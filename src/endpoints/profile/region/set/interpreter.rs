@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use scylla::{prepared_statement::PreparedStatement, Session};
 
-use crate::{common::{fallible::Fallible, id::account_id::AccountId, region::Region}, helper::{error::InitError, scylla::prepare}};
+use crate::{common::{fallible::Fallible, profile::{account_id::AccountId, region::Region}}, helper::{error::InitError, scylla::prepare}};
 
 use super::dsl::{SetRegion, SetRegionError};
 

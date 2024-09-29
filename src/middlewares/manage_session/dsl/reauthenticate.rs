@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::common::{fallible::Fallible, id::account_id::AccountId, session::{refresh_token::RefreshToken, session_series::SessionSeries}};
+use crate::common::{fallible::Fallible, profile::account_id::AccountId, session::{refresh_token::RefreshToken, session_series::SessionSeries}};
 
 pub(crate) trait ReAuthenticateSession {
     async fn reauthenticate_session(&self, session_series: &SessionSeries, refresh_token: RefreshToken) -> Fallible<AccountId, ReAuthenticateSessionError> {
@@ -33,7 +33,7 @@ pub enum ReAuthenticateSessionError {
 mod tests {
     use std::sync::LazyLock;
 
-    use crate::common::{fallible::Fallible, id::account_id::AccountId, session::{refresh_token::RefreshToken, session_series::SessionSeries}};
+    use crate::common::{fallible::Fallible, profile::account_id::AccountId, session::{refresh_token::RefreshToken, session_series::SessionSeries}};
 
     use super::{ReAuthenticateSession, ReAuthenticateSessionError};
 

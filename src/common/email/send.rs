@@ -2,7 +2,7 @@ use std::{fmt::{self, Display}, str::FromStr};
 
 use thiserror::Error;
 
-use crate::{common::language::Language, translation::{ja, us_en}};
+use crate::{common::profile::language::Language, translation::{ja, us_en}};
 
 use super::address::Email;
 

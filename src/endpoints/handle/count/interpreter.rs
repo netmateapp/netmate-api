@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use scylla::{prepared_statement::PreparedStatement, Session};
 
-use crate::{common::{fallible::Fallible, handle::{id::HandleId, share_count::HandleShareCount}, id::account_id::AccountId}, helper::{error::InitError, scylla::prepare}};
+use crate::{common::{fallible::Fallible, handle::{id::HandleId, share_count::HandleShareCount}, profile::account_id::AccountId}, helper::{error::InitError, scylla::prepare}};
 
 use super::dsl::{CountHandlesShare, CountHandlesShareError};
 

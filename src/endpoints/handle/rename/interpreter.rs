@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use scylla::{prepared_statement::PreparedStatement, Session};
 
-use crate::{common::{fallible::Fallible, handle::{id::HandleId, name::HandleName}, id::account_id::AccountId}, helper::{error::InitError, scylla::prepare}};
+use crate::{common::{fallible::Fallible, handle::{id::HandleId, name::HandleName}, profile::account_id::AccountId}, helper::{error::InitError, scylla::prepare}};
 
 use super::dsl::{RenameHandle, RenameHandleError};
 

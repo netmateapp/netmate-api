@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::common::{email::address::Email, fallible::Fallible, id::account_id::{AccountId, EMPTY_ACCOUNT_ID}, password::{Password, PasswordHash, EMPTY_PASSWORD_HASH}};
+use crate::common::{email::address::Email, fallible::Fallible, profile::account_id::{AccountId, EMPTY_ACCOUNT_ID}, password::{Password, PasswordHash, EMPTY_PASSWORD_HASH}};
 
 pub(crate) trait SignIn {
     async fn sign_in(&self, email: &Email, password: &Password) -> Fallible<Option<AccountId>, SignInError> {

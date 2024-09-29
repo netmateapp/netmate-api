@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use scylla::{prepared_statement::PreparedStatement, Session};
 
-use crate::{common::{email::address::Email, fallible::Fallible, id::account_id::AccountId, password::PasswordHash}, helper::{error::InitError, scylla::prepare}};
+use crate::{common::{email::address::Email, fallible::Fallible, profile::account_id::AccountId, password::PasswordHash}, helper::{error::InitError, scylla::prepare}};
 
 use super::dsl::{SignIn, SignInError};
 

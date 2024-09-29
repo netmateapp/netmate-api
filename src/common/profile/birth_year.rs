@@ -134,7 +134,7 @@ fn civil_year_from_unixtime(unixtime_as_secs: u64) -> u16 {
 mod tests {
     use std::num::NonZeroU16;
 
-    use crate::common::birth_year::{civil_year_from_unixtime, BirthYear, ParseBirthYearError, MAX_BIRTH_YEAR, MIN_BIRTH_YEAR};
+    use super::{civil_year_from_unixtime, BirthYear, ParseBirthYearError, MAX_BIRTH_YEAR, MIN_BIRTH_YEAR};
 
     #[test]
     fn unix_epoch() {

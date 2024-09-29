@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::common::{fallible::Fallible, handle::{id::HandleId, name::HandleName}, id::account_id::AccountId};
+use crate::common::{fallible::Fallible, handle::{id::HandleId, name::HandleName}, profile::account_id::AccountId};
 pub(crate) trait ListHandles {
     async fn list_handles(&self, account_id: AccountId) -> Fallible<Vec<(HandleId, Option<HandleName>)>, ListHandlesError>;
 }

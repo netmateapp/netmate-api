@@ -1,7 +1,7 @@
 use redis::ToRedisArgs;
 use thiserror::Error;
 
-use crate::common::{birth_year::BirthYear, email::address::Email, fallible::Fallible, language::Language, one_time_token::OneTimeToken, password::{Password, PasswordHash}, region::Region};
+use crate::common::{email::address::Email, fallible::Fallible, one_time_token::OneTimeToken, password::{Password, PasswordHash}, profile::{birth_year::BirthYear, language::Language, region::Region}};
 
 const CREATE_ACCOUNT_APPLICATION_EXPIRATION: ApplicationExpirationSeconds = ApplicationExpirationSeconds::days(1);
 
@@ -69,7 +69,7 @@ mod tests {
 
     use thiserror::Error;
 
-    use crate::common::{birth_year::BirthYear, email::address::Email, language::Language, one_time_token::OneTimeToken, password::{Password, PasswordHash}, region::Region};
+    use crate::common::{email::address::Email, one_time_token::OneTimeToken, password::{Password, PasswordHash}, profile::{birth_year::BirthYear, language::Language, region::Region}};
 
     use super::{ApplicationExpirationSeconds, Fallible, SignUp, SignUpError};
 

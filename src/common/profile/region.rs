@@ -464,7 +464,7 @@ impl FromCqlVal<Option<CqlValue>> for Region {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{ParseRegionError, Region};
 
     #[test]
     fn try_from_valid_u8() {

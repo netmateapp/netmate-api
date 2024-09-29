@@ -77,9 +77,7 @@ impl FromCqlVal<Option<CqlValue>> for Language {
 
 #[cfg(test)]
 mod tests {
-    use crate::common::language::ParseLanguageError;
-
-    use super::Language;
+    use super::{Language, ParseLanguageError};
 
     #[test]
     fn try_from_valid_u8() {
