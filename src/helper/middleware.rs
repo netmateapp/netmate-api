@@ -4,7 +4,7 @@ use scylla::Session;
 
 use crate::middlewares::{limit::{Count, EndpointName, InculsiveLimit, TimeUnit}, manage_session::middleware::ManageSessionLayer, quota_limit::middleware::QuotaLimitLayer, rate_limit::middleware::RateLimitLayer, start_session::middleware::StartSessionLayer};
 
-use super::{error::InitError, redis::{modname::Namespace, Pool}};
+use super::{error::InitError, redis::{namespace::Namespace, Pool}};
 
 pub async fn session_manager<T>(db: Arc<Session>, cache: Arc<Pool>) -> Result<ManageSessionLayer, InitError<T>> {
     ManageSessionLayer::try_new(db, cache)

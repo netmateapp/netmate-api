@@ -1,5 +1,5 @@
 use bb8_redis::{bb8::{self, PooledConnection, RunError}, RedisConnectionManager};
-use modname::Namespace;
+use namespace::Namespace;
 use redis::RedisError;
 
 pub type Pool = bb8::Pool<RedisConnectionManager>;
@@ -16,4 +16,4 @@ where
         .map_err(map_err)
 }
 
-pub mod modname;
+pub mod namespace;

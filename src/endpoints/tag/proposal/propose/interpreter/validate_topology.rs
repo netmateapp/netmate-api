@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use bb8_redis::{bb8::PooledConnection, RedisConnectionManager};
 use redis::cmd;
 
-use crate::{common::{fallible::Fallible, tag::{non_top_tag_id::NonTopTagId, tag_id::TagId}}, endpoints::tag::proposal::propose::dsl::validate_topology::{ValidateTopology, ValidateTopologyError}, helper::redis::{conn, modname::Namespace, modname::NAMESPACE_SEPARATOR, SUBTAGS_NAMESPACE, SUPERTAGS_NAMESPACE}};
+use crate::{common::{fallible::Fallible, tag::{non_top_tag_id::NonTopTagId, tag_id::TagId}}, endpoints::tag::proposal::propose::dsl::validate_topology::{ValidateTopology, ValidateTopologyError}, helper::redis::{conn, namespace::Namespace, namespace::NAMESPACE_SEPARATOR, SUBTAGS_NAMESPACE, SUPERTAGS_NAMESPACE}};
 
 use super::ProposeTagRelationImpl;
 

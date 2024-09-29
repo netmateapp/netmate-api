@@ -1,7 +1,7 @@
 
 use redis::{RedisWrite, ToRedisArgs};
 
-use crate::{common::{api_key::ApiKey, fallible::Fallible}, helper::redis::{conn, modname::NAMESPACE_SEPARATOR}, middlewares::{limit::{InculsiveLimit, TimeWindow}, rate_limit::{dsl::increment_rate::{IncrementRate, IncrementRateError, Rate}, interpreter::RATE_LIMIT_NAMESPACE}}};
+use crate::{common::{api_key::ApiKey, fallible::Fallible}, helper::redis::{conn, namespace::NAMESPACE_SEPARATOR}, middlewares::{limit::{InculsiveLimit, TimeWindow}, rate_limit::{dsl::increment_rate::{IncrementRate, IncrementRateError, Rate}, interpreter::RATE_LIMIT_NAMESPACE}}};
 
 use super::{EndpointName, RateLimitImpl};
 
@@ -42,7 +42,7 @@ impl ToRedisArgs for RateKey {
 
 #[cfg(test)]
 mod tests {
-    use crate::{common::api_key::ApiKey, helper::redis::modname::{Namespace, NAMESPACE_SEPARATOR}, middlewares::rate_limit::interpreter::{increment_rate::RateKey, EndpointName, RATE_LIMIT_NAMESPACE}};
+    use crate::{common::api_key::ApiKey, helper::redis::namespace::{Namespace, NAMESPACE_SEPARATOR}, middlewares::rate_limit::interpreter::{increment_rate::RateKey, EndpointName, RATE_LIMIT_NAMESPACE}};
 
     #[test]
     fn test_format_key() {

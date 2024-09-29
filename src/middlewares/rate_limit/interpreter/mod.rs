@@ -3,7 +3,7 @@ use std::sync::Arc;
 use redis::Script;
 use scylla::{prepared_statement::PreparedStatement, Session};
 
-use crate::{helper::{error::InitError, redis::{modname::Namespace, Pool}, scylla::prepare}, middlewares::limit::{EndpointName, InculsiveLimit, TimeWindow}};
+use crate::{helper::{error::InitError, redis::{namespace::Namespace, Pool}, scylla::prepare}, middlewares::limit::{EndpointName, InculsiveLimit, TimeWindow}};
 
 mod increment_rate;
 mod rate_limit;
