@@ -15,7 +15,7 @@ pub struct UnrateTagRelationImpl {
 
 impl UnrateTagRelationImpl {
     pub async fn try_new(db: Arc<Session>) -> Fallible<Self, InitError<Self>> {
-        let select_inclusion_or_equivalence = prepare(&db, "SELECT inclusion_or_equivalence, language_group FROM proposed_tag_relations WHERE subtag_id = ? AND supertag_id = ?").await?;
+        let select_inclusion_or_equivalence = prepare(&db, "SELECT inclusion_or_equivalence, language_group FROM tag_relation_proposals WHERE subtag_id = ? AND supertag_id = ?").await?;
 
         let delete_tag_relation_rating_from_account = prepare(&db, "DELETE FROM tag_relation_ratings_by_account WHERE account_id = ? AND subtag_id = ? AND supertag_id = ? AND inclusion_or_equivalence = ?").await?;
 

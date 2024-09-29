@@ -1,4 +1,4 @@
-use crate::{common::{fallible::Fallible, profile::account_id::AccountId, tag::{language_group::LanguageGroup, non_top_tag::NonTopTagId, relation::TagRelation, top_tag::TopTagId}}, endpoints::tag::proposal::propose::dsl::propose::{ProposeTagRelation, ProposeTagRelationError}, helper::scylla::Transactional};
+use crate::{common::{fallible::Fallible, profile::account_id::AccountId, tag::{language_group::LanguageGroup, non_top_tag::NonTopTagId, relation::TagRelation, top_tag::TopTagId}, unixtime::UnixtimeMillis}, endpoints::tag::proposal::propose::dsl::propose::{ProposeTagRelation, ProposeTagRelationError}, helper::scylla::Transactional};
 
 use super::ProposeTagRelationImpl;
 
@@ -28,7 +28,7 @@ impl ProposeTagRelation for ProposeTagRelationImpl {
 
     async fn propose(&self, account_id: AccountId, subtag_id: NonTopTagId, supertag_id: NonTopTagId, relation: TagRelation, language_group: LanguageGroup) -> Fallible<(), ProposeTagRelationError> {
         self.db
-            .execute_unpaged(&self.insert_tag_relation, (subtag_id, supertag_id, relation, language_group))
+            .execute_unpaged(&self.insert_tag_relation, (subtag_id, supertag_id, relation, language_group, account_id, UnixtimeMillis::now()))
             .await
             .applied(ProposeTagRelationError::ProposeFailed, || ProposeTagRelationError::HasAlreadyBeenProposed)?;
 

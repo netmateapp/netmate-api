@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use bb8_redis::{bb8::PooledConnection, RedisConnectionManager};
 use redis::cmd;
 
-use crate::{common::{fallible::Fallible, tag::{non_top_tag::NonTopTagId, tag_id::TagId}}, endpoints::tag::proposal::propose::dsl::validate_topology::{ValidateTopology, ValidateTopologyError}, helper::redis::{connection::conn, namespace::{Namespace, NAMESPACE_SEPARATOR}, namespaces::{SUBTAGS_NAMESPACE, SUPERTAGS_NAMESPACE}}};
+use crate::{common::{fallible::Fallible, tag::{non_top_tag::NonTopTagId, tag_id::TagId}}, endpoints::tag::proposal::propose::dsl::validate_topology::{ValidateTopology, ValidateTopologyError}, helper::redis::{connection::conn, namespace::{Namespace, NAMESPACE_SEPARATOR}, namespaces::{SUB, SUP, TAG_RELATIONS}}};
 
 use super::ProposeTagRelationImpl;
 
@@ -12,7 +12,7 @@ impl ValidateTopology for ProposeTagRelationImpl {
         let mut conn = conn(&self.cache, |e| ValidateTopologyError::IsAcyclicFailed(e.into())).await?;
         
         cmd("ZSCORE")
-            .arg(format!("{}{}{}", SUBTAGS_NAMESPACE, NAMESPACE_SEPARATOR, subtag_id))
+            .arg(format!("{}{}{}{}{}", TAG_RELATIONS, NAMESPACE_SEPARATOR, subtag_id, NAMESPACE_SEPARATOR, SUB))
             .arg(supertag_id)
             .query_async::<Option<()>>(&mut *conn)
             .await
@@ -25,7 +25,7 @@ impl ValidateTopology for ProposeTagRelationImpl {
         
         async fn fetch_related_tags(conn: &mut PooledConnection<'_, RedisConnectionManager>, namespace: Namespace, tag_id: NonTopTagId) -> Fallible<HashSet<TagId>, ValidateTopologyError> {
             cmd("ZRANGE")
-            .arg(format!("{}{}{}", namespace, NAMESPACE_SEPARATOR, tag_id))
+            .arg(format!("{}{}{}{}{}", TAG_RELATIONS, NAMESPACE_SEPARATOR, tag_id, NAMESPACE_SEPARATOR, namespace))
             .arg(0)
             .arg(-1)
             .query_async::<HashSet<TagId>>(&mut **conn)
@@ -33,10 +33,10 @@ impl ValidateTopology for ProposeTagRelationImpl {
             .map_err(|e| ValidateTopologyError::IsEquivalentFailed(e.into()))
         }
 
-        let mut lesser_tag_subtags = fetch_related_tags(&mut conn, SUBTAGS_NAMESPACE, lesser_tag_id).await?;
-        let mut lesser_tag_supertags = fetch_related_tags(&mut conn, SUPERTAGS_NAMESPACE, lesser_tag_id).await?;
-        let mut greater_tag_subtags = fetch_related_tags(&mut conn, SUBTAGS_NAMESPACE, greater_tag_id).await?;
-        let mut greater_tag_supertags = fetch_related_tags(&mut conn, SUPERTAGS_NAMESPACE, greater_tag_id).await?;
+        let mut lesser_tag_subtags = fetch_related_tags(&mut conn, SUB, lesser_tag_id).await?;
+        let mut lesser_tag_supertags = fetch_related_tags(&mut conn, SUP, lesser_tag_id).await?;
+        let mut greater_tag_subtags = fetch_related_tags(&mut conn, SUB, greater_tag_id).await?;
+        let mut greater_tag_supertags = fetch_related_tags(&mut conn, SUP, greater_tag_id).await?;
 
         if lesser_tag_subtags.len() >= greater_tag_subtags.len() {
             std::mem::swap(&mut lesser_tag_subtags, &mut greater_tag_subtags);

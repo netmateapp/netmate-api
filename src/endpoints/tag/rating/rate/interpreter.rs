@@ -15,7 +15,7 @@ pub struct RateTagRelationImpl {
 
 impl RateTagRelationImpl {
     pub async fn try_new(db: Arc<Session>) -> Fallible<Self, InitError<Self>> {
-        let select_inclusion_or_equivalence = prepare(&db, "SELECT inclusion_or_equivalence, language_group FROM proposed_tag_relations WHERE subtag_id = ? AND supertag_id = ?").await?;
+        let select_inclusion_or_equivalence = prepare(&db, "SELECT inclusion_or_equivalence, language_group FROM tag_relation_proposals WHERE subtag_id = ? AND supertag_id = ?").await?;
 
         let insert_tag_relation_rating = prepare(&db, "INSERT INTO tag_relation_rating_by_account (account_id, subtag_id, supertag_id, inclusion_or_equivalence, operation_id) VALUES (?, ?, ?, ?, ?)").await?;
 
