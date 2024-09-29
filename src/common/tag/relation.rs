@@ -6,24 +6,6 @@ use thiserror::Error;
 
 use super::non_top_tag::NonTopTagId;
 
-pub fn validate_tag_relation(subtag_id: NonTopTagId, supertag_id: NonTopTagId, relation: TagRelation) -> Result<(), TagRelationError> {
-    if subtag_id == supertag_id {
-        Err(TagRelationError::CannotRateSameTagRelation)
-    } else if relation == TagRelation::Equivalence && subtag_id > supertag_id {
-        Err(TagRelationError::SubtagIdMustBeSmallerThanSupertagIdInEquivalence)
-    } else {
-        Ok(())
-    }
-}
-
-#[derive(Debug, Error)]
-pub enum TagRelationError {
-    #[error("同じタグ間の関係を評価することはできません")]
-    CannotRateSameTagRelation,
-    #[error("同値関係では`subtag_id`が`supertag_id`より小さくなければなりません")]
-    SubtagIdMustBeSmallerThanSupertagIdInEquivalence,
-}
-
 // タグ関係は包含関係であり、あるタグ間に包含関係が存在する場合、
 // 一方が他方に包含関係を持つか、両者が相互に包含関係を持つかのどちらかである
 // そのためboolで表現できる
@@ -77,6 +59,24 @@ impl FromCqlVal<Option<CqlValue>> for TagRelation {
     fn from_cql(cql_val: Option<CqlValue>) -> Result<Self, FromCqlValError> {
         bool::from_cql(cql_val).map(TagRelation::from)
     }
+}
+
+pub fn validate_tag_relation(subtag_id: NonTopTagId, supertag_id: NonTopTagId, relation: TagRelation) -> Result<(), TagRelationError> {
+    if subtag_id == supertag_id {
+        Err(TagRelationError::CannotRateSameTagRelation)
+    } else if relation == TagRelation::Equivalence && subtag_id > supertag_id {
+        Err(TagRelationError::SubtagIdMustBeSmallerThanSupertagIdInEquivalence)
+    } else {
+        Ok(())
+    }
+}
+
+#[derive(Debug, Error)]
+pub enum TagRelationError {
+    #[error("同じタグ間の関係を評価することはできません")]
+    CannotRateSameTagRelation,
+    #[error("同値関係では`subtag_id`が`supertag_id`より小さくなければなりません")]
+    SubtagIdMustBeSmallerThanSupertagIdInEquivalence,
 }
 
 #[cfg(test)]
