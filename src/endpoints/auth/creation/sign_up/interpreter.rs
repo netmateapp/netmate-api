@@ -3,7 +3,7 @@ use std::{str::FromStr, sync::{Arc, LazyLock}};
 use redis::cmd;
 use scylla::{prepared_statement::PreparedStatement, Session};
 
-use crate::{common::{auth::{one_time_token::OneTimeToken, password::PasswordHash}, email::{address::Email, resend::ResendEmailSender, send::{Body, EmailSender, HtmlContent, NetmateEmail, PlainText, SenderName, Subject}}, fallible::Fallible, profile::{account_id::AccountId, birth_year::BirthYear, language::Language, region::Region}}, endpoints::auth::creation::value::{format_key, format_value}, helper::{error::InitError, redis::{conn, Pool}, scylla::prepare}, translation::{ja, us_en}};
+use crate::{common::{auth::{one_time_token::OneTimeToken, password::PasswordHash}, email::{address::Email, resend::ResendEmailSender, send::{Body, EmailSender, HtmlContent, NetmateEmail, PlainText, SenderName, Subject}}, fallible::Fallible, profile::{account_id::AccountId, birth_year::BirthYear, language::Language, region::Region}}, endpoints::auth::creation::value::{format_key, format_value}, helper::{error::InitError, redis::connection::{conn, Pool}, scylla::prepare}, translation::{ja, us_en}};
 
 use super::dsl::{ApplicationExpirationSeconds, SignUp, SignUpError};
 

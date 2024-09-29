@@ -1,6 +1,6 @@
 use bb8_redis::redis::cmd;
 
-use crate::{common::{fallible::Fallible, profile::account_id::AccountId, session::{refresh_pair_expiration::RefreshPairExpirationSeconds, refresh_token::RefreshToken, session_series::SessionSeries}}, helper::redis::conn, middlewares::{manage_session::dsl::update_refresh_token::{UpdateRefreshToken, UpdateRefreshTokenError}, session::{RefreshPairKey, RefreshPairValue}}};
+use crate::{common::{fallible::Fallible, profile::account_id::AccountId, session::{refresh_pair_expiration::RefreshPairExpirationSeconds, refresh_token::RefreshToken, session_series::SessionSeries}}, helper::redis::connection::conn, middlewares::{manage_session::dsl::update_refresh_token::{UpdateRefreshToken, UpdateRefreshTokenError}, session::{RefreshPairKey, RefreshPairValue}}};
 
 use super::ManageSessionImpl;
 

@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use scylla::{prepared_statement::PreparedStatement, Session};
 
-use crate::helper::{error::InitError, redis::Pool, scylla::prepare};
+use crate::helper::{error::InitError, redis::connection::Pool, scylla::prepare};
 
 use super::dsl::start_session::StartSession;
 

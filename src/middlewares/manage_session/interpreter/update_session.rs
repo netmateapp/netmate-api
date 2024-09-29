@@ -1,6 +1,6 @@
 use redis::cmd;
 
-use crate::{common::{fallible::Fallible, profile::account_id::AccountId, session::{session_expiration::SessionExpirationSeconds, session_id::SessionId}}, helper::redis::conn, middlewares::{manage_session::dsl::update_session::{UpdateSession, UpdateSessionError}, session::SessionIdKey}};
+use crate::{common::{fallible::Fallible, profile::account_id::AccountId, session::{session_expiration::SessionExpirationSeconds, session_id::SessionId}}, helper::redis::connection::conn, middlewares::{manage_session::dsl::update_session::{UpdateSession, UpdateSessionError}, session::SessionIdKey}};
 
 use super::ManageSessionImpl;
 

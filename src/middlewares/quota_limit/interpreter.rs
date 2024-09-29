@@ -3,7 +3,7 @@ use std::sync::Arc;
 use redis::{cmd, Script};
 use scylla::{prepared_statement::PreparedStatement, Session};
 
-use crate::{common::{fallible::Fallible, profile::account_id::AccountId}, helper::{error::InitError, redis::{conn, Pool, namespace::{Namespace, NAMESPACE_SEPARATOR}}, scylla::prepare}, middlewares::limit::{EndpointName, InculsiveLimit, TimeWindow}};
+use crate::{common::{fallible::Fallible, profile::account_id::AccountId}, helper::{error::InitError, redis::{connection::{conn, Pool}, namespace::{Namespace, NAMESPACE_SEPARATOR}}, scylla::prepare}, middlewares::limit::{EndpointName, InculsiveLimit, TimeWindow}};
 
 use super::dsl::{ConsumedQuota, QuotaLimit, QuotaLimitError};
 

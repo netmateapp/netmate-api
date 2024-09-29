@@ -4,7 +4,7 @@ use redis::cmd;
 use thiserror::Error;
 use uuid::Uuid;
 
-use crate::{common::{fallible::Fallible, profile::account_id::AccountId, session::{refresh_token::RefreshToken, session_series::SessionSeries}, uuid::uuid7::Uuid7}, helper::redis::conn, middlewares::{manage_session::dsl::reauthenticate::{ReAuthenticateSession, ReAuthenticateSessionError}, session::{RefreshPairKey, REFRESH_PAIR_VALUE_SEPARATOR}}};
+use crate::{common::{fallible::Fallible, profile::account_id::AccountId, session::{refresh_token::RefreshToken, session_series::SessionSeries}, uuid::uuid7::Uuid7}, helper::redis::connection::conn, middlewares::{manage_session::dsl::reauthenticate::{ReAuthenticateSession, ReAuthenticateSessionError}, session::{RefreshPairKey, REFRESH_PAIR_VALUE_SEPARATOR}}};
 
 use super::ManageSessionImpl;
 

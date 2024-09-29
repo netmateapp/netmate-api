@@ -7,7 +7,7 @@ use tokio::task;
 use tracing::info;
 
 use crate::common::{auth::password::Password, email::address::Email, profile::{birth_year::BirthYear, language::Language, region::Region}};
-use crate::helper::{error::InitError, redis::Pool};
+use crate::helper::{error::InitError, redis::connection::Pool};
 
 use super::dsl::SignUp;
 use super::interpreter::SignUpImpl;

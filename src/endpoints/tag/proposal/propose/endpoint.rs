@@ -7,7 +7,7 @@ use serde::Deserialize;
 use tower::ServiceBuilder;
 use tracing::error;
 
-use crate::{common::{profile::account_id::AccountId, tag::{non_top_tag_id::NonTopTagId, relation::TagRelation}}, helper::{error::InitError, middleware::{quota_limiter, rate_limiter, session_manager}, redis::Pool}, middlewares::limit::TimeUnit};
+use crate::{common::{profile::account_id::AccountId, tag::{non_top_tag_id::NonTopTagId, relation::TagRelation}}, helper::{error::InitError, middleware::{quota_limiter, rate_limiter, session_manager}, redis::connection::Pool}, middlewares::limit::TimeUnit};
 
 use super::{dsl::propose::{ProposeTagRelation, ProposeTagRelationError}, interpreter::ProposeTagRelationImpl};
 

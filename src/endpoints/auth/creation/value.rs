@@ -1,7 +1,5 @@
 use crate::{common::{auth::{one_time_token::OneTimeToken, password::PasswordHash}, email::address::Email, profile::{birth_year::BirthYear, language::Language, region::Region}}, helper::redis::{namespace::Namespace, namespace::NAMESPACE_SEPARATOR}};
 
-const TOKEN_ENTROPY_BITS: usize = 120;
-
 pub const PRE_VERIFICATION_ACCOUNTS_NAMESPACE: Namespace = Namespace::of("pav");
 
 pub const PRE_VERFICATION_ACCOUNTS_VALUE_SEPARATOR: char = '$';

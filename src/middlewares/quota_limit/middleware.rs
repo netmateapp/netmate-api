@@ -6,7 +6,7 @@ use scylla::Session;
 use tokio::pin;
 use tower::{Layer, Service};
 
-use crate::{helper::{error::InitError, redis::Pool}, middlewares::{limit::{EndpointName, TimeWindow}, quota_limit::dsl::{QuotaLimit, QuotaLimitError}}};
+use crate::{helper::{error::InitError, redis::connection::Pool}, middlewares::{limit::{EndpointName, TimeWindow}, quota_limit::dsl::{QuotaLimit, QuotaLimitError}}};
 
 use super::interpreter::QuotaLimitImpl;
 

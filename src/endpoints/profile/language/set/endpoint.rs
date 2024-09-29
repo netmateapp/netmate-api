@@ -8,7 +8,7 @@ use serde::Deserialize;
 use tower::ServiceBuilder;
 use tracing::info;
 
-use crate::{common::{profile::{account_id::AccountId, language::Language}}, helper::{error::InitError, middleware::{rate_limiter, session_manager}, redis::Pool}, middlewares::limit::TimeUnit};
+use crate::{common::profile::{account_id::AccountId, language::Language}, helper::{error::InitError, middleware::{rate_limiter, session_manager}, redis::connection::Pool}, middlewares::limit::TimeUnit};
 
 use super::{dsl::SetLanaguage, interpreter::SetLanguageImpl};
 

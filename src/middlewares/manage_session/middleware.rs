@@ -6,7 +6,7 @@ use scylla::Session;
 use tokio::pin;
 use tower::{Layer, Service};
 
-use crate::{helper::{error::InitError, redis::Pool}, middlewares::manage_session::dsl::manage_session::{ManageSession, ManageSessionError}};
+use crate::{helper::{error::InitError, redis::connection::Pool}, middlewares::manage_session::dsl::manage_session::{ManageSession, ManageSessionError}};
 
 use super::interpreter::ManageSessionImpl;
 
