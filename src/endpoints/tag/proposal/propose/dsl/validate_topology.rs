@@ -31,3 +31,59 @@ pub enum ValidateTopologyError {
     #[error("同値ではありません")]
     IsNotEquivalent,
 }
+
+#[cfg(test)]
+mod tests {
+    use std::sync::LazyLock;
+
+    use crate::{common::{fallible::Fallible, tag::{non_top_tag::NonTopTagId, relation::TagRelation, tag_id::TagId}, uuid::uuid4::Uuid4}, helper::test::mock_uuid};
+
+    use super::{ValidateTopology, ValidateTopologyError};
+
+    struct MockValidateTopology;
+
+    static VALID: LazyLock<NonTopTagId> = LazyLock::new(|| NonTopTagId::try_from(TagId::of(Uuid4::new_unchecked(mock_uuid(0)))).unwrap());
+    static INVALID: LazyLock<NonTopTagId> = LazyLock::new(|| NonTopTagId::try_from(TagId::of(Uuid4::new_unchecked(mock_uuid(1)))).unwrap());
+
+    impl ValidateTopology for MockValidateTopology {
+        async fn is_acyclic(&self, subtag_id: NonTopTagId, _: NonTopTagId) -> Fallible<bool, ValidateTopologyError> {
+            if subtag_id == *VALID {
+                Ok(true)
+            } else {
+                Ok(false)
+            }
+        }
+
+        async fn is_equivalent(&self, lesser_tag_id: NonTopTagId, _: NonTopTagId) -> Fallible<bool, ValidateTopologyError> {
+            if lesser_tag_id == *VALID {
+                Ok(true)
+            } else {
+                Ok(false)
+            }
+        }
+    }
+
+    async fn test_dsl(subtag_id: NonTopTagId, relation: TagRelation) -> Fallible<(), ValidateTopologyError> {
+        MockValidateTopology.validate_topology(subtag_id, NonTopTagId::gen(), relation).await
+    }
+
+    #[tokio::test]
+    async fn acyclic() {
+        assert!(test_dsl(*VALID, TagRelation::Inclusion).await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn cyclic() {
+        assert!(test_dsl(*INVALID, TagRelation::Inclusion).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn equivalent() {
+        assert!(test_dsl(*VALID, TagRelation::Equivalence).await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn unequivalent() {
+        assert!(test_dsl(*INVALID, TagRelation::Equivalence).await.is_err());
+    }
+}
