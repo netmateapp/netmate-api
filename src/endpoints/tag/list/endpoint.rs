@@ -39,7 +39,7 @@ pub async fn handler(
 
                 Ok((
                     [(CACHE_CONTROL, CACHE_CONTROL_VALUE)],
-                    Json(ResultData { tags })
+                    Json(Data { tags })
                 ).into_response())
             } else {
                 if let Some(if_none_match) = headers.get(IF_NONE_MATCH) {
@@ -52,7 +52,7 @@ pub async fn handler(
 
                 Ok((
                     [(CACHE_CONTROL, CACHE_CONTROL_VALUE), (ETAG, create_etag(&to_bytes(&tags)))],
-                    Json(ResultData { tags })
+                    Json(Data { tags })
                 ).into_response())
             }
         },
@@ -71,7 +71,7 @@ pub async fn handler(
 }
 
 #[derive(Serialize)]
-pub struct ResultData {
+pub struct Data {
     tags: Vec<TagInfo>,
 }
 
