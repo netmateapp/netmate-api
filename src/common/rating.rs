@@ -4,20 +4,17 @@ use thiserror::Error;
 
 // 各評価と数値の対応は普遍的であるため、構成要素の一部として評価を含む値と互換性がある
 // テーブルの列に対応した構造体を作成する必要はなく、そのまま`Rating`を使用できる
+// 評価値と対応させるため、低い評価を0、高い評価を2とする
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum Rating {
-    Low,
-    Middle,
-    High,
+    Low = 0,
+    Middle = 1,
+    High = 2,
 }
 
 impl From<Rating> for u8 {
     fn from(value: Rating) -> Self {
-        match value {
-            Rating::Low => 0,
-            Rating::Middle => 1,
-            Rating::High => 2,
-        }
+        value as u8
     }
 }
 
