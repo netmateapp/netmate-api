@@ -1,10 +1,10 @@
 use serde::{ser::SerializeStruct, Serialize};
 use thiserror::Error;
 
-use crate::common::{fallible::Fallible, page::ZeroBasedPage, tag::{relationship::TagRelationType, tag_id::TagId, tag_name::TagName}};
+use crate::common::{fallible::Fallible, page::ZeroBasedPage, tag::{hierarchy::TagHierarchy, tag_id::TagId, tag_name::TagName}};
 
 pub(crate) trait ListRelatedTags {
-    async fn list_related_tags(&self, tag_id: TagId, relationship: TagRelationType, page: ZeroBasedPage) -> Fallible<Vec<TagInfo>, ListRelatedTagsError>;
+    async fn list_related_tags(&self, tag_id: TagId, relationship: TagHierarchy, page: ZeroBasedPage) -> Fallible<Vec<TagInfo>, ListRelatedTagsError>;
 }
 
 #[derive(Debug, Error)]

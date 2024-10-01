@@ -3,7 +3,7 @@ use std::{str::FromStr, sync::Arc};
 use redis::cmd;
 use uuid::Uuid;
 
-use crate::{common::{fallible::Fallible, page::ZeroBasedPage, tag::{redis_tag_info::RedisTagInfo, relationship::TagRelationType, tag_id::TagId, tag_name::TagName}, uuid::uuid4::Uuid4}, endpoints::tag::list::dsl::TagInfo, helper::{error::InitError, redis::{connection::{conn, Pool}, namespace::NAMESPACE_SEPARATOR, namespaces::{EQUIVALENT, SUB, SUPER, TAG_LIST}}}};
+use crate::{common::{fallible::Fallible, page::ZeroBasedPage, tag::{redis_tag_info::RedisTagInfo, hierarchy::TagHierarchy, tag_id::TagId, tag_name::TagName}, uuid::uuid4::Uuid4}, endpoints::tag::list::dsl::TagInfo, helper::{error::InitError, redis::{connection::{conn, Pool}, namespace::NAMESPACE_SEPARATOR, namespaces::{EQUIVALENT, SUB, SUPER, TAG_LIST}}}};
 
 use super::dsl::{ListRelatedTags, ListRelatedTagsError};
 
@@ -18,11 +18,11 @@ impl ListRelatedTagsImpl {
 }
 
 impl ListRelatedTags for ListRelatedTagsImpl {
-    async fn list_related_tags(&self, tag_id: TagId, relationship: TagRelationType, page: ZeroBasedPage) -> Fallible<Vec<TagInfo>, ListRelatedTagsError> {
+    async fn list_related_tags(&self, tag_id: TagId, relationship: TagHierarchy, page: ZeroBasedPage) -> Fallible<Vec<TagInfo>, ListRelatedTagsError> {
         let namespace = match relationship {
-            TagRelationType::Super => SUPER,
-            TagRelationType::Equivalent => EQUIVALENT,
-            TagRelationType::Sub => SUB,
+            TagHierarchy::Super => SUPER,
+            TagHierarchy::Equivalent => EQUIVALENT,
+            TagHierarchy::Sub => SUB,
         };
 
         const PAGE_SIZE: u32 = 10;

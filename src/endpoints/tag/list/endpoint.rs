@@ -8,7 +8,7 @@ use serde::Serialize;
 use tower::ServiceBuilder;
 use tracing::error;
 
-use crate::{common::{page::ZeroBasedPage, tag::{relationship::TagRelationType, tag_id::TagId}}, helper::{cache::{check_if_none_match, create_etag}, error::InitError, middleware::rate_limiter, redis::connection::Pool}, middlewares::limit::TimeUnit};
+use crate::{common::{page::ZeroBasedPage, tag::{hierarchy::TagHierarchy, tag_id::TagId}}, helper::{cache::{check_if_none_match, create_etag}, error::InitError, middleware::rate_limiter, redis::connection::Pool}, middlewares::limit::TimeUnit};
 
 use super::{dsl::{ListRelatedTags, TagInfo}, interpreter::ListRelatedTagsImpl};
 
@@ -29,7 +29,7 @@ pub async fn endpoint(db: Arc<Session>, cache: Arc<Pool>) -> Result<Router, Init
 #[debug_handler]
 pub async fn handler(
     State(routine): State<Arc<ListRelatedTagsImpl>>,
-    Path((tag_id, relation, page, is_signed_in)): Path<(TagId, TagRelationType, ZeroBasedPage, bool)>,
+    Path((tag_id, relation, page, is_signed_in)): Path<(TagId, TagHierarchy, ZeroBasedPage, bool)>,
     headers: HeaderMap
 ) -> Result<Response, StatusCode> {
     match routine.list_related_tags(tag_id, relation, page).await {
