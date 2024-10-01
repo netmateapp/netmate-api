@@ -29,10 +29,10 @@ pub async fn endpoint(db: Arc<Session>, cache: Arc<Pool>) -> Result<Router, Init
 #[debug_handler]
 pub async fn handler(
     State(routine): State<Arc<ListRelatedTagsImpl>>,
-    Path((tag_id, relation, page, is_signed_in)): Path<(TagId, TagHierarchy, ZeroBasedPage, bool)>,
+    Path((tag_id, hierarchy, page, is_signed_in)): Path<(TagId, TagHierarchy, ZeroBasedPage, bool)>,
     headers: HeaderMap
 ) -> Result<Response, StatusCode> {
-    match routine.list_related_tags(tag_id, relation, page).await {
+    match routine.list_related_tags(tag_id, hierarchy, page).await {
         Ok(tags) => {
             if is_signed_in {
                 const CACHE_CONTROL_VALUE: HeaderValue = HeaderValue::from_static("maxage=5");
@@ -60,7 +60,7 @@ pub async fn handler(
             error!(
                 error = %e,
                 tag_id = %tag_id,
-                relation = ?relation,
+                relation = ?hierarchy,
                 page = %page,
                 is_signed_in = %is_signed_in,
                 "タグリストの取得に失敗しました"
