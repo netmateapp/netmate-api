@@ -12,7 +12,7 @@ pub struct WithdrawTagRelationProposalImpl {
     cache: Arc<Pool>,
     select_operation_id: Arc<PreparedStatement>,
     select_is_status_calculated: Arc<PreparedStatement>,
-    delete_proposer_flag: Arc<PreparedStatement>,
+    delete_operation_id_proposed: Arc<PreparedStatement>,
     delete_proposal: Arc<PreparedStatement>,
     delete_from_hierarchical_tag_list: Arc<PreparedStatement>,
     remove_proposals_from_hierarchical_tag_lists: Arc<Script>
@@ -24,7 +24,7 @@ impl WithdrawTagRelationProposalImpl {
 
         let select_is_status_calculated = prepare(&db, "SELECT is_status_calculated FROM hierarchical_tag_lists WHERE tag_id = ? AND hierarchy = ? AND related_tag_id = ?").await?;
 
-        let delete_proposer_flag = prepare(&db, "DELETE FROM tag_relation_ratings_by_account WHERE account_id = ? AND subtag_id = ? AND supertag_id = ? AND relation = ?").await?;
+        let delete_operation_id_proposed = prepare(&db, "DELETE FROM tag_relation_ratings_by_account WHERE account_id = ? AND subtag_id = ? AND supertag_id = ? AND relation = ?").await?;
 
         let delete_proposal = prepare(&db, "DELETE FROM tag_relation_proposals WHERE account_id = ? AND subtag_id = ? AND supertag_id = ? AND relation = ?").await?;
 
@@ -37,7 +37,7 @@ impl WithdrawTagRelationProposalImpl {
             cache,
             select_operation_id,
             select_is_status_calculated,
-            delete_proposer_flag,
+            delete_operation_id_proposed,
             delete_proposal,
             delete_from_hierarchical_tag_list,
             remove_proposals_from_hierarchical_tag_lists
@@ -68,7 +68,7 @@ impl WithdrawTagRelationProposal for WithdrawTagRelationProposalImpl {
 
     async fn deflag_is_proposer(&self, account_id: AccountId, subtag_id: NonTopTagId, supertag_id: NonTopTagId, relation: TagRelation) -> Fallible<(), WithdrawTagRelationProposalError> {
         self.db
-            .execute_unpaged(&self.delete_proposer_flag, (account_id, subtag_id, supertag_id, relation))
+            .execute_unpaged(&self.delete_operation_id_proposed, (account_id, subtag_id, supertag_id, relation))
             .await
             .map_err(|e| WithdrawTagRelationProposalError::DeflagIsProposerFailed(e.into()))?;
 
