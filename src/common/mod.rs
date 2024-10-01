@@ -5,6 +5,7 @@ pub mod cycle;
 pub mod email;
 pub mod fallible;
 pub mod handle;
+pub mod page;
 pub mod profile;
 pub mod rating;
 pub mod session;
