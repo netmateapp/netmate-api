@@ -4,19 +4,24 @@ use axum::{extract::{ConnectInfo, State}, http::StatusCode, response::IntoRespon
 use scylla::Session;
 use serde::Deserialize;
 use tokio::task;
+use tower::ServiceBuilder;
 use tracing::info;
 
-use crate::common::{auth::password::Password, email::address::Email, profile::{birth_year::BirthYear, language::Language, region::Region}};
+use crate::{common::{auth::password::Password, email::address::Email, profile::{birth_year::BirthYear, language::Language, region::Region}}, helper::middleware::rate_limiter, middlewares::limit::TimeUnit};
 use crate::helper::{error::InitError, redis::connection::Pool};
 
 use super::dsl::SignUp;
 use super::interpreter::SignUpImpl;
 
 pub async fn endpoint(db: Arc<Session>, cache: Arc<Pool>) -> Result<Router, InitError<SignUpImpl>> {
+    let services = ServiceBuilder::new()
+        .layer(rate_limiter(db.clone(), cache.clone(), "sigup", 5, 6, TimeUnit::HOURS).await?);
+
     let sign_up = SignUpImpl::try_new(db, cache).await?;
 
     let router = Router::new()
         .route("/sign_up", post(handler))
+        .layer(services)
         .with_state(Arc::new(sign_up));
 
     Ok(router)
