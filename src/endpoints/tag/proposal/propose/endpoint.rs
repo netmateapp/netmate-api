@@ -20,7 +20,7 @@ pub async fn endpoint(db: Arc<Session>, cache: Arc<Pool>) -> Result<Router, Init
     let interpreter = ProposeTagRelationImpl::try_new(db, cache).await?;
 
     let router = Router::new()
-        .route("/", post(handler))
+        .route("/proposals", post(handler))
         .layer(services)
         .with_state(Arc::new(interpreter));
 
