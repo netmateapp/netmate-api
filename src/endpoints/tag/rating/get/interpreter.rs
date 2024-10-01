@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use scylla::{prepared_statement::PreparedStatement, Session};
 
-use crate::{common::{fallible::Fallible, profile::account_id::AccountId, tag::{hierarchy::TagHierarchy, non_top_tag::NonTopTagId, rating_operation::RatingOperation, relation::TagRelation}}, helper::{error::InitError, scylla::prepare}};
+use crate::{common::{fallible::Fallible, profile::account_id::AccountId, tag::{hierarchy::TagHierarchy, non_top_tag::NonTopTagId, proposal_operation::ProposalOperation, relation::TagRelation}}, helper::{error::InitError, scylla::prepare}};
 
 use super::dsl::{GetTagRelationRating, GetTagRelationRatingError};
 
@@ -31,12 +31,12 @@ impl GetTagRelationRatingImpl {
 }
 
 impl GetTagRelationRating for GetTagRelationRatingImpl {
-    async fn fetch_tag_relation_rating_operation(&self, account_id: AccountId, subtag_id: NonTopTagId, supertag_id: NonTopTagId, relation: TagRelation) -> Fallible<Option<RatingOperation>, GetTagRelationRatingError> {
+    async fn fetch_tag_relation_rating_operation(&self, account_id: AccountId, subtag_id: NonTopTagId, supertag_id: NonTopTagId, relation: TagRelation) -> Fallible<Option<ProposalOperation>, GetTagRelationRatingError> {
         self.db
             .execute_unpaged(&self.select_operation_id, (account_id, subtag_id, supertag_id, relation))
             .await
             .map_err(|e| GetTagRelationRatingError::FetchTagRelationRatingOperationFailed(e.into()))?
-            .maybe_first_row_typed::<(RatingOperation, )>()
+            .maybe_first_row_typed::<(ProposalOperation, )>()
             .map_err(|e| GetTagRelationRatingError::FetchTagRelationRatingOperationFailed(e.into()))
             .map(|o| o.map(|(operation, )| operation))
     }
