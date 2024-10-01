@@ -3,15 +3,14 @@ use redis::{FromRedisValue, RedisResult, RedisWrite, ToRedisArgs};
 pub struct RedisTagInfo(u32);
 
 impl RedisTagInfo {
-    pub fn construct(order: TagListOrder, ratings_sum: u32, is_proposal: bool, is_stable: bool, is_status_calculated: bool) -> Self {
+    pub fn construct(order: TagListOrder, ratings_sum: u32, is_proposal: bool, is_stable: bool) -> Self {
         let order_bits = (order as u32 & 0b11) << 30;          // 上位2ビット
-        let ratings_sum_bits = (ratings_sum & 0x07FFFFFF) << 3; // 次の27ビット
-        let is_proposal_bit = (is_proposal as u32 & 0b1) << 2;  // ビット2
-        let is_stable_bit = (is_stable as u32 & 0b1) << 1;          // ビット1
-        let is_status_calculated_bit = is_status_calculated as u32 & 0b1; // ビット0
+        let ratings_sum_bits = (ratings_sum & 0x0FFFFFFF) << 2; // 次の28ビット
+        let is_proposal_bit = (is_proposal as u32 & 0b1) << 1;  // ビット1
+        let is_stable_bit = is_stable as u32 & 0b1;          // ビット0
 
         // 全てのビットを結合
-        let value = order_bits | ratings_sum_bits | is_proposal_bit | is_stable_bit | is_status_calculated_bit;
+        let value = order_bits | ratings_sum_bits | is_proposal_bit | is_stable_bit;
 
         Self(value)
     }
@@ -20,6 +19,7 @@ impl RedisTagInfo {
         self.0
     }
 
+    /// `order` フィールドを取得します。
     pub fn order(&self) -> TagListOrder {
         // 上位2ビットを取得
         let order_bits = (self.0 >> 30) & 0b11;
@@ -31,22 +31,20 @@ impl RedisTagInfo {
         }
     }
 
+    /// `ratings_sum` フィールドを取得します。
     pub fn ratings_sum(&self) -> u32 {
-        // ビット29-3を取得
-        (self.0 >> 3) & 0x07FFFFFF
+        // ビット29-2を取得
+        (self.0 >> 2) & 0x0FFFFFFF
     }
 
+    /// `is_proposal` フィールドを取得します。
     pub fn is_proposal(&self) -> bool {
-        // ビット2を取得
-        ((self.0 >> 2) & 0b1) != 0
-    }
-
-    pub fn is_stable(&self) -> bool {
         // ビット1を取得
         ((self.0 >> 1) & 0b1) != 0
     }
 
-    pub fn is_status_calculated(&self) -> bool {
+    /// `is_stable` フィールドを取得します。
+    pub fn is_stable(&self) -> bool {
         // ビット0を取得
         (self.0 & 0b1) != 0
     }
@@ -78,19 +76,17 @@ mod tests {
     #[test]
     fn test_construct_and_getters() {
         let order = TagListOrder::NormalUnstable;
-        let ratings_sum = 0x0ABCDE; // 27ビット以内
+        let ratings_sum = 0x0ABCDE; // 28ビット以内
         let is_proposal = true;
         let is_stable = false;
-        let is_status_calculated = true;
 
-        let tag_info = RedisTagInfo::construct(order, ratings_sum, is_proposal, is_stable, is_status_calculated);
+        let tag_info = RedisTagInfo::construct(order, ratings_sum, is_proposal, is_stable);
 
         // 構造体の値を直接確認
         let expected_value = ((order as u32 & 0b11) << 30)
-            | ((ratings_sum & 0x07FFFFFF) << 3)
-            | ((is_proposal as u32 & 0b1) << 2)
-            | ((is_stable as u32 & 0b1) << 1)
-            | (is_status_calculated as u32 & 0b1);
+            | ((ratings_sum & 0x0FFFFFFF) << 2)
+            | ((is_proposal as u32 & 0b1) << 1)
+            | (is_stable as u32 & 0b1);
         assert_eq!(tag_info.value(), expected_value);
 
         // ゲッターメソッドをテスト
@@ -98,24 +94,21 @@ mod tests {
         assert_eq!(tag_info.ratings_sum(), ratings_sum);
         assert_eq!(tag_info.is_proposal(), is_proposal);
         assert_eq!(tag_info.is_stable(), is_stable);
-        assert_eq!(tag_info.is_status_calculated(), is_status_calculated);
     }
 
     #[test]
     fn test_max_values() {
         let order = TagListOrder::ReachableTagOrValidProposalOrUncalcProposal;
-        let ratings_sum = 0x07FFFFFF; // 最大27ビット
+        let ratings_sum = 0x0FFFFFFF; // 最大28ビット
         let is_proposal = true;
         let is_stable = true;
-        let is_status_calculated = true;
 
-        let tag_info = RedisTagInfo::construct(order, ratings_sum, is_proposal, is_stable, is_status_calculated);
+        let tag_info = RedisTagInfo::construct(order, ratings_sum, is_proposal, is_stable);
 
         assert_eq!(tag_info.order(), order);
         assert_eq!(tag_info.ratings_sum(), ratings_sum);
         assert_eq!(tag_info.is_proposal(), is_proposal);
         assert_eq!(tag_info.is_stable(), is_stable);
-        assert_eq!(tag_info.is_status_calculated(), is_status_calculated);
     }
 
     #[test]
@@ -124,15 +117,13 @@ mod tests {
         let ratings_sum = 0;
         let is_proposal = false;
         let is_stable = false;
-        let is_status_calculated = false;
 
-        let tag_info = RedisTagInfo::construct(order, ratings_sum, is_proposal, is_stable, is_status_calculated);
+        let tag_info = RedisTagInfo::construct(order, ratings_sum, is_proposal, is_stable);
 
         assert_eq!(tag_info.order(), order);
         assert_eq!(tag_info.ratings_sum(), ratings_sum);
         assert_eq!(tag_info.is_proposal(), is_proposal);
         assert_eq!(tag_info.is_stable(), is_stable);
-        assert_eq!(tag_info.is_status_calculated(), is_status_calculated);
     }
 
     #[test]
