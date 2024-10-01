@@ -14,7 +14,7 @@ use super::{dsl::{ListRelatedTags, TagInfo}, interpreter::ListRelatedTagsImpl};
 
 pub async fn endpoint(db: Arc<Session>, cache: Arc<Pool>) -> Result<Router, InitError<ListRelatedTagsImpl>> {
     let services = ServiceBuilder::new()
-        .layer(rate_limiter(db, cache.clone(), "urtrl", 90, 15, TimeUnit::MINS).await?);
+        .layer(rate_limiter(db, cache.clone(), "lstrl", 90, 15, TimeUnit::MINS).await?);
 
     let interpreter = ListRelatedTagsImpl::try_new(cache).await?;
 
