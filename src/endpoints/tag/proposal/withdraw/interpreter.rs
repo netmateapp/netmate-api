@@ -56,17 +56,22 @@ impl WithdrawTagRelationProposal for WithdrawTagRelationProposalImpl {
             .map(|(operation_id, )| operation_id == PROPOSER_FLAG)
     }
 
-    async fn is_status_calculated(&self, subtag_id: NonTopTagId, supertag_id: NonTopTagId, hierarchy: TagHierarchy) -> Fallible<bool, WithdrawTagRelationProposalError> {
+    async fn is_status_uncalculated(&self, subtag_id: NonTopTagId, supertag_id: NonTopTagId, relation: TagRelation) -> Fallible<bool, WithdrawTagRelationProposalError> {
+        let hierarchy = match relation {
+            TagRelation::Inclusion => TagHierarchy::Super,
+            TagRelation::Equivalence => TagHierarchy::Equivalent
+        };
+        
         self.db
             .execute_unpaged(&self.select_is_status_calculated, (subtag_id, hierarchy, supertag_id))
             .await
-            .map_err(|e| WithdrawTagRelationProposalError::IsStatusCalculatedFailed(e.into()))?
+            .map_err(|e| WithdrawTagRelationProposalError::IsStatusUnalculatedFailed(e.into()))?
             .first_row_typed::<(bool, )>()
-            .map_err(|e| WithdrawTagRelationProposalError::IsStatusCalculatedFailed(e.into()))
-            .map(|(is_status_calculated, )| is_status_calculated)
+            .map_err(|e| WithdrawTagRelationProposalError::IsStatusUnalculatedFailed(e.into()))
+            .map(|(is_status_calculated, )| !is_status_calculated)
     }
 
-    async fn deflag_is_proposer(&self, account_id: AccountId, subtag_id: NonTopTagId, supertag_id: NonTopTagId, relation: TagRelation) -> Fallible<(), WithdrawTagRelationProposalError> {
+    async fn delete_proposal_operation(&self, account_id: AccountId, subtag_id: NonTopTagId, supertag_id: NonTopTagId, relation: TagRelation) -> Fallible<(), WithdrawTagRelationProposalError> {
         self.db
             .execute_unpaged(&self.delete_operation_id_proposed, (account_id, subtag_id, supertag_id, relation))
             .await
