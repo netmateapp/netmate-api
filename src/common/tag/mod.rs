@@ -1,5 +1,6 @@
 pub mod language_group;
 pub mod non_top_tag;
+pub mod rating_operation;
 pub mod redis_tag_info;
 pub mod relation;
 pub mod hierarchy;
