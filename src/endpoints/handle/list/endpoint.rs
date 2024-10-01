@@ -2,13 +2,13 @@ use std::sync::Arc;
 
 use axum::{extract::State, response::{IntoResponse, Response}, routing::get, Extension, Json, Router};
 use axum_macros::debug_handler;
-use http::{header::CACHE_CONTROL, HeaderValue, StatusCode};
+use http::{header::{CACHE_CONTROL, ETAG}, HeaderMap, HeaderValue, StatusCode};
 use scylla::Session;
 use serde::Serialize;
 use tower::ServiceBuilder;
 use tracing::error;
 
-use crate::{common::{handle::{id::HandleId, name::HandleName}, profile::account_id::AccountId}, helper::{error::InitError, middleware::{rate_limiter, session_manager}, redis::connection::Pool}, middlewares::limit::TimeUnit};
+use crate::{common::{handle::{id::HandleId, name::HandleName}, profile::account_id::AccountId}, helper::{cache::{check_if_none_match, create_etag}, error::InitError, middleware::{rate_limiter, session_manager}, redis::connection::Pool}, middlewares::limit::TimeUnit};
 
 use super::{dsl::ListHandles, interpreter::ListHandlesImpl};
 
@@ -31,6 +31,7 @@ pub async fn endpoint(db: Arc<Session>, cache: Arc<Pool>) -> Result<Router, Init
 pub async fn handler(
     State(routine): State<Arc<ListHandlesImpl>>,
     Extension(account_id): Extension<AccountId>,
+    headers: HeaderMap,
 ) -> Result<Response, StatusCode> {
     match routine.list_handles(account_id).await {
         Ok(handles) => {
@@ -41,12 +42,18 @@ pub async fn handler(
                 })
                 .collect();
 
+            if let Some(if_none_match) = headers.get("if-none-match") {
+                if check_if_none_match(&to_bytes(&handles), if_none_match) {
+                    return Ok(StatusCode::NOT_MODIFIED.into_response());
+                }
+            }
+
             const CACHE_CONTROL_VALUE: HeaderValue = HeaderValue::from_static("private, max-age=3600, must-revalidate");
 
-            // ETagを追加
+            let etag_value = create_etag(&to_bytes(&handles));
 
             Ok((
-                [(CACHE_CONTROL, CACHE_CONTROL_VALUE)],
+                [(CACHE_CONTROL, CACHE_CONTROL_VALUE), (ETAG, etag_value)],
                 Json(Body { handles })
             ).into_response())
         },
@@ -63,6 +70,19 @@ pub async fn handler(
 #[derive(Serialize)]
 pub struct Body {
     handles: Vec<Handle>,
+}
+
+pub fn to_bytes(handles: &Vec<Handle>) -> Vec<u8> {
+    let mut bytes = Vec::new();
+
+    for handle in handles {
+        bytes.extend(handle.id.value().value().to_bytes_le());
+        if let Some(name) = &handle.name {
+            bytes.extend(name.value().as_bytes());
+        }
+    }
+
+    bytes
 }
 
 #[derive(Serialize)]

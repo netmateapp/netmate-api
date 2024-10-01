@@ -15,5 +15,3 @@ tag/propose/intepreter/validate_topology
 → テストも必要そう
 
 tag/list/interpreterにunwrap()が沢山
-
-**重要**: handle/list, のETagが追加されていない
