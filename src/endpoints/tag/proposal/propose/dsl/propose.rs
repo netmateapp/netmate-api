@@ -5,6 +5,7 @@ use crate::common::{fallible::Fallible, profile::account_id::AccountId, tag::{la
 use super::{update_tag_list::{UpdateTagRelationList, UpdateTagRelationListError}, validate_topology::{ValidateTopology, ValidateTopologyError}};
 
 pub(crate) trait ProposeTagRelation {
+    // 引数に渡されるIDのタグは、存在することが保証されていない
     async fn propose_tag_relation(&self, account_id: AccountId, subtag_id: NonTopTagId, supertag_id: NonTopTagId, relation: TagRelation) -> Fallible<(), ProposeTagRelationError>
     where
         Self: ValidateTopology + UpdateTagRelationList
