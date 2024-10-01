@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{fmt::{self, Display}, str::FromStr};
 
 use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::{ColumnType, CqlValue}, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
 use thiserror::Error;
@@ -24,6 +24,12 @@ impl FromStr for TagName {
         } else {
             Err(ParseTagNameError)
         }
+    }
+}
+
+impl Display for TagName {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.value())
     }
 }
 
