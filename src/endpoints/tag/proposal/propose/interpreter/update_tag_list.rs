@@ -1,9 +1,9 @@
-use crate::{common::{fallible::Fallible, tag::{non_top_tag::NonTopTagId, redis_tag_info::{RedisTagInfo, TagListOrder}, tag_name::TagName}}, endpoints::tag::proposal::propose::dsl::update_tag_list::{UpdateTagRelationList, UpdateTagRelationListError}, helper::redis::{connection::conn, namespace::NAMESPACE_SEPARATOR, namespaces::{EQUIVALENT, SUB, SUPER, TAG_LIST}}};
+use crate::{common::{fallible::Fallible, tag::{non_top_tag::NonTopTagId, redis_tag_info::{RedisTagInfo, TagListOrder}, tag_name::TagName}}, endpoints::tag::proposal::propose::dsl::update_tag_list::{AddRelationToHierarchicalTagList, UpdateTagRelationListError}, helper::redis::{connection::conn, namespace::NAMESPACE_SEPARATOR, namespaces::{EQUIVALENT, SUB, SUPER, TAG_LIST}}};
 
 use super::ProposeTagRelationImpl;
 
-impl UpdateTagRelationList for ProposeTagRelationImpl {
-    async fn update_inclusion_relation_list(&self, subtag_id: NonTopTagId, subtag_name: TagName, supertag_id: NonTopTagId, supertag_name: TagName) -> Fallible<(), UpdateTagRelationListError> {
+impl AddRelationToHierarchicalTagList for ProposeTagRelationImpl {
+    async fn add_inclusion_relation(&self, subtag_id: NonTopTagId, subtag_name: TagName, supertag_id: NonTopTagId, supertag_name: TagName) -> Fallible<(), UpdateTagRelationListError> {
         let mut conn = conn(&self.cache, |e| UpdateTagRelationListError::UpdateInclusionRelationListFailed(e.into())).await?;
         
         // タグリスト用のRedisデータに未安定の提案として追加
@@ -25,7 +25,7 @@ impl UpdateTagRelationList for ProposeTagRelationImpl {
             .map_err(|e| UpdateTagRelationListError::UpdateInclusionRelationListFailed(e.into()))
     }
 
-    async fn update_equivalence_relation_list(&self, lesser_tag_id: NonTopTagId, lesser_tag_name: TagName, greater_tag_id: NonTopTagId, greater_tag_name: TagName) -> Fallible<(), UpdateTagRelationListError> {
+    async fn add_equivalence_relation(&self, lesser_tag_id: NonTopTagId, lesser_tag_name: TagName, greater_tag_id: NonTopTagId, greater_tag_name: TagName) -> Fallible<(), UpdateTagRelationListError> {
         let mut conn = conn(&self.cache, |e| UpdateTagRelationListError::UpdateInclusionRelationListFailed(e.into())).await?;
         
         // タグリスト用のRedisデータに未安定の提案として追加

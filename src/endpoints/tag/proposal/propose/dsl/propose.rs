@@ -2,13 +2,13 @@ use thiserror::Error;
 
 use crate::common::{fallible::Fallible, profile::account_id::AccountId, tag::{language_group::LanguageGroup, non_top_tag::NonTopTagId, relation::{validate_tag_relation, TagRelation}, tag_name::TagName}};
 
-use super::{update_tag_list::{UpdateTagRelationList, UpdateTagRelationListError}, validate_topology::{ValidateTopology, ValidateTopologyError}};
+use super::{update_tag_list::{AddRelationToHierarchicalTagList, UpdateTagRelationListError}, validate_topology::{ValidateTopology, ValidateTopologyError}};
 
 pub(crate) trait ProposeTagRelation {
     // 引数に渡されるIDのタグは、存在することが保証されていない
     async fn propose_tag_relation(&self, account_id: AccountId, subtag_id: NonTopTagId, supertag_id: NonTopTagId, relation: TagRelation) -> Fallible<(), ProposeTagRelationError>
     where
-        Self: ValidateTopology + UpdateTagRelationList
+        Self: ValidateTopology + AddRelationToHierarchicalTagList
     {
         match validate_tag_relation(subtag_id, supertag_id, relation) {
             Ok(()) => {
@@ -25,7 +25,7 @@ pub(crate) trait ProposeTagRelation {
                     if subtag_language_group == supertag_language_group {
                         self.propose(account_id, subtag_id, supertag_id, relation, subtag_language_group).await?;
 
-                        self.update_tag_relation_list(subtag_id, subtag_name, supertag_id, supertag_name, relation)
+                        self.add_relation_to_hierarchical_tag_list(subtag_id, subtag_name, supertag_id, supertag_name, relation)
                             .await
                             .map_err(ProposeTagRelationError::UpdateTagRelationListFailed)
                     } else {
