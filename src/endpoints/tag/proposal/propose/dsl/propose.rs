@@ -20,9 +20,9 @@ pub(crate) trait ProposeTagRelation {
                     let (supertag_language_group, supertag_name) = self.get_language_group_and_tag_name(supertag_id).await?;
     
                     if subtag_language_group == supertag_language_group {
-                        let _ = self.propose(account_id, subtag_id, supertag_id, relation, subtag_language_group).await?;
+                        self.propose(account_id, subtag_id, supertag_id, relation, subtag_language_group).await?;
 
-                        self.update_tag_relation_list(subtag_id, subtag_name, supertag_id, supertag_name, subtag_language_group, relation)
+                        self.update_tag_relation_list(subtag_id, subtag_name, supertag_id, supertag_name, relation)
                             .await
                             .map_err(|e| ProposeTagRelationError::UpdateTagRelationListFailed(e.into()))
                     } else {
