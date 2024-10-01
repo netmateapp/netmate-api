@@ -15,7 +15,7 @@ pub struct RateTagRelationImpl {
 
 impl RateTagRelationImpl {
     pub async fn try_new(db: Arc<Session>) -> Fallible<Self, InitError<Self>> {
-        let select_inclusion_or_equivalence = prepare(&db, "SELECT inclusion_or_equivalence, language_group FROM tag_relation_proposals WHERE subtag_id = ? AND supertag_id = ?").await?;
+        let select_inclusion_or_equivalence = prepare(&db, "SELECT language_group FROM tag_relation_proposals WHERE subtag_id = ? AND supertag_id = ? AND inclusion_or_equivalence = ?").await?;
 
         let insert_tag_relation_rating = prepare(&db, "INSERT INTO tag_relation_rating_by_account (account_id, subtag_id, supertag_id, inclusion_or_equivalence, operation_id) VALUES (?, ?, ?, ?, ?)").await?;
 
@@ -27,17 +27,18 @@ impl RateTagRelationImpl {
 
 impl RateTagRelation for RateTagRelationImpl {
     // 提案は撤回される可能性があるため、キャッシュできない
-    async fn fetch_tag_relation_proposed(&self, subtag_id: NonTopTagId, supertag_id: NonTopTagId) -> Fallible<Option<(TagRelation, LanguageGroup)>, RateTagRelationError> {
+    async fn fetch_tag_relation_proposed(&self, subtag_id: NonTopTagId, supertag_id: NonTopTagId, relation: TagRelation) -> Fallible<Option<LanguageGroup>, RateTagRelationError> {
         fn handle_error<E: Into<anyhow::Error>>(e: E) -> RateTagRelationError {
             RateTagRelationError::CheckProposedTagRelationFailed(e.into())
         }
         
         self.db
-            .execute_unpaged(&self.select_inclusion_or_equivalence, (subtag_id, supertag_id))
+            .execute_unpaged(&self.select_inclusion_or_equivalence, (subtag_id, supertag_id, relation))
             .await
             .map_err(handle_error)?
-            .maybe_first_row_typed::<(TagRelation, LanguageGroup)>()
+            .maybe_first_row_typed::<(LanguageGroup, )>()
             .map_err(handle_error)
+            .map(|o| o.map(|(language_group, )| language_group))
     }
 
     async fn rate(&self, language_group: LanguageGroup, cycle: Cycle, account_id: AccountId, subtag_id: NonTopTagId, supertag_id: NonTopTagId, relation: TagRelation, rating: Rating) -> Fallible<(), RateTagRelationError> {

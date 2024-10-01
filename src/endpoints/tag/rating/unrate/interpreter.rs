@@ -15,7 +15,7 @@ pub struct UnrateTagRelationImpl {
 
 impl UnrateTagRelationImpl {
     pub async fn try_new(db: Arc<Session>) -> Fallible<Self, InitError<Self>> {
-        let select_inclusion_or_equivalence = prepare(&db, "SELECT inclusion_or_equivalence, language_group FROM tag_relation_proposals WHERE subtag_id = ? AND supertag_id = ?").await?;
+        let select_inclusion_or_equivalence = prepare(&db, "SELECT language_group FROM tag_relation_proposals WHERE subtag_id = ? AND supertag_id = ? AND inclusion_or_equivalence = ?").await?;
 
         let delete_tag_relation_rating_from_account = prepare(&db, "DELETE FROM tag_relation_ratings_by_account WHERE account_id = ? AND subtag_id = ? AND supertag_id = ? AND inclusion_or_equivalence = ?").await?;
 
@@ -26,17 +26,18 @@ impl UnrateTagRelationImpl {
 }
 
 impl UnrateTagRelation for UnrateTagRelationImpl {
-    async fn fetch_tag_relation_proposed(&self, subtag_id: NonTopTagId, supertag_id: NonTopTagId) -> Fallible<Option<(TagRelation, LanguageGroup)>, UnrateTagRelationError> {
+    async fn fetch_tag_relation_proposed(&self, subtag_id: NonTopTagId, supertag_id: NonTopTagId, relation: TagRelation) -> Fallible<Option<LanguageGroup>, UnrateTagRelationError> {
         fn handle_error<E: Into<anyhow::Error>>(e: E) -> UnrateTagRelationError {
             UnrateTagRelationError::CheckProposedTagRelationFailed(e.into())
         }
         
         self.db
-            .execute_unpaged(&self.select_inclusion_or_equivalence, (subtag_id, supertag_id))
+            .execute_unpaged(&self.select_inclusion_or_equivalence, (subtag_id, supertag_id, relation))
             .await
             .map_err(handle_error)?
-            .maybe_first_row_typed::<(TagRelation, LanguageGroup)>()
+            .maybe_first_row_typed::<(LanguageGroup, )>()
             .map_err(handle_error)
+            .map(|o| o.map(|(language_group, )| language_group))
     }
 
     async fn unrate(&self, language_group: LanguageGroup, cycle: Cycle, account_id: AccountId, subtag_id: NonTopTagId, supertag_id: NonTopTagId, relation: TagRelation) -> Fallible<(), UnrateTagRelationError> {

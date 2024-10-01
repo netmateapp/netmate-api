@@ -6,21 +6,17 @@ pub(crate) trait RateTagRelation {
     async fn rate_tag_relation(&self, account_id: AccountId, subtag_id: NonTopTagId, supertag_id: NonTopTagId, relation: TagRelation, rating: Rating) -> Fallible<(), RateTagRelationError> {
         match validate_tag_relation(subtag_id, supertag_id, relation) {
             Ok(()) => {
-                let (inclusion_or_equivalence, language_group) = self.fetch_tag_relation_proposed(subtag_id, supertag_id)
+                let language_group = self.fetch_tag_relation_proposed(subtag_id, supertag_id, relation)
                     .await?
                     .ok_or_else(|| RateTagRelationError::NonProposedTagRelation)?;
 
-                if relation == inclusion_or_equivalence {
-                    self.rate(language_group, Cycle::current_cycle(), account_id, subtag_id, supertag_id, relation, rating).await
-                } else {
-                    Err(RateTagRelationError::NonProposedTagRelation)
-                }
+                self.rate(language_group, Cycle::current_cycle(), account_id, subtag_id, supertag_id, relation, rating).await
             },
             Err(e) => Err(RateTagRelationError::RateTagRelationFailed(e.into()))
         }
     }
 
-    async fn fetch_tag_relation_proposed(&self, subtag_id: NonTopTagId, supertag_id: NonTopTagId) -> Fallible<Option<(TagRelation, LanguageGroup)>, RateTagRelationError>;
+    async fn fetch_tag_relation_proposed(&self, subtag_id: NonTopTagId, supertag_id: NonTopTagId, relation: TagRelation) -> Fallible<Option<LanguageGroup>, RateTagRelationError>;
 
     async fn rate(&self, language_group: LanguageGroup, cycle: Cycle, account_id: AccountId, subtag_id: NonTopTagId, supertag_id: NonTopTagId, relation: TagRelation, rating: Rating) -> Fallible<(), RateTagRelationError>;
 }
@@ -53,11 +49,11 @@ mod tests {
     struct MockRateTagRelation;
 
     impl RateTagRelation for MockRateTagRelation {
-        async fn fetch_tag_relation_proposed(&self, _: NonTopTagId, supertag_id: NonTopTagId) -> Fallible<Option<(TagRelation, LanguageGroup)>, RateTagRelationError> {
+        async fn fetch_tag_relation_proposed(&self, _: NonTopTagId, supertag_id: NonTopTagId, _: TagRelation) -> Fallible<Option<LanguageGroup>, RateTagRelationError> {
             if supertag_id == *NON_PROPOSED_RELATION_SUBTAG_ID {
                 Ok(None)
             } else {
-                Ok(Some((TagRelation::Inclusion, LanguageGroup::Japanese)))
+                Ok(Some(LanguageGroup::Japanese))
             }
         }
 
