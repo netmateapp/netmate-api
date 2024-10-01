@@ -45,7 +45,7 @@ mod tests {
 
     use thiserror::Error;
 
-    use crate::{common::{fallible::Fallible, profile::account_id::AccountId, tag::{non_top_tag::NonTopTagId, proposal_operation::ProposalOperation, relation::TagRelation, tag_id::TagId}, uuid::uuid4::Uuid4}, helper::test::mock_uuid};
+    use crate::{common::{fallible::Fallible, profile::account_id::AccountId, tag::{non_top_tag::NonTopTagId, proposal_operation::ProposalOperation, relation::TagRelation, tag_id::TagId}, uuid::uuid4::Uuid4}, helper::test::{mock_non_top_tag_id, mock_uuid}};
 
     use super::{GetTagRelationProposalOperation, GetTagRelationProposalOperationError};
 
@@ -55,9 +55,13 @@ mod tests {
     #[error("疑似エラー")]
     struct MockError;
 
-    static RATED: LazyLock<NonTopTagId> = LazyLock::new(|| NonTopTagId::try_from(TagId::of(Uuid4::new_unchecked(mock_uuid(0)))).unwrap());
-    static CALCULATED: LazyLock<NonTopTagId> = LazyLock::new(|| NonTopTagId::try_from(TagId::of(Uuid4::new_unchecked(mock_uuid(1)))).unwrap());
-    static UNCALCULATED: LazyLock<NonTopTagId> = LazyLock::new(|| NonTopTagId::try_from(TagId::of(Uuid4::new_unchecked(mock_uuid(2)))).unwrap());
+    static RATED: LazyLock<NonTopTagId> = LazyLock::new(|| mock_non_top_tag_id(0));
+    static CALCULATED: LazyLock<NonTopTagId> = LazyLock::new(|| mock_non_top_tag_id(1));
+    static UNCALCULATED: LazyLock<NonTopTagId> = LazyLock::new(|| mock_non_top_tag_id(2));
+
+    // 上位タグが下位タグより小さいとエラーになるため定数化
+    static SUBTAG: LazyLock<NonTopTagId> = LazyLock::new(|| mock_non_top_tag_id(3));
+    static SUPERTAG: LazyLock<NonTopTagId> = LazyLock::new(|| mock_non_top_tag_id(4));
 
     impl GetTagRelationProposalOperation for MockGetTagRelationProposalOperation {
         async fn fetch_tag_relation_proposal_operation(&self, _: AccountId, subtag_id: NonTopTagId, _: NonTopTagId, _: TagRelation) -> Fallible<Option<ProposalOperation>, GetTagRelationProposalOperationError> {
@@ -86,7 +90,7 @@ mod tests {
     }
 
     async fn test_dsl(subtag_id: NonTopTagId) -> Fallible<Option<ProposalOperation>, GetTagRelationProposalOperationError> {
-        MockGetTagRelationProposalOperation.get_tag_relation_proposal_operation(AccountId::gen(), subtag_id, NonTopTagId::gen(), TagRelation::Inclusion).await
+        MockGetTagRelationProposalOperation.get_tag_relation_proposal_operation(AccountId::gen(), subtag_id, *SUPERTAG, TagRelation::Inclusion).await
     }
 
     #[tokio::test]
@@ -106,6 +110,6 @@ mod tests {
 
     #[tokio::test]
     async fn other() {
-        assert!(test_dsl(NonTopTagId::gen()).await.unwrap().is_none());
+        assert!(test_dsl(*SUBTAG).await.unwrap().is_none());
     }
 }
