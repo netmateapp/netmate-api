@@ -1,6 +1,7 @@
 use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::CqlValue};
 use thiserror::Error;
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum ProposalOperation {
     LowRated = 0,
     Rated = 1,
