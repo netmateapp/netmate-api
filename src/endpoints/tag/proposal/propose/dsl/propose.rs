@@ -15,7 +15,9 @@ pub(crate) trait ProposeTagRelation {
                     .await
                     .map_err(ProposeTagRelationError::InvalidTopology)?;
 
-                if !self.has_already_been_proposed(subtag_id, supertag_id, relation).await? {
+                if self.has_already_been_proposed(subtag_id, supertag_id, relation).await? {
+                    Err(ProposeTagRelationError::HasAlreadyBeenProposed)
+                } else {
                     let (subtag_language_group, subtag_name) = self.get_language_group_and_tag_name(subtag_id).await?;
                     let (supertag_language_group, supertag_name) = self.get_language_group_and_tag_name(supertag_id).await?;
     
@@ -28,8 +30,6 @@ pub(crate) trait ProposeTagRelation {
                     } else {
                         Err(ProposeTagRelationError::DifferentLanguageGroups)
                     }
-                } else {
-                    Err(ProposeTagRelationError::HasAlreadyBeenProposed)
                 }
             },
             Err(e) => Err(ProposeTagRelationError::ProposeTagRelationFailed(e.into()))
