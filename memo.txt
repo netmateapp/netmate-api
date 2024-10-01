@@ -5,5 +5,11 @@ rate_limit/interpreter/rate_limitでキャッシュができていない
 verify_email/interpreter, session_manager/interpreter/reauthenticateのRedisから取得した文字列の解析にテストが無い
 tag/rating/unrate, tag/proposal/propose -> クエリで127(評価の取り消し)を直接指定している
 tag/rating/getの実装
-middlewares/quota_limit/interpreter -> DBへのクエリが未記述
+middlewares/quota_limit/interpreter -> DBへのクエリ(貢献度取得)が未記述
 sign_up にレート制限がない
+tag/list/interpreter -> withscoresからの値の取得方法が適切か不明, タグ名取得クエリでキーの順番に名前が返されるかどうか不明
+
+tag/propose/intepreter/validate_topology
+→ unpagedを使っているが後に問題になるのでiterに変更する
+→ is_unstable_proposalがenum化されていない
+→ テストも必要そう
