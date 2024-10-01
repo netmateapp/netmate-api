@@ -1,50 +1,57 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, sync::Arc};
 
-use bb8_redis::{bb8::PooledConnection, RedisConnectionManager};
-use redis::cmd;
+use scylla::{prepared_statement::PreparedStatement, Session};
 
-use crate::{common::{fallible::Fallible, tag::{non_top_tag::NonTopTagId, tag_id::TagId}}, endpoints::tag::proposal::propose::dsl::validate_topology::{ValidateTopology, ValidateTopologyError}, helper::redis::{connection::conn, namespace::{Namespace, NAMESPACE_SEPARATOR}, namespaces::{SUB, SUP, TAG_RELATIONS}}};
+use crate::{common::{fallible::Fallible, tag::{non_top_tag::NonTopTagId, tag_id::TagId}}, endpoints::tag::proposal::propose::dsl::validate_topology::{ValidateTopology, ValidateTopologyError}};
 
 use super::ProposeTagRelationImpl;
 
 impl ValidateTopology for ProposeTagRelationImpl {
     async fn is_acyclic(&self, subtag_id: NonTopTagId, supertag_id: NonTopTagId) -> Fallible<bool, ValidateTopologyError> {
-        let mut conn = conn(&self.cache, |e| ValidateTopologyError::IsAcyclicFailed(e.into())).await?;
-        
-        cmd("ZSCORE")
-            .arg(format!("{}{}{}{}{}", TAG_RELATIONS, NAMESPACE_SEPARATOR, subtag_id, NAMESPACE_SEPARATOR, SUB))
-            .arg(supertag_id)
-            .query_async::<Option<()>>(&mut *conn)
+        let maybe_is_unstable_proposal = self.db
+            .execute_unpaged(&self.select_subtag, (subtag_id, supertag_id))
             .await
-            .map(|v| v.is_none())
-            .map_err(|e| ValidateTopologyError::IsAcyclicFailed(e.into()))
+            .map_err(|e| ValidateTopologyError::IsAcyclicFailed(e.into()))?
+            .maybe_first_row_typed::<(bool, )>()
+            .map_err(|e| ValidateTopologyError::IsAcyclicFailed(e.into()))?;
+
+        // 存在しない又は未安定の提案なら巡回しない
+        match maybe_is_unstable_proposal {
+            Some((is_unstable_proposal, )) => {
+                let is_acyclic = !is_unstable_proposal;
+                Ok(is_acyclic)
+            },
+            None => Ok(false)
+        }
     }
 
     async fn is_equivalent(&self, lesser_tag_id: NonTopTagId, greater_tag_id: NonTopTagId) -> Fallible<bool, ValidateTopologyError> {
-        let mut conn = conn(&self.cache, |e| ValidateTopologyError::IsEquivalentFailed(e.into())).await?;
-        
-        async fn fetch_related_tags(conn: &mut PooledConnection<'_, RedisConnectionManager>, namespace: Namespace, tag_id: NonTopTagId) -> Fallible<HashSet<TagId>, ValidateTopologyError> {
-            cmd("ZRANGE")
-            .arg(format!("{}{}{}{}{}", TAG_RELATIONS, NAMESPACE_SEPARATOR, tag_id, NAMESPACE_SEPARATOR, namespace))
-            .arg(0)
-            .arg(-1)
-            .query_async::<HashSet<TagId>>(&mut **conn)
+        async fn fetch_all_related_tags(db: &Arc<Session>, selector: &Arc<PreparedStatement>, tag_id: NonTopTagId) -> Fallible<HashSet<TagId>, ValidateTopologyError> {
+            db.execute_unpaged(selector, (tag_id, ))
             .await
+            .map_err(|e| ValidateTopologyError::IsEquivalentFailed(e.into()))?
+            .rows_typed()
+            .map(|rows| {
+                rows.flatten()
+                    .filter(|(_, is_unstable_proposal): &(TagId, bool)| !is_unstable_proposal)
+                    .map(|(tag_id, _)| tag_id)
+                    .collect::<HashSet<TagId>>()
+            })
             .map_err(|e| ValidateTopologyError::IsEquivalentFailed(e.into()))
         }
 
-        let mut lesser_tag_subtags = fetch_related_tags(&mut conn, SUB, lesser_tag_id).await?;
-        let mut lesser_tag_supertags = fetch_related_tags(&mut conn, SUP, lesser_tag_id).await?;
-        let mut greater_tag_subtags = fetch_related_tags(&mut conn, SUB, greater_tag_id).await?;
-        let mut greater_tag_supertags = fetch_related_tags(&mut conn, SUP, greater_tag_id).await?;
+        let mut lesser_tag_all_subtags = fetch_all_related_tags(&self.db, &self.select_all_subtag, lesser_tag_id).await?;
+        let mut lesser_tag_all_supertags = fetch_all_related_tags(&self.db, &self.select_all_supertag, lesser_tag_id).await?;
+        let mut greater_tag_all_subtags = fetch_all_related_tags(&self.db, &self.select_all_subtag, greater_tag_id).await?;
+        let mut greater_tag_all_supertags = fetch_all_related_tags(&self.db, &self.select_all_supertag, greater_tag_id).await?;
 
-        if lesser_tag_subtags.len() >= greater_tag_subtags.len() {
-            std::mem::swap(&mut lesser_tag_subtags, &mut greater_tag_subtags);
-            std::mem::swap(&mut lesser_tag_supertags, &mut greater_tag_supertags);
+        if lesser_tag_all_subtags.len() >= greater_tag_all_subtags.len() {
+            std::mem::swap(&mut lesser_tag_all_subtags, &mut greater_tag_all_subtags);
+            std::mem::swap(&mut lesser_tag_all_supertags, &mut greater_tag_all_supertags);
         }
 
-        let is_included = lesser_tag_subtags.iter().all(|subtag| greater_tag_subtags.contains(subtag))
-            && lesser_tag_supertags.iter().all(|supertag| greater_tag_supertags.contains(supertag));
+        let is_included = lesser_tag_all_subtags.iter().all(|subtag| greater_tag_all_subtags.contains(subtag))
+            && lesser_tag_all_supertags.iter().all(|supertag| greater_tag_all_supertags.contains(supertag));
 
         Ok(is_included)
     }
