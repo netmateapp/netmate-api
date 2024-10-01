@@ -1,6 +1,7 @@
 use std::{fmt::{self, Display}, str::FromStr};
 
 use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::{ColumnType, CqlValue}, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
+use serde::{Serialize, Serializer};
 use thiserror::Error;
 
 use crate::common::character_count::calculate_character_cost;
@@ -36,6 +37,12 @@ impl Display for TagName {
 #[derive(Debug, Error)]
 #[error("タグ名の解析に失敗しました")]
 pub struct ParseTagNameError;
+
+impl Serialize for TagName {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        Serialize::serialize(&self.value(), serializer)
+    }
+}
 
 impl SerializeValue for TagName {
     fn serialize<'b>(&self, typ: &ColumnType, writer: CellWriter<'b>) -> Result<WrittenCellProof<'b>, SerializationError> {

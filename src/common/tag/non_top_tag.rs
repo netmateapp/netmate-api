@@ -14,9 +14,8 @@ impl NonTopTagId {
     pub fn gen() -> NonTopTagId {
         // 奇跡が起きない限りO(1)で終了する
         loop {
-            match NonTopTagId::try_from(TagId::gen()) {
-                Ok(non_top_tag_id) => return non_top_tag_id,
-                _ => (),
+            if let Ok(non_top_tag_id) = NonTopTagId::try_from(TagId::gen()) {
+                return non_top_tag_id
             }
         }
     }

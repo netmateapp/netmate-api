@@ -50,10 +50,8 @@ pub async fn handler(
 
             const CACHE_CONTROL_VALUE: HeaderValue = HeaderValue::from_static("private, max-age=60, must-revalidate");
 
-            let etag_value: HeaderValue = create_etag(&to_bytes(&handles));
-
             Ok((
-                [(CACHE_CONTROL, CACHE_CONTROL_VALUE), (ETAG, etag_value)],
+                [(CACHE_CONTROL, CACHE_CONTROL_VALUE), (ETAG, create_etag(&to_bytes(&handles)))],
                 Json(Body { handles })
             ).into_response())
         },
@@ -83,7 +81,7 @@ pub fn to_bytes(handles: &Vec<HandleInfo>) -> Vec<u8> {
     let mut bytes = Vec::new();
 
     for handle in handles {
-        bytes.extend(handle.id.value().value().to_bytes_le());
+        bytes.extend(handle.id.value().value().as_bytes());
         bytes.extend(handle.share_count.value().to_le_bytes());
     }
 

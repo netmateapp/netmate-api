@@ -37,8 +37,8 @@ impl From<bool> for TagRelation {
 impl Display for TagRelation {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            TagRelation::Inclusion => write!(f, "{}", "包含"),
-            TagRelation::Equivalence => write!(f, "{}", "同値")
+            TagRelation::Inclusion => write!(f, "包含"),
+            TagRelation::Equivalence => write!(f, "同値")
         }
     }
 }

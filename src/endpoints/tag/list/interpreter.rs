@@ -50,7 +50,7 @@ impl ListRelatedTags for ListRelatedTagsImpl {
                     .map(|s| TagName::from_str(s).unwrap())
                     .unwrap();
 
-                TagInfo::new(id, name, info.is_proposal())
+                TagInfo::new(id, name, info.is_proposal(), info.is_stable())
             }).collect::<Vec<TagInfo>>();
 
             Ok(transitive_closure_and_unstable_proposals)
