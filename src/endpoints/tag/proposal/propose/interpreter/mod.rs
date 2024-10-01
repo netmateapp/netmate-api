@@ -44,16 +44,16 @@ impl ProposeTagRelationImpl {
 
         let insert_inclusion_relation_proposal = prepare(&db, "
             BEGIN BATCH
-                INSERT INTO transitive_closure_and_unstable_proposals (tag_id, relation, related_tag_id, related_tag_name, is_unstable_proposal) VALUES (?, 0, ?, ?, true);
-                INSERT INTO transitive_closure_and_unstable_proposals (tag_id, relation, related_tag_id, related_tag_name, is_unstable_proposal) VALUES (?, 2, ?, ?, true);
+                INSERT INTO transitive_closure_and_unstable_proposals (tag_id, relation, related_tag_id, related_tag_name, is_unstable_proposal, is_status_calculated) VALUES (?, 0, ?, ?, true, false);
+                INSERT INTO transitive_closure_and_unstable_proposals (tag_id, relation, related_tag_id, related_tag_name, is_unstable_proposal, is_status_calculated) VALUES (?, 2, ?, ?, true, false);
             APPLY BATCH
         ").await?;
 
 
         let insert_equivalence_relation_proposal = prepare(&db, "
             BEGIN BATCH
-                INSERT INTO transitive_closure_and_unstable_proposals (tag_id, relation, related_tag_id, related_tag_name, is_unstable_proposal) VALUES (?, 1, ?, ?, true)
-                INSERT INTO transitive_closure_and_unstable_proposals (tag_id, relation, related_tag_id, related_tag_name, is_unstable_proposal) VALUES (?, 1, ?, ?, true)
+                INSERT INTO transitive_closure_and_unstable_proposals (tag_id, relation, related_tag_id, related_tag_name, is_unstable_proposal, is_status_calculated) VALUES (?, 1, ?, ?, true, false)
+                INSERT INTO transitive_closure_and_unstable_proposals (tag_id, relation, related_tag_id, related_tag_name, is_unstable_proposal, is_status_calculated) VALUES (?, 1, ?, ?, true, false)
             APPLY BATCH
         ").await?;
 
