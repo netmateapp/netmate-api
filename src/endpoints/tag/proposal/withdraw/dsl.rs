@@ -12,6 +12,7 @@ pub(crate) trait WithdrawTagRelationProposal {
                         TagRelation::Equivalence => TagHierarchy::Equivalent
                     };
 
+                    // ステータスが計算済みであるのなら撤回できない
                     if self.is_status_calculated(subtag_id, supertag_id, hierarchy).await? {
                         self.deflag_is_proposer(account_id, subtag_id, supertag_id, relation).await?;
                         Err(WithdrawTagRelationProposalError::CannotWithdraw)

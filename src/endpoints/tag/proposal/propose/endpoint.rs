@@ -32,7 +32,7 @@ pub async fn handler(
     Extension(account_id): Extension<AccountId>,
     Json(payload): Json<Payload>
 ) -> StatusCode {
-    match routine.propose_tag_relation(account_id, payload.subtag_id, payload.supertag_id, payload.inclusion_or_equivalence).await {
+    match routine.propose_tag_relation(account_id, payload.subtag_id, payload.supertag_id, payload.relation).await {
         Ok(()) => StatusCode::OK,
         Err(e) => match e {
             ProposeTagRelationError::InvalidTopology(_) | ProposeTagRelationError::HasAlreadyBeenProposed
@@ -43,7 +43,7 @@ pub async fn handler(
                     account_id = %account_id,
                     subtag_id = %payload.subtag_id,
                     supertag_id = %payload.supertag_id,
-                    relation = %payload.inclusion_or_equivalence,
+                    relation = %payload.relation,
                     "タグ関係の提案に失敗しました"
                 );
     
@@ -57,5 +57,5 @@ pub async fn handler(
 pub struct Payload {
     subtag_id: NonTopTagId,
     supertag_id: NonTopTagId,
-    inclusion_or_equivalence: TagRelation,
+    relation: TagRelation,
 }

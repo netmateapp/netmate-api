@@ -31,7 +31,7 @@ pub async fn handler(
     Extension(account_id): Extension<AccountId>,
     Json(payload): Json<Payload>
 ) -> StatusCode {
-    match routine.rate_tag_relation(account_id, payload.subtag_id, payload.supertag_id, payload.inclusion_or_equivalence, payload.rating).await {
+    match routine.rate_tag_relation(account_id, payload.subtag_id, payload.supertag_id, payload.relation, payload.rating).await {
         Ok(()) => StatusCode::OK,
         Err(RateTagRelationError::RateTagRelationFailed(e)) => {
             error!(
@@ -39,7 +39,7 @@ pub async fn handler(
                 account_id = %account_id,
                 subtag_id = %payload.subtag_id,
                 supertag_id = %payload.supertag_id,
-                inclusion_or_equivalence = ?payload.inclusion_or_equivalence,
+                inclusion_or_equivalence = ?payload.relation,
                 rating = ?payload.rating,
                 "タグ関係の評価に失敗しました"
             );
@@ -53,6 +53,6 @@ pub async fn handler(
 pub struct Payload {
     subtag_id: NonTopTagId,
     supertag_id: NonTopTagId,
-    inclusion_or_equivalence: TagRelation,
+    relation: TagRelation,
     rating: Rating,
 }
