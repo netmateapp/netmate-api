@@ -41,7 +41,7 @@ impl UpdateTagRelationList for ProposeTagRelationImpl {
             .map_err(|e| UpdateTagRelationListError::UpdateInclusionRelationListFailed(e.into()))?;
 
         self.db
-            .execute_unpaged(&self.insert_inclusion_relation_proposal, (lesser_tag_id, greater_tag_id, greater_tag_name, greater_tag_id, lesser_tag_id, lesser_tag_name))
+            .execute_unpaged(&self.insert_equivalence_relation_proposal, (lesser_tag_id, greater_tag_id, greater_tag_name, greater_tag_id, lesser_tag_id, lesser_tag_name))
             .await
             .map(|_| ())
             .map_err(|e| UpdateTagRelationListError::UpdateInclusionRelationListFailed(e.into()))

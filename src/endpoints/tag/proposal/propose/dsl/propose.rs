@@ -24,7 +24,7 @@ pub(crate) trait ProposeTagRelation {
 
                         self.update_tag_relation_list(subtag_id, subtag_name, supertag_id, supertag_name, relation)
                             .await
-                            .map_err(|e| ProposeTagRelationError::UpdateTagRelationListFailed(e.into()))
+                            .map_err(ProposeTagRelationError::UpdateTagRelationListFailed)
                     } else {
                         Err(ProposeTagRelationError::DifferentLanguageGroups)
                     }
