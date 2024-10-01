@@ -35,9 +35,7 @@ pub enum UnrateTagRelationError {
 mod tests {
     use std::sync::LazyLock;
 
-    use uuid::Uuid;
-
-    use crate::{common::{cycle::Cycle, fallible::Fallible, profile::account_id::AccountId, tag::{language_group::LanguageGroup, non_top_tag::NonTopTagId, relation::TagRelation, tag_id::TagId}, uuid::uuid4::Uuid4}, helper::test::mock_uuid};
+    use crate::{common::{cycle::Cycle, fallible::Fallible, profile::account_id::AccountId, tag::{language_group::LanguageGroup, non_top_tag::NonTopTagId, relation::TagRelation, tag_id::TagId}, uuid::uuid4::Uuid4}, helper::test::{mock_non_top_tag_id, mock_uuid}};
 
     use super::{UnrateTagRelation, UnrateTagRelationError};
 
@@ -65,8 +63,8 @@ mod tests {
     #[tokio::test]
     async fn check_proposed_tag_relation() {
         // 下位タグが上位タグより小さくなるよう設定
-        let subtag_id = NonTopTagId::try_from(TagId::of(Uuid4::new_unchecked(mock_uuid(1)))).unwrap();
-        let supertag_id = NonTopTagId::try_from(TagId::of(Uuid4::new_unchecked(mock_uuid(2)))).unwrap();
+        let subtag_id = mock_non_top_tag_id(1);
+        let supertag_id = mock_non_top_tag_id(2);
 
         // 有効な提案の場合
         for relation in [TagRelation::Inclusion, TagRelation::Equivalence] {

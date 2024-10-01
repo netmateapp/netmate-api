@@ -56,8 +56,11 @@ mod tests {
     use super::{WithdrawTagRelationProposal, WithdrawTagRelationProposalError};
 
     static IS_NOT_PROPOSER: LazyLock<NonTopTagId> = LazyLock::new(|| mock_non_top_tag_id(0));
-    static CALCULATED: LazyLock<NonTopTagId> = LazyLock::new(|| mock_non_top_tag_id(2));
-    static UNCALCULATED: LazyLock<NonTopTagId> = LazyLock::new(|| mock_non_top_tag_id(3));
+    static CALCULATED: LazyLock<NonTopTagId> = LazyLock::new(|| mock_non_top_tag_id(1));
+    static UNCALCULATED: LazyLock<NonTopTagId> = LazyLock::new(|| mock_non_top_tag_id(2));
+
+    // 上位タグが下位タグより小さいとエラーになるため定数化
+    static SUPERTAG: LazyLock<NonTopTagId> = LazyLock::new(|| mock_non_top_tag_id(3));
 
     struct MockWithdrawTagRelationProposal;
 
@@ -88,7 +91,7 @@ mod tests {
     }
 
     async fn test_dsl(subtag_id: NonTopTagId) -> Fallible<(), WithdrawTagRelationProposalError> {
-        MockWithdrawTagRelationProposal.withdraw_tag_relation_proposal(AccountId::gen(), subtag_id, NonTopTagId::gen(), TagRelation::Inclusion).await
+        MockWithdrawTagRelationProposal.withdraw_tag_relation_proposal(AccountId::gen(), subtag_id, *SUPERTAG, TagRelation::Inclusion).await
     }
 
     #[tokio::test]

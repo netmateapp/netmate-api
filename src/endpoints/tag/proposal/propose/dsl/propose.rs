@@ -108,7 +108,7 @@ mod tests {
     static EXISTENT1: LazyLock<NonTopTagId> = LazyLock::new(|| mock_non_top_tag_id(2));
     static EXISTENT2: LazyLock<NonTopTagId> = LazyLock::new(|| mock_non_top_tag_id(3));
     
-    // 上位タグが下位タグより小さいとエラーになるため定義
+    // 上位タグが下位タグより小さいとエラーになるため定数化
     static SUBTAG: LazyLock<NonTopTagId> = LazyLock::new(|| mock_non_top_tag_id(4));
     static SUPERTAG: LazyLock<NonTopTagId> = LazyLock::new(|| mock_non_top_tag_id(5));
 
