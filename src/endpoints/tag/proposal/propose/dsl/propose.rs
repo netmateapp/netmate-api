@@ -78,7 +78,7 @@ pub enum ProposeTagRelationError {
 mod tests {
     use std::{str::FromStr, sync::LazyLock};
 
-    use crate::{common::{fallible::Fallible, profile::account_id::AccountId, tag::{language_group::LanguageGroup, non_top_tag::NonTopTagId, relation::TagRelation, tag_id::TagId, tag_name::TagName}, uuid::uuid4::Uuid4}, endpoints::tag::proposal::propose::dsl::{relate_hierarchical_tags::{RelateHierarchicalTags, RelateHierarchicalTagsError}, validate_topology::{ValidateTopology, ValidateTopologyError}}, helper::test::mock_uuid};
+    use crate::{common::{fallible::Fallible, profile::account_id::AccountId, tag::{language_group::LanguageGroup, non_top_tag::NonTopTagId, relation::TagRelation, tag_name::TagName}}, endpoints::tag::proposal::propose::dsl::{relate_hierarchical_tags::{RelateHierarchicalTags, RelateHierarchicalTagsError}, validate_topology::{ValidateTopology, ValidateTopologyError}}, helper::test::mock_non_top_tag_id};
 
     use super::{ProposeTagRelation, ProposeTagRelationError};
 
@@ -104,9 +104,13 @@ mod tests {
         }
     }
 
-    static PROPOSED: LazyLock<NonTopTagId> = LazyLock::new(|| NonTopTagId::try_from(TagId::of(Uuid4::new_unchecked(mock_uuid(1)))).unwrap());
-    static EXISTENT1: LazyLock<NonTopTagId> = LazyLock::new(|| NonTopTagId::try_from(TagId::of(Uuid4::new_unchecked(mock_uuid(2)))).unwrap());
-    static EXISTENT2: LazyLock<NonTopTagId> = LazyLock::new(|| NonTopTagId::try_from(TagId::of(Uuid4::new_unchecked(mock_uuid(3)))).unwrap());
+    static PROPOSED: LazyLock<NonTopTagId> = LazyLock::new(|| mock_non_top_tag_id(1));
+    static EXISTENT1: LazyLock<NonTopTagId> = LazyLock::new(|| mock_non_top_tag_id(2));
+    static EXISTENT2: LazyLock<NonTopTagId> = LazyLock::new(|| mock_non_top_tag_id(3));
+    
+    // 上位タグが下位タグより小さいとエラーになるため定義
+    static SUBTAG: LazyLock<NonTopTagId> = LazyLock::new(|| mock_non_top_tag_id(4));
+    static SUPERTAG: LazyLock<NonTopTagId> = LazyLock::new(|| mock_non_top_tag_id(5));
 
     impl ProposeTagRelation for MockProposeTagRelation {
         async fn has_already_been_proposed(&self, subtag_id: NonTopTagId, _: NonTopTagId, _: TagRelation) -> Fallible<bool, ProposeTagRelationError> {
@@ -136,12 +140,12 @@ mod tests {
 
     #[tokio::test]
     async fn proposed() {
-        assert!(matches!(test_dsl(*PROPOSED, NonTopTagId::gen()).await.err().unwrap(), ProposeTagRelationError::HasAlreadyBeenProposed));
+        assert!(matches!(test_dsl(*PROPOSED, *SUPERTAG).await.err().unwrap(), ProposeTagRelationError::HasAlreadyBeenProposed));
     }
 
     #[tokio::test]
     async fn partial_existent() {
-        assert!(matches!(test_dsl(*EXISTENT1, NonTopTagId::gen()).await.err().unwrap(), ProposeTagRelationError::NonExistentTag));
+        assert!(matches!(test_dsl(*EXISTENT1, *SUPERTAG).await.err().unwrap(), ProposeTagRelationError::NonExistentTag));
     }
     
     #[tokio::test]
@@ -151,6 +155,6 @@ mod tests {
 
     #[tokio::test]
     async fn non_existent() {
-        assert!(matches!(test_dsl(NonTopTagId::gen(), NonTopTagId::gen()).await.err().unwrap(), ProposeTagRelationError::NonExistentTag));
+        assert!(matches!(test_dsl(*SUBTAG, *SUPERTAG).await.err().unwrap(), ProposeTagRelationError::NonExistentTag));
     }
 }
