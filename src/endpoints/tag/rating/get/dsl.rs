@@ -45,7 +45,7 @@ mod tests {
 
     use thiserror::Error;
 
-    use crate::{common::{fallible::Fallible, profile::account_id::AccountId, tag::{non_top_tag::NonTopTagId, proposal_operation::ProposalOperation, relation::TagRelation, tag_id::TagId}, uuid::uuid4::Uuid4}, helper::test::new_uuid};
+    use crate::{common::{fallible::Fallible, profile::account_id::AccountId, tag::{non_top_tag::NonTopTagId, proposal_operation::ProposalOperation, relation::TagRelation, tag_id::TagId}, uuid::uuid4::Uuid4}, helper::test::mock_uuid};
 
     use super::{GetTagRelationProposalOperation, GetTagRelationProposalOperationError};
 
@@ -55,9 +55,9 @@ mod tests {
     #[error("疑似エラー")]
     struct MockError;
 
-    static RATED: LazyLock<NonTopTagId> = LazyLock::new(|| NonTopTagId::try_from(TagId::of(Uuid4::new_unchecked(new_uuid(0)))).unwrap());
-    static CALCULATED: LazyLock<NonTopTagId> = LazyLock::new(|| NonTopTagId::try_from(TagId::of(Uuid4::new_unchecked(new_uuid(1)))).unwrap());
-    static UNCALCULATED: LazyLock<NonTopTagId> = LazyLock::new(|| NonTopTagId::try_from(TagId::of(Uuid4::new_unchecked(new_uuid(2)))).unwrap());
+    static RATED: LazyLock<NonTopTagId> = LazyLock::new(|| NonTopTagId::try_from(TagId::of(Uuid4::new_unchecked(mock_uuid(0)))).unwrap());
+    static CALCULATED: LazyLock<NonTopTagId> = LazyLock::new(|| NonTopTagId::try_from(TagId::of(Uuid4::new_unchecked(mock_uuid(1)))).unwrap());
+    static UNCALCULATED: LazyLock<NonTopTagId> = LazyLock::new(|| NonTopTagId::try_from(TagId::of(Uuid4::new_unchecked(mock_uuid(2)))).unwrap());
 
     impl GetTagRelationProposalOperation for MockGetTagRelationProposalOperation {
         async fn fetch_tag_relation_proposal_operation(&self, _: AccountId, subtag_id: NonTopTagId, _: NonTopTagId, _: TagRelation) -> Fallible<Option<ProposalOperation>, GetTagRelationProposalOperationError> {

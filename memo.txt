@@ -22,7 +22,7 @@ tag/list/interpreterにunwrap()が沢山
 verify_email/interpreter, session_manager/interpreter/reauthenticate
 →Redisから取得した文字列の解析にテストが無い
 →テストは必要か？
-tags/proposal/propose, withdraw, tags/rating/get, unrate
+tags/proposal/propose, withdraw
 
 
 
