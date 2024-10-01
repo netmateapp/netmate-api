@@ -1,7 +1,11 @@
 tag/rating/unrate, tag/proposal/propose -> クエリで127(評価の取り消し)を直接指定している
 tag/rating/getの実装
 
+
+
 要対応
+127マジックナンバーを無くす
+
 session/manage_sessionのDDoS対策(セッションIDを破棄してreq→発行→破棄でreqへの対策)
 rate_limit/interpreter/rate_limitでキャッシュができていない
 
@@ -12,17 +16,25 @@ tag/propose/intepreter/validate_topology
 
 tag/list/interpreterにunwrap()が沢山
 
+
+
 自動テストが必要系
 verify_email/interpreter, session_manager/interpreter/reauthenticate
 →Redisから取得した文字列の解析にテストが無い
 →テストは必要か？
 
+
+
 必要系
 common/email/resend.rsのAPIキーがない
+
+
 
 要検証系
 middlewares/quota_limit/interpreter -> DBへのクエリ(貢献度取得)が未記述
 tag/list/interpreter -> withscoresからの値の取得方法が適切か不明, タグ名取得クエリでキーの順番に名前が返されるかどうか不明
+
+
 
 後からで問題ない
 common/password.rsのデータ読み込み処理がよく抽象化されていない

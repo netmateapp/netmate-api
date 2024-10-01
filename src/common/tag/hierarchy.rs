@@ -1,3 +1,4 @@
+use scylla::{frame::response::result::ColumnType, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
 use serde::{de, Deserialize, Deserializer};
 use thiserror::Error;
 
@@ -6,6 +7,18 @@ pub enum TagHierarchy {
     Super = 0,
     Equivalent = 1,
     Sub = 2,
+}
+
+impl From<TagHierarchy> for u8 {
+    fn from(value: TagHierarchy) -> Self {
+        value as u8
+    }
+}
+
+impl From<TagHierarchy> for i8 {
+    fn from(value: TagHierarchy) -> Self {
+        u8::from(value) as i8
+    }
 }
 
 impl TryFrom<u8> for TagHierarchy {
@@ -29,5 +42,11 @@ impl<'de> Deserialize<'de> for TagHierarchy {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         u8::deserialize(deserializer)
             .and_then(|value| TagHierarchy::try_from(value).map_err(de::Error::custom))
+    }
+}
+
+impl SerializeValue for TagHierarchy {
+    fn serialize<'b>(&self, typ: &ColumnType, writer: CellWriter<'b>) -> Result<WrittenCellProof<'b>, SerializationError> {
+        SerializeValue::serialize(&i8::from(*self), typ, writer)
     }
 }

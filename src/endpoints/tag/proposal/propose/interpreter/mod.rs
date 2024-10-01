@@ -40,7 +40,7 @@ impl ProposeTagRelationImpl {
 
         let insert_tag_relation_rating = prepare(&db, "INSERT INTO tag_relation_ratings_by_account (account_id, subtag_id, supertag_id, relation, operation_id) VALUES (?, ?, ?, ?, 127)").await?;
 
-        let insert_unstable_proposals_to_list = Arc::new(Script::new(include_str!("insert_unstable_proposals_to_list.lua")));
+        let insert_unstable_proposals_to_list = Arc::new(Script::new(include_str!("add_proposals_to_hierarchical_tag_lists.lua")));
 
         let insert_inclusion_relation_proposal = prepare(&db, "
             BEGIN BATCH
