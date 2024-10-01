@@ -4,7 +4,7 @@ use scylla::{prepared_statement::PreparedStatement, Session};
 
 use crate::{common::{fallible::Fallible, profile::account_id::AccountId, tag::{hierarchy::TagHierarchy, non_top_tag::NonTopTagId, proposal_operation::ProposalOperation, relation::TagRelation}}, helper::{error::InitError, scylla::prepare}};
 
-use super::dsl::{GetTagRelationRating, GetTagRelationRatingError};
+use super::dsl::{GetTagRelationProposalOperation, GetTagRelationRatingError};
 
 pub struct GetTagRelationRatingImpl {
     db: Arc<Session>,
@@ -30,8 +30,8 @@ impl GetTagRelationRatingImpl {
     }
 }
 
-impl GetTagRelationRating for GetTagRelationRatingImpl {
-    async fn fetch_tag_relation_rating_operation(&self, account_id: AccountId, subtag_id: NonTopTagId, supertag_id: NonTopTagId, relation: TagRelation) -> Fallible<Option<ProposalOperation>, GetTagRelationRatingError> {
+impl GetTagRelationProposalOperation for GetTagRelationRatingImpl {
+    async fn fetch_tag_relation_proposal_operation(&self, account_id: AccountId, subtag_id: NonTopTagId, supertag_id: NonTopTagId, relation: TagRelation) -> Fallible<Option<ProposalOperation>, GetTagRelationRatingError> {
         self.db
             .execute_unpaged(&self.select_operation_id, (account_id, subtag_id, supertag_id, relation))
             .await
@@ -41,17 +41,22 @@ impl GetTagRelationRating for GetTagRelationRatingImpl {
             .map(|o| o.map(|(operation, )| operation))
     }
 
-    async fn is_status_calculated(&self, subtag_id: NonTopTagId, supertag_id: NonTopTagId, hierarchy: TagHierarchy) -> Fallible<bool, GetTagRelationRatingError> {
+    async fn is_proposal_status_uncalculated(&self, subtag_id: NonTopTagId, supertag_id: NonTopTagId, relation: TagRelation) -> Fallible<bool, GetTagRelationRatingError> {
+        let hierarchy = match relation {
+            TagRelation::Inclusion => TagHierarchy::Super,
+            TagRelation::Equivalence => TagHierarchy::Equivalent
+        };
+        
         self.db
             .execute_unpaged(&self.select_is_status_calculated, (subtag_id, hierarchy, supertag_id))
             .await
             .map_err(|e| GetTagRelationRatingError::IsStatusCalculatedFailed(e.into()))?
             .first_row_typed::<(bool, )>()
             .map_err(|e| GetTagRelationRatingError::IsStatusCalculatedFailed(e.into()))
-            .map(|(is_status_calculated, )| is_status_calculated)
+            .map(|(is_status_calculated, )| !is_status_calculated)
     }
 
-    async fn deflag_is_proposer(&self, account_id: AccountId, subtag_id: NonTopTagId, supertag_id: NonTopTagId, relation: TagRelation) -> Fallible<(), GetTagRelationRatingError> {
+    async fn delete_proposal_operation(&self, account_id: AccountId, subtag_id: NonTopTagId, supertag_id: NonTopTagId, relation: TagRelation) -> Fallible<(), GetTagRelationRatingError> {
         self.db
             .execute_unpaged(&self.delete_operation_id_proposed, (account_id, subtag_id, supertag_id, relation))
             .await

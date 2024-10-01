@@ -10,7 +10,7 @@ use tracing::error;
 
 use crate::{common::{profile::account_id::AccountId, tag::{non_top_tag::NonTopTagId, relation::TagRelation}}, helper::{error::InitError, middleware::{rate_limiter, session_manager}, redis::connection::Pool}, middlewares::limit::TimeUnit};
 
-use super::{dsl::GetTagRelationRating, interpreter::GetTagRelationRatingImpl};
+use super::{dsl::GetTagRelationProposalOperation, interpreter::GetTagRelationRatingImpl};
 
 pub async fn endpoint(db: Arc<Session>, cache: Arc<Pool>) -> Result<Router, InitError<GetTagRelationRatingImpl>> {
     let services = ServiceBuilder::new()
@@ -33,7 +33,7 @@ pub async fn handler(
     Extension(account_id): Extension<AccountId>,
     Path((subtag_id, supertag_id, relation)): Path<(NonTopTagId, NonTopTagId, TagRelation)>
 ) -> Result<Json<Data>, StatusCode> {
-    match routine.get_tag_relation_rating(account_id, subtag_id, supertag_id, relation).await {
+    match routine.get_tag_relation_proposal_operation(account_id, subtag_id, supertag_id, relation).await {
         Ok(Some(operation)) => Ok(Json(Data { operation: Some(operation as u8) })),
         Ok(None) => Ok(Json(Data { operation: None })),
         Err(e) => {
