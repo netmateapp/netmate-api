@@ -6,5 +6,10 @@ macro_rules! namespace {
     }
 }
 
-namespace!(SUPERTAGS_NAMESPACE, "sptgs");
-namespace!(SUBTAGS_NAMESPACE, "sbtgs");
+namespace!(TAG_LIST, "tls");
+namespace!(SUPER, "sup");
+namespace!(EQUIVALENT, "eq");
+namespace!(SUB, "sub");
+//namespace!(SUPERTAGS_NAMESPACE, "sptgs");
+//namespace!(EQUIVALENT_TAGS_NAMESPACE, "eqtgs");
+//namespace!(SUBTAGS_NAMESPACE, "sbtgs");

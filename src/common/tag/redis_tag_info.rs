@@ -1,3 +1,5 @@
+use redis::{RedisWrite, ToRedisArgs};
+
 pub struct RedisTagInfo(u32);
 
 impl RedisTagInfo {
@@ -53,6 +55,12 @@ pub enum TagListOrder {
     ReachableTagOrValidProposalOrUncalcProposal = 2,
     NormalUnstable = 1,
     InvalidUnstable = 0,
+}
+
+impl ToRedisArgs for RedisTagInfo {
+    fn write_redis_args<W: ?Sized + RedisWrite>(&self, out: &mut W) {
+        u32::write_redis_args(&self.value(), out);
+    }
 }
 
 #[cfg(test)]

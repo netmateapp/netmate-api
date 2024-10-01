@@ -1,18 +1,18 @@
 use thiserror::Error;
 
-use crate::common::{fallible::Fallible, tag::{language_group::LanguageGroup, non_top_tag::NonTopTagId, relation::TagRelation, tag_name::TagName}};
+use crate::common::{fallible::Fallible, tag::{non_top_tag::NonTopTagId, relation::TagRelation, tag_name::TagName}};
 
 pub(crate) trait UpdateTagRelationList {
-    async fn update_tag_relation_list(&self, subtag_id: NonTopTagId, subtag_name: TagName, supertag_id: NonTopTagId, supertag_name: TagName, language_group: LanguageGroup, relation: TagRelation) -> Fallible<(), UpdateTagRelationListError> {
+    async fn update_tag_relation_list(&self, subtag_id: NonTopTagId, subtag_name: TagName, supertag_id: NonTopTagId, supertag_name: TagName, relation: TagRelation) -> Fallible<(), UpdateTagRelationListError> {
         match relation {
-            TagRelation::Inclusion => self.update_inclusion_relation_list(subtag_id, subtag_name, supertag_id, supertag_name, language_group).await,
-            TagRelation::Equivalence => self.update_equivalence_relation_list(subtag_id, subtag_name, supertag_id, supertag_name, language_group).await
+            TagRelation::Inclusion => self.update_inclusion_relation_list(subtag_id, subtag_name, supertag_id, supertag_name).await,
+            TagRelation::Equivalence => self.update_equivalence_relation_list(subtag_id, subtag_name, supertag_id, supertag_name).await
         }
     }
 
-    async fn update_inclusion_relation_list(&self, subtag_id: NonTopTagId, subtag_name: TagName, supertag_id: NonTopTagId, supertag_name: TagName, language_group: LanguageGroup) -> Fallible<(), UpdateTagRelationListError>;
+    async fn update_inclusion_relation_list(&self, subtag_id: NonTopTagId, subtag_name: TagName, supertag_id: NonTopTagId, supertag_name: TagName) -> Fallible<(), UpdateTagRelationListError>;
 
-    async fn update_equivalence_relation_list(&self, lesser_tag_id: NonTopTagId, lesser_tag_name: TagName, greater_tag_id: NonTopTagId, greater_tag_name: TagName, language_group: LanguageGroup) -> Fallible<(), UpdateTagRelationListError>;
+    async fn update_equivalence_relation_list(&self, lesser_tag_id: NonTopTagId, lesser_tag_name: TagName, greater_tag_id: NonTopTagId, greater_tag_name: TagName) -> Fallible<(), UpdateTagRelationListError>;
 }
 
 #[derive(Debug, Error)]
