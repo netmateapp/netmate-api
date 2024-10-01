@@ -9,10 +9,10 @@ impl UpdateTagRelationList for ProposeTagRelationImpl {
         // タグリスト用のRedisデータに未安定の提案として追加
         self.insert_unstable_proposals_to_list
             .key(format!("{}{}{}{}{}", TAG_LIST, NAMESPACE_SEPARATOR, subtag_id, NAMESPACE_SEPARATOR, SUPER))
-            .arg(RedisTagInfo::construct(TagListOrder::ReachableTagOrValidProposalOrUncalcProposal, 1000, true, false))
+            .arg(RedisTagInfo::construct(TagListOrder::ReachableTagOrValidProposalOrUncalcProposal, 1000, true, false, false))
             .arg(format!("{}${}", supertag_id, supertag_name))
             .key(format!("{}{}{}{}{}", TAG_LIST, NAMESPACE_SEPARATOR, supertag_id, NAMESPACE_SEPARATOR, SUB))
-            .arg(RedisTagInfo::construct(TagListOrder::ReachableTagOrValidProposalOrUncalcProposal, 1000, true, false))
+            .arg(RedisTagInfo::construct(TagListOrder::ReachableTagOrValidProposalOrUncalcProposal, 1000, true, false, false))
             .arg(format!("{}${}", subtag_id, subtag_name))
             .invoke_async(&mut *conn)
             .await
@@ -31,10 +31,10 @@ impl UpdateTagRelationList for ProposeTagRelationImpl {
         // タグリスト用のRedisデータに未安定の提案として追加
         self.insert_unstable_proposals_to_list
             .key(format!("{}{}{}{}{}", TAG_LIST, NAMESPACE_SEPARATOR, lesser_tag_id, NAMESPACE_SEPARATOR, EQUIVALENT))
-            .arg(RedisTagInfo::construct(TagListOrder::ReachableTagOrValidProposalOrUncalcProposal, 1000, true, false))
+            .arg(RedisTagInfo::construct(TagListOrder::ReachableTagOrValidProposalOrUncalcProposal, 1000, true, false, false))
             .arg(format!("{}${}", greater_tag_id, greater_tag_name))
             .key(format!("{}{}{}{}{}", TAG_LIST, NAMESPACE_SEPARATOR, greater_tag_id, NAMESPACE_SEPARATOR, EQUIVALENT))
-            .arg(RedisTagInfo::construct(TagListOrder::ReachableTagOrValidProposalOrUncalcProposal, 1000, true, false))
+            .arg(RedisTagInfo::construct(TagListOrder::ReachableTagOrValidProposalOrUncalcProposal, 1000, true, false, false))
             .arg(format!("{}${}", lesser_tag_id, lesser_tag_name))
             .invoke_async(&mut *conn)
             .await
