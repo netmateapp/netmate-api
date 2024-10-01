@@ -3,7 +3,7 @@ use std::{str::FromStr, sync::Arc};
 use redis::cmd;
 use uuid::Uuid;
 
-use crate::{common::{fallible::Fallible, page::ZeroBasedPage, tag::{redis_tag_info::RedisTagInfo, hierarchy::TagHierarchy, tag_id::TagId, tag_name::TagName}, uuid::uuid4::Uuid4}, endpoints::tag::list::dsl::TagInfo, helper::{error::InitError, redis::{connection::{conn, Pool}, namespace::NAMESPACE_SEPARATOR, namespaces::{EQUIVALENT, SUB, SUPER, TAG_LIST}}}};
+use crate::{common::{fallible::Fallible, page::ZeroBasedPage, tag::{hierarchy::TagHierarchy, redis_tag_info::RedisTagInfo, tag_id::TagId, tag_info::TagInfo, tag_name::TagName}, uuid::uuid4::Uuid4}, helper::{error::InitError, redis::{connection::{conn, Pool}, namespace::NAMESPACE_SEPARATOR, namespaces::{EQUIVALENT, SUB, SUPER, TAG_LIST}}}};
 
 use super::dsl::{ListRelatedTags, ListRelatedTagsError};
 

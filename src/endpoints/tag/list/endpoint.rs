@@ -8,9 +8,9 @@ use serde::Serialize;
 use tower::ServiceBuilder;
 use tracing::error;
 
-use crate::{common::{page::ZeroBasedPage, tag::{hierarchy::TagHierarchy, tag_id::TagId}}, helper::{cache::{check_if_none_match, create_etag}, error::InitError, middleware::rate_limiter, redis::connection::Pool}, middlewares::limit::TimeUnit};
+use crate::{common::{page::ZeroBasedPage, tag::{hierarchy::TagHierarchy, tag_id::TagId, tag_info::TagInfo}}, helper::{cache::{check_if_none_match, create_etag}, error::InitError, middleware::rate_limiter, redis::connection::Pool}, middlewares::limit::TimeUnit};
 
-use super::{dsl::{ListRelatedTags, TagInfo}, interpreter::ListRelatedTagsImpl};
+use super::{dsl::ListRelatedTags, interpreter::ListRelatedTagsImpl};
 
 pub async fn endpoint(db: Arc<Session>, cache: Arc<Pool>) -> Result<Router, InitError<ListRelatedTagsImpl>> {
     let services = ServiceBuilder::new()

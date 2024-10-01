@@ -16,6 +16,7 @@ tag/propose/intepreter/validate_topology
 
 tag/list/interpreterにunwrap()が沢山
 
+redis_tag_info構造体はcommonフォルダにあるべきではない？
 
 
 自動テストが必要系
