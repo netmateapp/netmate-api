@@ -1,13 +1,13 @@
 use thiserror::Error;
 
-use crate::common::{fallible::Fallible, profile::account_id::AccountId, tag::{language_group::LanguageGroup, non_top_tag::NonTopTagId, relation::{validate_tag_relation, TagRelation}, top_tag::TopTagId}};
+use crate::common::{fallible::Fallible, profile::account_id::AccountId, tag::{language_group::LanguageGroup, non_top_tag::NonTopTagId, relation::{validate_tag_relation, TagRelation}, tag_name::TagName}};
 
-use super::validate_topology::{ValidateTopology, ValidateTopologyError};
+use super::{update_tag_list::{UpdateTagRelationList, UpdateTagRelationListError}, validate_topology::{ValidateTopology, ValidateTopologyError}};
 
 pub(crate) trait ProposeTagRelation {
     async fn propose_tag_relation(&self, account_id: AccountId, subtag_id: NonTopTagId, supertag_id: NonTopTagId, relation: TagRelation) -> Fallible<(), ProposeTagRelationError>
     where
-        Self: ValidateTopology
+        Self: ValidateTopology + UpdateTagRelationList
     {
         match validate_tag_relation(subtag_id, supertag_id, relation) {
             Ok(()) => {
@@ -16,12 +16,15 @@ pub(crate) trait ProposeTagRelation {
                     .map_err(ProposeTagRelationError::InvalidTopology)?;
 
                 if !self.has_already_been_proposed(subtag_id, supertag_id, relation).await? {
-                    let subtag_top_tag = self.top_tag_of(subtag_id).await?;
-                    let supertag_top_tag = self.top_tag_of(supertag_id).await?;
+                    let (subtag_language_group, subtag_name) = self.get_language_group_and_tag_name(subtag_id).await?;
+                    let (supertag_language_group, supertag_name) = self.get_language_group_and_tag_name(supertag_id).await?;
     
-                    if subtag_top_tag == supertag_top_tag {
-                        let language_group = LanguageGroup::from(subtag_top_tag);
-                        self.propose(account_id, subtag_id, supertag_id, relation, language_group).await
+                    if subtag_language_group == supertag_language_group {
+                        let _ = self.propose(account_id, subtag_id, supertag_id, relation, subtag_language_group).await?;
+
+                        self.update_tag_relation_list(subtag_id, subtag_name, supertag_id, supertag_name, subtag_language_group, relation)
+                            .await
+                            .map_err(|e| ProposeTagRelationError::UpdateTagRelationListFailed(e.into()))
                     } else {
                         Err(ProposeTagRelationError::DifferentLanguageGroups)
                     }
@@ -35,13 +38,14 @@ pub(crate) trait ProposeTagRelation {
 
     async fn has_already_been_proposed(&self, subtag_id: NonTopTagId, supertag_id: NonTopTagId, relation: TagRelation) -> Fallible<bool, ProposeTagRelationError>;
 
-    async fn top_tag_of(&self, tag_id: NonTopTagId) -> Fallible<TopTagId, ProposeTagRelationError> {
-        self.fetch_top_tag(tag_id)
+    async fn get_language_group_and_tag_name(&self, tag_id: NonTopTagId) -> Fallible<(LanguageGroup, TagName), ProposeTagRelationError> {
+        self.fetch_language_group_and_tag_name(tag_id)
             .await?
             .ok_or_else(|| ProposeTagRelationError::NonExistentTag)
     }
 
-    async fn fetch_top_tag(&self, tag_id: NonTopTagId) -> Fallible<Option<TopTagId>, ProposeTagRelationError>;
+    // タグが存在しない可能性もあるのでOption
+    async fn fetch_language_group_and_tag_name(&self, tag_id: NonTopTagId) -> Fallible<Option<(LanguageGroup, TagName)>, ProposeTagRelationError>;
 
     async fn propose(&self, account_id: AccountId, subtag_id: NonTopTagId, supertag_id: NonTopTagId, relation: TagRelation, language_group: LanguageGroup) -> Fallible<(), ProposeTagRelationError>;
 }
@@ -62,6 +66,8 @@ pub enum ProposeTagRelationError {
     DifferentLanguageGroups,
     #[error("提案に失敗しました")]
     ProposeFailed(#[source] anyhow::Error),
+    #[error("タグ一覧の更新に失敗しました")]
+    UpdateTagRelationListFailed(#[source] UpdateTagRelationListError),
     #[error("タグ関係の提案に失敗しました")]
     ProposeTagRelationFailed(#[source] anyhow::Error),
 }
