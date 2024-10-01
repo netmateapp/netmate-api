@@ -5,15 +5,12 @@ use super::ProposeTagRelationImpl;
 impl ProposeTagRelation for ProposeTagRelationImpl {
     async fn has_already_been_proposed(&self, subtag_id: NonTopTagId, supertag_id: NonTopTagId, relation: TagRelation) -> Fallible<bool, ProposeTagRelationError> {
         self.db
-            .execute_unpaged(&self.select_tag_relation_proposal, (subtag_id, supertag_id))
+            .execute_unpaged(&self.select_tag_relation_proposal, (subtag_id, supertag_id, relation))
             .await
             .map_err(|e| ProposeTagRelationError::HasAlreadyBeenProposedFailed(e.into()))?
-            .maybe_first_row_typed::<(TagRelation, )>()
+            .maybe_first_row_typed::<(LanguageGroup, )>()
             .map_err(|e| ProposeTagRelationError::HasAlreadyBeenProposedFailed(e.into()))
-            .map(|o| match o {
-                Some((inclusion_or_equivalence, )) => relation == inclusion_or_equivalence,
-                None => false,
-            })
+            .map(|o| o.is_some())
     }
 
     async fn fetch_language_group_and_tag_name(&self, tag_id: NonTopTagId) -> Fallible<Option<(LanguageGroup, TagName)>, ProposeTagRelationError> {

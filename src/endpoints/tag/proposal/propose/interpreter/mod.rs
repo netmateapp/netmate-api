@@ -26,7 +26,7 @@ pub struct ProposeTagRelationImpl {
 
 impl ProposeTagRelationImpl {
     pub async fn try_new(db: Arc<Session>, cache: Arc<Pool>) -> Result<Self, InitError<Self>> {
-        let select_tag_relation_proposal = prepare(&db, "SELECT inclusion_or_equivalence FROM tag_relation_proposals WHERE subtag_id = ? AND supertag_id = ?").await?;
+        let select_tag_relation_proposal = prepare(&db, "SELECT language_group FROM tag_relation_proposals WHERE subtag_id = ? AND supertag_id = ? AND inclusion_or_equivalence = ?").await?;
 
         let select_subtag = prepare(&db, "SELECT is_unstable_proposal FROM transitive_closure_and_unstable_proposals WHERE tag_id = ? AND relation = 2 AND related_tag_id = ?").await?;
 
@@ -36,7 +36,7 @@ impl ProposeTagRelationImpl {
 
         let select_language_group_and_tag_name = prepare(&db, "SELECT language_group, name FROM tags WHERE id = ?").await?;
 
-        let insert_tag_relation_proposal = prepare(&db, "INSERT INTO tag_relation_proposals (subtag_id, supertag_id, inclusion_or_equivalence, language_group, proposer_id. proposed_at) VALUES (?, ?, ?, ?, ?, ?) IF NOT EXISTS").await?;
+        let insert_tag_relation_proposal = prepare(&db, "INSERT INTO tag_relation_proposals (subtag_id, supertag_id, inclusion_or_equivalence, language_group, proposer_id, proposed_at) VALUES (?, ?, ?, ?, ?, ?) IF NOT EXISTS").await?;
 
         let insert_tag_relation_rating = prepare(&db, "INSERT INTO tag_relation_ratings_by_account (account_id, subtag_id, supertag_id, inclusion_or_equivalence, operation_id) VALUES (?, ?, ?, ?, 127)").await?;
 
