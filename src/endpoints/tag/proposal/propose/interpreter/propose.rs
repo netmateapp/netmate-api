@@ -24,7 +24,7 @@ impl ProposeTagRelation for ProposeTagRelationImpl {
 
     async fn propose(&self, account_id: AccountId, subtag_id: NonTopTagId, supertag_id: NonTopTagId, relation: TagRelation, language_group: LanguageGroup) -> Fallible<(), ProposeTagRelationError> {
         self.db
-            .execute_unpaged(&self.insert_tag_relation_proposal, (subtag_id, supertag_id, relation, language_group, account_id, UnixtimeMillis::now()))
+            .execute_unpaged(&self.check_tag_relation_proposal_exists, (subtag_id, supertag_id, relation, language_group, account_id, UnixtimeMillis::now()))
             .await
             .applied(ProposeTagRelationError::ProposeFailed, || ProposeTagRelationError::HasAlreadyBeenProposed)?;
 

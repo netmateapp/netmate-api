@@ -17,7 +17,7 @@ pub struct ProposeTagRelationImpl {
     select_all_subtag: Arc<PreparedStatement>, // 同値性の判定用
     select_all_supertag: Arc<PreparedStatement>, // 同上
     select_language_group_and_tag_name: Arc<PreparedStatement>,
-    insert_tag_relation_proposal: Arc<PreparedStatement>,
+    check_tag_relation_proposal_exists: Arc<PreparedStatement>,
     insert_tag_relation_rating: Arc<PreparedStatement>,
     insert_unstable_proposals_to_list: Arc<Script>,
     insert_inclusion_relation_proposal: Arc<PreparedStatement>,
@@ -26,46 +26,45 @@ pub struct ProposeTagRelationImpl {
 
 impl ProposeTagRelationImpl {
     pub async fn try_new(db: Arc<Session>, cache: Arc<Pool>) -> Result<Self, InitError<Self>> {
-        let select_tag_relation_proposal = prepare(&db, "SELECT language_group FROM tag_relation_proposals WHERE subtag_id = ? AND supertag_id = ? AND inclusion_or_equivalence = ?").await?;
+        let select_subtag = prepare(&db, "SELECT is_unstable_proposal FROM hierarchical_tag_lists WHERE tag_id = ? AND hierarchy = 2 AND related_tag_id = ?").await?;
 
-        let select_subtag = prepare(&db, "SELECT is_unstable_proposal FROM transitive_closure_and_unstable_proposals WHERE tag_id = ? AND relation = 2 AND related_tag_id = ?").await?;
-
-        let select_all_subtag = prepare(&db, "SELECT related_tag_id, is_unstable_proposal FROM transitive_closure_and_unstable_proposals WHERE tag_id = ? AND relation = 2").await?;
+        let select_all_subtag = prepare(&db, "SELECT related_tag_id, is_unstable_proposal FROM hierarchical_tag_lists WHERE tag_id = ? AND hierarchy = 2").await?;
         
-        let select_all_supertag = prepare(&db, "SELECT related_tag_id, is_unstable_proposal FROM transitive_closure_and_unstable_proposals WHERE tag_id = ? AND relation = 0").await?;
+        let select_all_supertag = prepare(&db, "SELECT related_tag_id, is_unstable_proposal FROM hierarchical_tag_lists WHERE tag_id = ? AND hierarchy = 0").await?;
+
+        let check_tag_relation_proposal_exists = prepare(&db, "SELECT language_group FROM tag_relation_proposals WHERE subtag_id = ? AND supertag_id = ? AND relation = ?").await?;
 
         let select_language_group_and_tag_name = prepare(&db, "SELECT language_group, name FROM tags WHERE id = ?").await?;
 
-        let insert_tag_relation_proposal = prepare(&db, "INSERT INTO tag_relation_proposals (subtag_id, supertag_id, inclusion_or_equivalence, language_group, proposer_id, proposed_at) VALUES (?, ?, ?, ?, ?, ?) IF NOT EXISTS").await?;
+        let insert_tag_relation_proposal = prepare(&db, "INSERT INTO tag_relation_proposals (subtag_id, supertag_id, relation, language_group, proposer_id, proposed_at) VALUES (?, ?, ?, ?, ?, ?) IF NOT EXISTS").await?;
 
-        let insert_tag_relation_rating = prepare(&db, "INSERT INTO tag_relation_ratings_by_account (account_id, subtag_id, supertag_id, inclusion_or_equivalence, operation_id) VALUES (?, ?, ?, ?, 127)").await?;
+        let insert_tag_relation_rating = prepare(&db, "INSERT INTO tag_relation_ratings_by_account (account_id, subtag_id, supertag_id, relation, operation_id) VALUES (?, ?, ?, ?, 127)").await?;
 
         let insert_unstable_proposals_to_list = Arc::new(Script::new(include_str!("insert_unstable_proposals_to_list.lua")));
 
         let insert_inclusion_relation_proposal = prepare(&db, "
             BEGIN BATCH
-                INSERT INTO transitive_closure_and_unstable_proposals (tag_id, relation, related_tag_id, related_tag_name, is_unstable_proposal, is_status_calculated) VALUES (?, 0, ?, ?, true, false);
-                INSERT INTO transitive_closure_and_unstable_proposals (tag_id, relation, related_tag_id, related_tag_name, is_unstable_proposal, is_status_calculated) VALUES (?, 2, ?, ?, true, false);
+                INSERT INTO hierarchical_tag_lists (tag_id, hierarchy, related_tag_id, related_tag_name, is_unstable_proposal, is_status_calculated) VALUES (?, 0, ?, ?, true, false);
+                INSERT INTO hierarchical_tag_lists (tag_id, hierarchy, related_tag_id, related_tag_name, is_unstable_proposal, is_status_calculated) VALUES (?, 2, ?, ?, true, false);
             APPLY BATCH
         ").await?;
 
-
         let insert_equivalence_relation_proposal = prepare(&db, "
             BEGIN BATCH
-                INSERT INTO transitive_closure_and_unstable_proposals (tag_id, relation, related_tag_id, related_tag_name, is_unstable_proposal, is_status_calculated) VALUES (?, 1, ?, ?, true, false)
-                INSERT INTO transitive_closure_and_unstable_proposals (tag_id, relation, related_tag_id, related_tag_name, is_unstable_proposal, is_status_calculated) VALUES (?, 1, ?, ?, true, false)
+                INSERT INTO hierarchical_tag_lists (tag_id, hierarchy, related_tag_id, related_tag_name, is_unstable_proposal, is_status_calculated) VALUES (?, 1, ?, ?, true, false);
+                INSERT INTO hierarchical_tag_lists (tag_id, hierarchy, related_tag_id, related_tag_name, is_unstable_proposal, is_status_calculated) VALUES (?, 1, ?, ?, true, false);
             APPLY BATCH
         ").await?;
 
         Ok(Self {
             db,
             cache,
-            select_tag_relation_proposal,
+            select_tag_relation_proposal: check_tag_relation_proposal_exists,
             select_subtag,
             select_all_subtag,
             select_all_supertag,
             select_language_group_and_tag_name,
-            insert_tag_relation_proposal,
+            check_tag_relation_proposal_exists: insert_tag_relation_proposal,
             insert_tag_relation_rating,
             insert_unstable_proposals_to_list,
             insert_inclusion_relation_proposal,
