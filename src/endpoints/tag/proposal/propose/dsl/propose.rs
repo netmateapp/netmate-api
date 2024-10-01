@@ -2,13 +2,13 @@ use thiserror::Error;
 
 use crate::common::{fallible::Fallible, profile::account_id::AccountId, tag::{language_group::LanguageGroup, non_top_tag::NonTopTagId, relation::{validate_tag_relation, TagRelation}, tag_name::TagName}};
 
-use super::{add_relation::{HierarchicalTagRelator, HierarchicalTagRelatorError}, validate_topology::{ValidateTopology, ValidateTopologyError}};
+use super::{relate_hierarchical_tags::{RelateHierarchicalTags, RelateHierarchicalTagsError}, validate_topology::{ValidateTopology, ValidateTopologyError}};
 
 pub(crate) trait ProposeTagRelation {
     // 引数に渡されるIDのタグは、存在することが保証されていない
     async fn propose_tag_relation(&self, account_id: AccountId, subtag_id: NonTopTagId, supertag_id: NonTopTagId, relation: TagRelation) -> Fallible<(), ProposeTagRelationError>
     where
-        Self: ValidateTopology + HierarchicalTagRelator
+        Self: ValidateTopology + RelateHierarchicalTags
     {
         match validate_tag_relation(subtag_id, supertag_id, relation) {
             Ok(()) => {
@@ -68,7 +68,7 @@ pub enum ProposeTagRelationError {
     #[error("提案に失敗しました")]
     ProposeFailed(#[source] anyhow::Error),
     #[error("タグ一覧の更新に失敗しました")]
-    UpdateTagRelationListFailed(#[source] HierarchicalTagRelatorError),
+    UpdateTagRelationListFailed(#[source] RelateHierarchicalTagsError),
     #[error("タグ関係の提案に失敗しました")]
     ProposeTagRelationFailed(#[source] anyhow::Error),
 }
