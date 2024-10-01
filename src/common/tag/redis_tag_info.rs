@@ -1,4 +1,4 @@
-use redis::{RedisWrite, ToRedisArgs};
+use redis::{FromRedisValue, RedisResult, RedisWrite, ToRedisArgs};
 
 pub struct RedisTagInfo(u32);
 
@@ -60,6 +60,12 @@ pub enum TagListOrder {
 impl ToRedisArgs for RedisTagInfo {
     fn write_redis_args<W: ?Sized + RedisWrite>(&self, out: &mut W) {
         u32::write_redis_args(&self.value(), out);
+    }
+}
+
+impl FromRedisValue for RedisTagInfo {
+    fn from_redis_value(v: &redis::Value) -> RedisResult<Self> {
+        u32::from_redis_value(v).map(RedisTagInfo)
     }
 }
 
