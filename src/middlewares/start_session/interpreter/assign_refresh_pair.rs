@@ -15,9 +15,9 @@ impl AssignRefreshPair for StartSessionImpl {
         cmd("SET")
             .arg(RefreshPairKey::new(session_series))
             .arg(RefreshPairValue::new(refresh_token, session_account_id))
+            .arg("NX")
             .arg("EX")
             .arg(expiration)
-            .arg("NX")
             .query_async::<Option<()>>(&mut *conn)
             .await
             .map_err(handle_error)?

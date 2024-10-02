@@ -11,9 +11,9 @@ impl AssignSessionId for StartSessionImpl {
         cmd("SET")
             .arg(SessionIdKey::new(session_id))
             .arg(session_account_id)
+            .arg("NX")
             .arg("EX")
             .arg(expiration)
-            .arg("NX")
             .query_async::<Option<()>>(&mut *conn) // 重複時はNone
             .await
             .map_err(|e| AssignSessionIdError::AssignNewSessionIdFailed(e.into()))?

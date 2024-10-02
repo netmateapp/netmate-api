@@ -11,9 +11,9 @@ impl UpdateSession for ManageSessionImpl {
         cmd("SET")
             .arg(SessionIdKey::new(new_session_id))
             .arg(session_account_id)
+            .arg("NX")
             .arg("EX")
             .arg(new_expiration)
-            .arg("NX")
             .query_async::<Option<()>>(&mut *conn) // 重複時はNoneを返す
             .await
             .map_err(|e| UpdateSessionError::AssignNewSessionIdFailed(e.into()))?
