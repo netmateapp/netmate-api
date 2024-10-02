@@ -1,6 +1,7 @@
 pub mod auth;
 pub mod api_key;
 pub mod character_count;
+pub mod consensus;
 pub mod cycle;
 pub mod email;
 pub mod fallible;

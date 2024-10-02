@@ -5,7 +5,7 @@ use super::ProposeTagRelationImpl;
 impl ProposeTagRelation for ProposeTagRelationImpl {
     async fn has_already_been_proposed(&self, subtag_id: NonTopTagId, supertag_id: NonTopTagId, relation: TagRelation) -> Fallible<bool, ProposeTagRelationError> {
         self.db
-            .execute_unpaged(&self.select_tag_relation_proposal, (subtag_id, supertag_id, relation))
+            .execute_unpaged(&self.check_tag_relation_proposal_exists, (subtag_id, supertag_id, relation))
             .await
             .map_err(|e| ProposeTagRelationError::HasAlreadyBeenProposedFailed(e.into()))?
             .maybe_first_row_typed::<(LanguageGroup, )>()

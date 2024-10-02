@@ -9,6 +9,11 @@ pub async fn startup() {
     // Brotli 圧縮を有効にする
 
     // rustlsなどでTLSを有効化
+
+    /*特定のURLで実行されているElasticsearchのクライアント
+        let transport = Transport::single_node("https://example.com")?;
+    let client = Elasticsearch::new(transport);
+     */
     
     let listener = TcpListener::bind("127.0.0.1:8080").await.unwrap();
     // let listener = TcpListener::bind("0.0.0.0:443").await.unwrap();
