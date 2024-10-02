@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::{common::{api_key::ApiKey, fallible::Fallible}, middlewares::limit::{Count, InculsiveLimit, TimeWindow}};
+use crate::{common::{api_key::key::ApiKey, fallible::Fallible}, middlewares::limit::{Count, InculsiveLimit, TimeWindow}};
 
 pub type Rate = Count;
 
@@ -36,7 +36,7 @@ pub enum IncrementRateError {
 mod tests {
     use std::sync::LazyLock;
 
-    use crate::{common::{api_key::ApiKey, fallible::Fallible}, middlewares::limit::{Count, InculsiveLimit, TimeWindow}};
+    use crate::{common::{api_key::key::ApiKey, fallible::Fallible}, middlewares::limit::{Count, InculsiveLimit, TimeWindow}};
 
     use super::{IncrementRate, IncrementRateError, Rate};
 

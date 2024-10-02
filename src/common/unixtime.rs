@@ -1,5 +1,6 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use redis::{FromRedisValue, RedisResult, RedisWrite, ToRedisArgs};
 use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::{response::result::{ColumnType, CqlValue}, value::CqlTimestamp}, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
@@ -38,6 +39,18 @@ impl From<UnixtimeMillis> for i64 {
 impl SerializeValue for UnixtimeMillis {
     fn serialize<'b>(&self, typ: &ColumnType, writer: CellWriter<'b>) -> Result<WrittenCellProof<'b>, SerializationError> {
         i64::from(*self).serialize(typ, writer)
+    }
+}
+
+impl ToRedisArgs for UnixtimeMillis {
+    fn write_redis_args<W: ?Sized + RedisWrite>(&self, out: &mut W) {
+        u64::write_redis_args(&self.value(), out);
+    }
+}
+
+impl FromRedisValue for UnixtimeMillis {
+    fn from_redis_value(v: &redis::Value) -> RedisResult<Self> {
+        u64::from_redis_value(v).map(UnixtimeMillis::of)
     }
 }
 

@@ -1,11 +1,10 @@
 use std::{convert::Infallible, str::FromStr};
 
 use http::{HeaderMap, Request, Response};
-use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::CqlValue};
 use thiserror::Error;
 use tower::Service;
 
-use crate::common::{api_key::ApiKey, fallible::Fallible, unixtime::UnixtimeMillis};
+use crate::common::{api_key::{key::ApiKey, refreshed_at::LastApiKeyRefreshedAt}, fallible::Fallible};
 
 use super::{increment_rate::{IncrementRate, IncrementRateError}, refresh_api_key::RefreshApiKey};
 
@@ -61,26 +60,6 @@ pub enum RateLimitError {
     RateLimitFailed,
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub struct LastApiKeyRefreshedAt(UnixtimeMillis);
-
-impl LastApiKeyRefreshedAt {
-    pub fn new(unixtime: UnixtimeMillis) -> Self {
-        Self(unixtime)
-    }
-
-    pub fn value(&self) -> &UnixtimeMillis {
-        &self.0
-    }
-}
-
-impl FromCqlVal<Option<CqlValue>> for LastApiKeyRefreshedAt {
-    fn from_cql(cql_val: Option<CqlValue>) -> Result<Self, FromCqlValError> {
-        UnixtimeMillis::from_cql(cql_val).map(Self::new)
-    }
-}
-
-#[cfg(test)]
 mod tests {
     use std::{convert::Infallible, future::{ready, Ready}, sync::LazyLock, task::{Context, Poll}};
 
@@ -88,9 +67,9 @@ mod tests {
     use thiserror::Error;
     use tower::Service;
 
-    use crate::{common::{api_key::ApiKey, fallible::Fallible, unixtime::UnixtimeMillis}, middlewares::{limit::{InculsiveLimit, TimeWindow}, rate_limit::dsl::{increment_rate::{IncrementRate, IncrementRateError, Rate}, refresh_api_key::{ApiKeyExpirationSeconds, ApiKeyRefreshThereshold, RefreshApiKey, RefreshApiKeyError}}}};
+    use crate::{common::{api_key::{expiration::ApiKeyExpirationSeconds, key::ApiKey, refreshed_at::LastApiKeyRefreshedAt}, fallible::Fallible, unixtime::UnixtimeMillis}, middlewares::{limit::{InculsiveLimit, TimeWindow}, rate_limit::dsl::{increment_rate::{IncrementRate, IncrementRateError, Rate}, refresh_api_key::{ApiKeyRefreshThereshold, RefreshApiKey, RefreshApiKeyError}}}};
 
-    use super::{LastApiKeyRefreshedAt, RateLimit, RateLimitError};
+    use super::{RateLimit, RateLimitError};
 
     static VALID_API_KEY: LazyLock<ApiKey> = LazyLock::new(ApiKey::gen);
 

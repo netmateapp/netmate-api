@@ -1,9 +1,8 @@
-use crate::{common::{api_key::ApiKey, fallible::Fallible, unixtime::UnixtimeMillis}, middlewares::rate_limit::dsl::refresh_api_key::{ApiKeyExpirationSeconds, ApiKeyRefreshThereshold, RefreshApiKey, RefreshApiKeyError}};
+use redis::cmd;
+
+use crate::{common::{api_key::{expiration::ApiKeyExpirationSeconds, key::ApiKey, refreshed_at::LastApiKeyRefreshedAt, API_KEY_EXPIRATION, API_KEY_REFRESH_THERESHOLD}, fallible::Fallible, unixtime::UnixtimeMillis}, helper::redis::{connection::conn, namespace::NAMESPACE_SEPARATOR, namespaces::API_KEY}, middlewares::rate_limit::dsl::refresh_api_key::{ApiKeyRefreshThereshold, RefreshApiKey, RefreshApiKeyError}};
 
 use super::RateLimitImpl;
-
-const API_KEY_REFRESH_THERESHOLD: ApiKeyRefreshThereshold = ApiKeyRefreshThereshold::days(10);
-const API_KEY_EXPIRATION: ApiKeyExpirationSeconds = ApiKeyExpirationSeconds::secs(2592000);
 
 impl RefreshApiKey for RateLimitImpl {
     fn api_key_refresh_thereshold(&self) -> ApiKeyRefreshThereshold {
@@ -15,10 +14,15 @@ impl RefreshApiKey for RateLimitImpl {
     }
 
     async fn refresh_api_key(&self, api_key: &ApiKey, expiration: ApiKeyExpirationSeconds) -> Fallible<(), RefreshApiKeyError> {
-        self.db
-        .execute_unpaged(&self.insert_api_key_with_ttl_refresh, (api_key, UnixtimeMillis::now(), expiration))
-        .await
-        .map(|_| ())
-        .map_err(|e| RefreshApiKeyError::RefreshApiKeyFailed(e.into()))
+        let mut conn = conn(&self.cache, |e| RefreshApiKeyError::RefreshApiKeyFailed(e.into())).await?;
+        
+        cmd("SET")
+            .arg(format!("{}{}{}", API_KEY, NAMESPACE_SEPARATOR, api_key))
+            .arg(LastApiKeyRefreshedAt::new(UnixtimeMillis::now()))
+            .arg("EX")
+            .arg(expiration)
+            .exec_async(&mut *conn)
+            .await
+            .map_err(|e| RefreshApiKeyError::RefreshApiKeyFailed(e.into()))
     }
 }

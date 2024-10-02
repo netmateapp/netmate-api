@@ -11,5 +11,6 @@ pub mod rating;
 pub mod session;
 pub mod tag;
 pub mod token;
+pub mod turnstile;
 pub mod unixtime;
 pub mod uuid;

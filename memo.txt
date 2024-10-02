@@ -35,7 +35,7 @@ common/email/resend.rsのAPIキーがない
 要検証系
 middlewares/quota_limit/interpreter -> DBへのクエリ(貢献度取得)が未記述
 tag/list/interpreter -> withscoresからの値の取得方法が適切か不明, タグ名取得クエリでキーの順番に名前が返されるかどうか不明
-
+rate_limit/interpreter/rate_limit, api_key/interpreter -> ScyllaDBのキャッシュを使い、Redisを使ってないので速度の問題が出る可能性
 
 
 後からで問題ない

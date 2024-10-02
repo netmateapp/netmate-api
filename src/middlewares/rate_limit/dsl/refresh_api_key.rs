@@ -1,9 +1,6 @@
-use scylla::{frame::response::result::ColumnType, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
 use thiserror::Error;
 
-use crate::common::{api_key::ApiKey, fallible::Fallible, unixtime::UnixtimeMillis};
-
-use super::rate_limit::LastApiKeyRefreshedAt;
+use crate::common::{api_key::{expiration::ApiKeyExpirationSeconds, key::ApiKey, refreshed_at::LastApiKeyRefreshedAt}, fallible::Fallible, unixtime::UnixtimeMillis};
 
 pub(crate) trait RefreshApiKey {
     async fn try_refresh_api_key(&self, last_api_key_refreshed_at: LastApiKeyRefreshedAt, api_key: &ApiKey) -> Fallible<(), RefreshApiKeyError> {
@@ -48,34 +45,9 @@ impl ApiKeyRefreshThereshold {
     }
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub struct ApiKeyExpirationSeconds(u64);
-
-impl ApiKeyExpirationSeconds {
-    pub const fn secs(seconds: u64) -> Self {
-        Self(seconds)
-    }
-
-    pub fn as_secs(&self) -> u64 {
-        self.0
-    }
-}
-
-impl From<ApiKeyExpirationSeconds> for i64 {
-    fn from(expiration: ApiKeyExpirationSeconds) -> i64 {
-        expiration.0 as i64
-    }
-}
-
-impl SerializeValue for ApiKeyExpirationSeconds {
-    fn serialize<'b>(&self, typ: &ColumnType, writer: CellWriter<'b>) -> Result<WrittenCellProof<'b>, SerializationError> {
-        (self.0 as i64).serialize(typ, writer)
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use crate::{common::{api_key::ApiKey, fallible::Fallible, unixtime::UnixtimeMillis}, middlewares::rate_limit::dsl::rate_limit::LastApiKeyRefreshedAt};
+    use crate::common::{api_key::{key::ApiKey, refreshed_at::LastApiKeyRefreshedAt}, fallible::Fallible, unixtime::UnixtimeMillis};
 
     use super::{ApiKeyExpirationSeconds, ApiKeyRefreshThereshold, RefreshApiKey, RefreshApiKeyError};
 

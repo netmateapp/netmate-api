@@ -3,7 +3,7 @@ use std::{fmt::Display, str::FromStr};
 use scylla::{frame::response::result::ColumnType, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
 use thiserror::Error;
 
-use super::token::{calc_entropy_bytes, Token};
+use crate::common::token::{calc_entropy_bytes, Token};
 
 const API_KEY_ENTROPY_BITS: usize = 196;
 
