@@ -4,7 +4,7 @@ use rand::{RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 use redis::{FromRedisValue, RedisError, RedisResult, RedisWrite, ToRedisArgs};
 use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::{ColumnType, CqlValue}, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
-use serde::{de, Deserialize, Deserializer};
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;
 
 const ENTROPY_BITS_PER_CHAR: usize = 6;
@@ -107,6 +107,12 @@ fn is_valid_char(c: char) -> bool {
     matches!(c, 'A'..='Z' | 'a'..='z' | '0'..='9' | '-' | '_')
 }
 
+impl<const BYTES: usize> Serialize for Token<BYTES> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        Serialize::serialize(&self.value(), serializer)
+    }
+}
+
 impl<'de, const BYTES: usize> Deserialize<'de> for Token<BYTES> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         String::deserialize(deserializer)
@@ -116,7 +122,7 @@ impl<'de, const BYTES: usize> Deserialize<'de> for Token<BYTES> {
 
 impl<const BYTES: usize> SerializeValue for Token<BYTES> {
     fn serialize<'b>(&self, typ: &ColumnType, writer: CellWriter<'b>) -> Result<WrittenCellProof<'b>, SerializationError> {
-        self.value().serialize(typ, writer)
+        SerializeValue::serialize(&self.value(), typ, writer)
     }
 }
 

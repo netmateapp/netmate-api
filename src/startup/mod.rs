@@ -7,6 +7,8 @@ pub async fn startup() {
         //.merge(sign_up_route());
 
     // Brotli 圧縮を有効にする
+
+    // rustlsなどでTLSを有効化
     
     let listener = TcpListener::bind("127.0.0.1:8080").await.unwrap();
     // let listener = TcpListener::bind("0.0.0.0:443").await.unwrap();

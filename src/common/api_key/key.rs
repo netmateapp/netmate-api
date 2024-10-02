@@ -1,6 +1,7 @@
 use std::{fmt::Display, str::FromStr};
 
 use scylla::{frame::response::result::ColumnType, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
+use serde::{Serialize, Serializer};
 use thiserror::Error;
 
 use crate::common::token::{calc_entropy_bytes, Token};
@@ -42,8 +43,14 @@ impl FromStr for ApiKey {
     }
 }
 
+impl Serialize for ApiKey {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        Serialize::serialize(&self.value(), serializer)
+    }
+}
+
 impl SerializeValue for ApiKey {
     fn serialize<'b>(&self, typ: &ColumnType, writer: CellWriter<'b>) -> Result<WrittenCellProof<'b>, SerializationError> {
-        self.value().serialize(typ, writer)
+        SerializeValue::serialize(&self.value(), typ, writer)
     }
 }
