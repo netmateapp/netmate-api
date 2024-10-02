@@ -11,3 +11,7 @@ pub const fn mock_uuid(d4_8: u8) -> Uuid {
 pub fn mock_non_top_tag_id(d4_8: u8) -> NonTopTagId {
     NonTopTagId::try_from(TagId::of(Uuid4::new_unchecked(mock_uuid(d4_8)))).unwrap()
 }
+
+pub fn mock_tag_id(d4_8: u8) -> TagId {
+    TagId::of(Uuid4::new_unchecked(mock_uuid(d4_8)))
+}

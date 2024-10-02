@@ -1,38 +1,38 @@
 use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::{ColumnType, CqlValue}, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub enum ItemType {
+pub enum IsProposal {
     Proposal,
-    Reachable,
+    NotProposal,
 }
 
-impl From<ItemType> for bool {
-    fn from(value: ItemType) -> Self {
+impl From<IsProposal> for bool {
+    fn from(value: IsProposal) -> Self {
         match value {
-            ItemType::Proposal => true,
-            ItemType::Reachable => false,
+            IsProposal::Proposal => true,
+            IsProposal::NotProposal => false,
         }
     }
 }
 
-impl From<bool> for ItemType {
+impl From<bool> for IsProposal {
     fn from(value: bool) -> Self {
         if value {
-            ItemType::Proposal
+            IsProposal::Proposal
         } else {
-            ItemType::Reachable
+            IsProposal::NotProposal
         }
     }
 }
 
-impl SerializeValue for ItemType {
+impl SerializeValue for IsProposal {
     fn serialize<'b>(&self, typ: &ColumnType, writer: CellWriter<'b>) -> Result<WrittenCellProof<'b>, SerializationError> {
         SerializeValue::serialize(&bool::from(*self), typ, writer)
     }
 }
 
-impl FromCqlVal<Option<CqlValue>> for ItemType {
+impl FromCqlVal<Option<CqlValue>> for IsProposal {
     fn from_cql(cql_val: Option<CqlValue>) -> Result<Self, FromCqlValError> {
-        bool::from_cql(cql_val).map(ItemType::from)
+        bool::from_cql(cql_val).map(IsProposal::from)
     }
 }
