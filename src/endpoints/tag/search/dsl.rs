@@ -9,11 +9,10 @@ use crate::common::{consensus::{proposal::IsProposal, stability::Stability}, fal
 pub(crate) trait SearchWithinHierarchicalTagList {
     async fn search_within_hierarchical_tag_list(
         &self,
-        query: TagName,
+        query: &TagName,
         language_group: LanguageGroup,
-        search_after: Option<TagId>,
+        search_after: &Option<TagId>,
         tag_id: TagId,
-        related_tag_id: TagId,
         hierarchy: TagHierarchy
     ) -> Fallible<Vec<TagInfo>, SearchWithinHierarchicalTagListError> {
         // マッチするタグを検索
@@ -30,7 +29,7 @@ pub(crate) trait SearchWithinHierarchicalTagList {
         
         // タグ情報をフェッチ
         let tag_info_map = self
-            .fetch_tag_info(tag_id, related_tag_id, hierarchy, matched_tag_ids)
+            .fetch_tag_info(tag_id, hierarchy, matched_tag_ids)
             .await?;
         
         // TagInfoのリストを構築
@@ -49,16 +48,15 @@ pub(crate) trait SearchWithinHierarchicalTagList {
 
     async fn search_matched_tags(
         &self,
-        query: TagName,
+        query: &TagName,
         language_group: LanguageGroup,
-        search_after: Option<TagId>
+        search_after: &Option<TagId>
     ) -> Fallible<Vec<(TagId, TagName)>, SearchWithinHierarchicalTagListError>;
 
     // tagsは空ではないことが保証されている
     async fn fetch_tag_info(
         &self,
         tag_id: TagId,
-        related_tag_id: TagId,
         hierarchy: TagHierarchy,
         tags: Vec<TagId>
     ) -> Fallible<HashMap<TagId, (IsProposal, Stability)>, SearchWithinHierarchicalTagListError>;

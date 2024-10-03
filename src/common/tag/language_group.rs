@@ -1,4 +1,7 @@
+use std::fmt::{self, Display};
+
 use scylla::{cql_to_rust::{FromCqlVal, FromCqlValError}, frame::response::result::{ColumnType, CqlValue}, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
+use serde::{de, Deserialize, Deserializer};
 use thiserror::Error;
 
 use crate::common::profile::language::Language;
@@ -78,6 +81,25 @@ impl TryFrom<i8> for LanguageGroup {
 
     fn try_from(value: i8) -> Result<Self, Self::Error> {
         LanguageGroup::try_from(value as u8)
+    }
+}
+
+impl Display for LanguageGroup {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            LanguageGroup::Japanese => "日本語",
+            LanguageGroup::Korean => "韓国語",
+            LanguageGroup::TaiwaneseMandarin => "台湾華語",
+            LanguageGroup::English => "英語",
+        };
+        write!(f, "{}", s)
+    }
+}
+
+impl<'de> Deserialize<'de> for LanguageGroup {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        u8::deserialize(deserializer)
+            .and_then(|value| LanguageGroup::try_from(value).map_err(de::Error::custom))
     }
 }
 

@@ -1,3 +1,5 @@
+use std::fmt::{self, Display};
+
 use scylla::{frame::response::result::ColumnType, serialize::{value::SerializeValue, writers::WrittenCellProof, CellWriter, SerializationError}};
 use serde::{de, Deserialize, Deserializer};
 use thiserror::Error;
@@ -37,6 +39,17 @@ impl TryFrom<u8> for TagHierarchy {
 #[derive(Debug, Error)]
 #[error("タグ階層の解析に失敗しました")]
 pub struct ParseTagRelationTypeError;
+
+impl Display for TagHierarchy {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            TagHierarchy::Super => "上位",
+            TagHierarchy::Equivalent => "同値",
+            TagHierarchy::Sub => "下位"
+        };
+        write!(f, "{}", s)
+    }
+}
 
 impl<'de> Deserialize<'de> for TagHierarchy {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {

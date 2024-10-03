@@ -16,7 +16,7 @@ pub struct SearchWithinHierarchicalTagListImpl {
 }
 
 impl SearchWithinHierarchicalTagListImpl {
-    pub async fn try_new(&self, db: Arc<Session>, client: Arc<Elasticsearch>) -> Result<Self, InitError<Self>> {
+    pub async fn try_new(db: Arc<Session>, client: Arc<Elasticsearch>) -> Result<Self, InitError<Self>> {
         let select_tags_info = prepare(&db, "SELECT related_tag_id, is_proposal, is_stable FROM hierarchical_tag_lists WHERE tag_id = ? AND hierarchy = ? AND related_tag_id IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").await?;
 
         Ok(Self { db, client, select_tags_info })
@@ -26,7 +26,7 @@ impl SearchWithinHierarchicalTagListImpl {
 const PAGE_SIZE: usize = 10;
 
 impl SearchWithinHierarchicalTagList for SearchWithinHierarchicalTagListImpl {
-    async fn search_matched_tags(&self, query: TagName, language_group: LanguageGroup, search_after: Option<TagId>) -> Fallible<Vec<(TagId, TagName)>, SearchWithinHierarchicalTagListError> {
+    async fn search_matched_tags(&self, query: &TagName, language_group: LanguageGroup, search_after: &Option<TagId>) -> Fallible<Vec<(TagId, TagName)>, SearchWithinHierarchicalTagListError> {
         let mut search_body = json!({
             "query": {
               "bool": {
@@ -88,7 +88,7 @@ impl SearchWithinHierarchicalTagList for SearchWithinHierarchicalTagListImpl {
         Ok(matched_tags)
     }
 
-    async fn fetch_tag_info(&self, tag_id: TagId, related_tag_id: TagId, hierarchy: TagHierarchy, mut tags: Vec<TagId>) -> Fallible<HashMap<TagId, (IsProposal, Stability)>, SearchWithinHierarchicalTagListError> {
+    async fn fetch_tag_info(&self, tag_id: TagId, hierarchy: TagHierarchy, mut tags: Vec<TagId>) -> Fallible<HashMap<TagId, (IsProposal, Stability)>, SearchWithinHierarchicalTagListError> {
         extend_to_length(&mut tags);
 
         fn get(tags: &[TagId], i: usize) -> TagId {
@@ -96,7 +96,7 @@ impl SearchWithinHierarchicalTagList for SearchWithinHierarchicalTagListImpl {
         }
 
         let tag_infos: HashMap<TagId, (IsProposal, Stability)> = self.db
-            .execute_unpaged(&self.select_tags_info, (tag_id, hierarchy, related_tag_id, get(&tags, 0), get(&tags, 1), get(&tags, 2), get(&tags, 3), get(&tags, 4), get(&tags, 5), get(&tags, 6), get(&tags, 7), get(&tags, 8), get(&tags, 9)))
+            .execute_unpaged(&self.select_tags_info, (tag_id, hierarchy, get(&tags, 0), get(&tags, 1), get(&tags, 2), get(&tags, 3), get(&tags, 4), get(&tags, 5), get(&tags, 6), get(&tags, 7), get(&tags, 8), get(&tags, 9)))
             .await
             .map_err(|e| SearchWithinHierarchicalTagListError::FetchTagInfoFailed(e.into()))?
             .rows_typed()

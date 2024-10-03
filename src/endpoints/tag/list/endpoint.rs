@@ -19,7 +19,7 @@ pub async fn endpoint(db: Arc<Session>, cache: Arc<Pool>) -> Result<Router, Init
     let interpreter = ListRelatedTagsImpl::try_new(cache).await?;
 
     let router = Router::new()
-        .route("/tags", get(handler))
+        .route("/", get(handler))
         .layer(services)
         .with_state(Arc::new(interpreter));
 
